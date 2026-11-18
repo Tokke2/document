@@ -1,0 +1,1136 @@
+<?php
+declare(strict_types=1);
+$skadeCustomerMode = isset($isSkadeCustomerMode) && $isSkadeCustomerMode === true;
+$skadeAdminCanOmitAccidentDate = !$skadeCustomerMode
+    && function_exists('portal_skade_admin_can_omit_accident_date')
+    && portal_skade_admin_can_omit_accident_date();
+$skadeTextFitConfirmationRequired = !empty($portalSkadeTextFitConfirmationRequired);
+$skadeEditAttempted = false;
+$skadeEditRecord = null;
+$skadeEditId = '';
+$skadeEditSourceFile = '';
+$skadeEditError = '';
+$skadeEditSignatureDataUri = '';
+$requestedSkadeEditId = '';
+if (isset($_GET['edit_id']) && is_string($_GET['edit_id'])) {
+    $requestedSkadeEditId = $_GET['edit_id'];
+} elseif (isset($_POST['edit_id']) && is_string($_POST['edit_id'])) {
+    $requestedSkadeEditId = $_POST['edit_id'];
+}
+if (!$skadeCustomerMode && $requestedSkadeEditId !== '') {
+    $skadeEditAttempted = true;
+    if (!preg_match('/\\A[a-f0-9]{32}\\z/', $requestedSkadeEditId) || !function_exists('portal_skade_editable_record_by_id')) {
+        $skadeEditError = 'Redigeringslänken kunde inte verifieras. Öppna posten igen från Historik.';
+    } else {
+        $candidateEditRecord = portal_skade_editable_record_by_id($requestedSkadeEditId);
+        if (!is_array($candidateEditRecord)) {
+            $skadeEditError = 'Posten saknar sparade formuläruppgifter eller den tidigare PDF:en finns inte kvar. Äldre blanketter kan öppnas som PDF men inte fyllas i automatiskt.';
+        } else {
+            $skadeEditSignatureDataUri = portal_skade_signature_data_uri_from_record($candidateEditRecord);
+            if ($skadeEditSignatureDataUri === null || (!empty($candidateEditRecord['signature_drawn']) && $skadeEditSignatureDataUri === '')) {
+                $skadeEditError = 'Den sparade signaturen kunde inte läsas. Den tidigare PDF:en finns kvar; kontakta administratören innan redigering.';
+            } else {
+                $skadeEditRecord = $candidateEditRecord;
+                $skadeEditId = $requestedSkadeEditId;
+                $skadeEditSourceFile = (string) ($candidateEditRecord['file'] ?? '');
+                if (isset($_POST['edit_source_file']) && is_string($_POST['edit_source_file'])) {
+                    $skadeEditSourceFile = $_POST['edit_source_file'];
+                }
+            }
+        }
+    }
+}
+if ($requestedSkadeEditId !== '' && isset($portalPostError) && is_string($portalPostError) && str_starts_with($portalPostError, 'Posten har ändrats sedan du öppnade den.')) {
+    $skadeEditError = 'Posten har ändrats i Historik sedan du öppnade den. Ladda om den från Historik innan du fortsätter.';
+}
+$skadeEditMode = is_array($skadeEditRecord) && $skadeEditError === '';
+$skadeCustomerDone = $skadeCustomerMode && isset($_GET['done']) && is_string($_GET['done']) && $_GET['done'] === '1';
+$skadeCustomerError = '';
+if ($skadeCustomerMode) {
+    if (!empty($portalCsrfFailed)) {
+        $skadeCustomerError = 'Säkerhetskontrollen misslyckades. Ladda om sidan eller be personalen om hjälp.';
+    } elseif (empty($csrfReady)) {
+        $skadeCustomerError = 'Formuläret kan inte skickas just nu. Be personalen om hjälp.';
+    } elseif (!$skadeTextFitConfirmationRequired && isset($portalPostError) && is_string($portalPostError) && $portalPostError !== '') {
+        $skadeCustomerError = str_starts_with($portalPostError, 'Den här blanketten')
+            ? 'Blanketten kan redan vara under behandling. Skicka inte in den igen; be personalen kontrollera statusen.'
+            : $portalPostError;
+    }
+}
+$skadeSubmissionBlocked = $skadeCustomerMode && isset($portalPostError) && is_string($portalPostError) && str_starts_with($portalPostError, 'Den här blanketten');
+$skadeValidationError = isset($portalPostError) && is_string($portalPostError) && $portalPostError !== '';
+$skadeSubmissionToken = function_exists('portal_skade_new_action_token')
+    ? portal_skade_new_action_token($skadeEditMode ? 'edit' : 'submission', $skadeEditMode ? $skadeEditId : '')
+    : '';
+$skadeInput = isset($_POST['s']) && is_array($_POST['s'])
+    ? $_POST['s']
+    : (is_array($skadeEditRecord['form_data'] ?? null) ? $skadeEditRecord['form_data'] : []);
+if ($skadeEditMode && !isset($_POST['s']) && $skadeEditSignatureDataUri !== '') {
+    $skadeInput['signature_png'] = $skadeEditSignatureDataUri;
+}
+$skadeText = static function (string $key, string $fallback = '') use ($skadeInput): string {
+    $value = $skadeInput[$key] ?? $fallback;
+    return h(is_string($value) ? $value : $fallback);
+};
+$skadeChecked = static function (string $key, string $value = '1') use ($skadeInput): bool {
+    $current = $skadeInput[$key] ?? null;
+    return is_string($current) ? $current === $value : (is_array($current) && in_array($value, $current, true));
+};
+$skadeTemplateName = 'Bilrutan Skadeblankett.pdf';
+$skadeTemplatePath = __DIR__ . '/../pdf/' . $skadeTemplateName;
+if ((!is_file($skadeTemplatePath) || is_link($skadeTemplatePath)) && is_file(__DIR__ . '/../pdf/Bilrutan_Skadeblankett.pdf') && !is_link(__DIR__ . '/../pdf/Bilrutan_Skadeblankett.pdf')) {
+    $skadeTemplateName = 'Bilrutan_Skadeblankett.pdf';
+    $skadeTemplatePath = __DIR__ . '/../pdf/' . $skadeTemplateName;
+}
+$skadeViewOriginal = '?view_file=' . rawurlencode('pdf/' . $skadeTemplateName);
+$skadeDownloadOriginal = '?download_file=' . rawurlencode('pdf/' . $skadeTemplateName);
+$skadeTemplateExists = is_file($skadeTemplatePath) && !is_link($skadeTemplatePath);
+$skadePdf = isset($_GET['pdf']) && is_string($_GET['pdf']) ? $_GET['pdf'] : '';
+if ($skadePdf === '' && $skadeEditMode && is_string($skadeEditRecord['file'] ?? null)) {
+    $skadePdf = $skadeEditRecord['file'];
+}
+$skadePdfValid = preg_match('~\\Apdf/[A-Z0-9-]{2,12}/Skadeblankett-Bilglas-[A-Z0-9-]{2,12}-\\d{8}-\\d{6}-[a-f0-9]{6}\\.pdf\\z~D', $skadePdf) === 1;
+if ($skadePdfValid) {
+    $skadePdfPath = __DIR__ . '/../' . $skadePdf;
+    $skadePdfReal = realpath($skadePdfPath);
+    $skadePdfRoot = realpath(__DIR__ . '/../pdf');
+    $skadePdfValid = $skadePdfReal !== false && $skadePdfRoot !== false && !is_link($skadePdfPath) && is_file($skadePdfReal)
+        && strpos($skadePdfReal, rtrim($skadePdfRoot, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR) === 0;
+}
+$skadePreviewAvailable = $skadePdfValid || $skadeTemplateExists;
+$skadePreviewUrl = $skadePdfValid ? '?view_file=' . rawurlencode($skadePdf) : $skadeViewOriginal;
+$skadePreviewDownloadUrl = $skadePdfValid ? '?download_file=' . rawurlencode($skadePdf) : $skadeDownloadOriginal;
+$skadePreviewTitle = $skadePdfValid ? 'Skapad PDF' : ($skadeTemplateExists ? 'Originalblankett' : 'Förhandsvisning saknas');
+$skadePreviewDescription = $skadePdfValid
+    ? 'Kontrollera kundunderlaget i PDF:en. Verkstadsuppgifterna ska kompletteras.'
+    : ($skadeTemplateExists ? 'Bilrutan originalblankett · ifyllbar PDF.' : 'Varken skapad PDF eller originalmall kunde visas.');
+$skadeMailStatus = isset($_GET['mail']) && is_string($_GET['mail']) && in_array($_GET['mail'], ['sent', 'failed', 'pending'], true) ? $_GET['mail'] : '';
+if ($skadeMailStatus === '' && isset($_GET['email']) && is_string($_GET['email']) && $_GET['email'] === '1') {
+    $skadeMailStatus = 'sent';
+}
+$skadeSignatureStatus = isset($_GET['sig']) && is_string($_GET['sig']) ? $_GET['sig'] : '';
+$skadeWasUpdated = isset($_GET['updated']) && is_string($_GET['updated']) && $_GET['updated'] === '1';
+$skadePdfTextFitWarning = isset($_GET['text_fit_warning']) && is_string($_GET['text_fit_warning']) && $_GET['text_fit_warning'] === '1';
+$skadeEmailRetryResult = isset($_GET['email_retry']) && is_string($_GET['email_retry']) && in_array($_GET['email_retry'], ['sent', 'failed', 'pending'], true) ? $_GET['email_retry'] : '';
+$skadeEmailRecordId = '';
+$skadeEmailSent = false;
+$skadeEmailRetryPending = false;
+$skadeEmailRetryToken = '';
+if (!$skadeCustomerMode && $skadePdfValid && function_exists('load_skadeblanketter')) {
+    foreach (load_skadeblanketter() as $skadeRecord) {
+        if (!is_array($skadeRecord) || ($skadeRecord['file'] ?? '') !== $skadePdf) {
+            continue;
+        }
+        $candidateRecordId = isset($skadeRecord['id']) && is_string($skadeRecord['id']) ? $skadeRecord['id'] : '';
+        if (!preg_match('/\\A[a-f0-9]{32}\\z/', $candidateRecordId)) {
+            break;
+        }
+        $skadeEmailRecordId = $candidateRecordId;
+        $storedMailStatus = $skadeRecord['email_status'] ?? '';
+        if (!empty($skadeRecord['email_accepted']) || !empty($skadeRecord['email_sent']) || in_array($storedMailStatus, ['accepted', 'sent'], true)) {
+            $skadeEmailSent = true;
+            $skadeMailStatus = 'sent';
+        } elseif (!empty($skadeRecord['email_retry_pending']) || in_array($storedMailStatus, ['sending', 'retrying'], true)) {
+            $skadeEmailRetryPending = true;
+            $skadeMailStatus = 'pending';
+        } elseif ($storedMailStatus === 'failed') {
+            $skadeMailStatus = 'failed';
+        }
+        break;
+    }
+}
+if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId !== '' && !$skadeEmailSent && !$skadeEmailRetryPending && function_exists('portal_skade_new_action_token')) {
+    $skadeEmailRetryToken = portal_skade_new_action_token('email_retry', $skadeEmailRecordId);
+}
+?>
+<style>
+    .skade-page { --sk-ink:#142b3a; --sk-muted:#667784; --sk-line:#dfe7eb; --sk-brand:#11718a; --sk-bg:#f7fafb; color:var(--sk-ink); }
+    .skade-page * { box-sizing:border-box; }
+    <?php if ($skadeCustomerMode): ?>
+    body.skade-kiosk-mode { background:#f3f8fa; }
+    body.skade-kiosk-mode #main-content { width:100%; max-width:1320px; min-height:100vh; margin:0 auto; padding:clamp(12px,2.6vw,28px) max(12px,env(safe-area-inset-right)) calc(18px + env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left)); }
+    body.skade-kiosk-mode .page-content { width:100%; }
+    body.skade-kiosk-mode .skade-page { width:100%; max-width:1260px; margin:0 auto; }
+    body.skade-kiosk-mode .skade-hero { margin-bottom:15px; padding:clamp(18px,3vw,26px); }
+    body.skade-kiosk-mode .skade-hero-kicker { margin-bottom:8px; }
+    body.skade-kiosk-mode .skade-hero h2 { font-size:clamp(1.65rem,4.2vw,2.45rem); line-height:1.2; }
+    body.skade-kiosk-mode .skade-hero p { max-width:none; color:#344957; font-size:1.12rem; line-height:1.55; }
+    body.skade-kiosk-mode .skade-hero-kicker { font-size:.86rem; letter-spacing:.08em; }
+    body.skade-kiosk-mode .skade-layout { display:flex; flex-direction:column; gap:18px; }
+    body.skade-kiosk-mode .skade-main { width:100%; min-width:0; }
+    body.skade-kiosk-mode .skade-hero-actions, body.skade-kiosk-mode .skade-preview, body.skade-kiosk-mode .skade-success { display:none!important; }
+    body.skade-kiosk-mode .skade-card { padding:clamp(20px,3vw,30px); margin-bottom:18px; }
+    body.skade-kiosk-mode .skade-grid, body.skade-kiosk-mode .skade-grid-three, body.skade-kiosk-mode .skade-checks, body.skade-kiosk-mode .skade-checks-three, body.skade-kiosk-mode .skade-payment-grid, body.skade-kiosk-mode .skade-inline { grid-template-columns:minmax(0,1fr); }
+    body.skade-kiosk-mode .skade-card-head { gap:15px; margin-bottom:20px; }
+    body.skade-kiosk-mode .skade-step { flex-basis:44px; width:44px; height:44px; font-size:1rem; }
+    body.skade-kiosk-mode .skade-card-head h3 { font-size:1.2rem; }
+    body.skade-kiosk-mode .skade-card-head p { font-size:1rem; line-height:1.5; }
+    body.skade-kiosk-mode .skade-label { margin-bottom:8px; font-size:1rem; line-height:1.4; }
+    body.skade-kiosk-mode .skade-label small { color:#526774; font-size:.95rem; font-weight:650; }
+    body.skade-kiosk-mode .skade-field input:not([type=checkbox]):not([type=radio]), body.skade-kiosk-mode .skade-field select, body.skade-kiosk-mode .skade-field textarea { min-height:60px; padding:14px 15px; font-size:1.15rem!important; line-height:1.4; }
+    body.skade-kiosk-mode .skade-field textarea { min-height:145px; }
+    body.skade-kiosk-mode .skade-help { color:#526774; font-size:.95rem; line-height:1.5; }
+    body.skade-kiosk-mode .skade-field-error { margin-top:8px; font-size:.95rem; line-height:1.45; }
+    body.skade-kiosk-mode .skade-choice { min-height:60px; padding:14px 15px; gap:12px; font-size:1rem; line-height:1.5; }
+    body.skade-kiosk-mode .skade-choice input { width:24px; height:24px; }
+    body.skade-kiosk-mode .skade-progress { margin-bottom:18px; padding:15px; }
+    body.skade-kiosk-mode .skade-progress-row { font-size:.95rem; line-height:1.4; }
+    body.skade-kiosk-mode .skade-progress-track { height:10px; }
+    body.skade-kiosk-mode .skade-signature { margin-top:20px; padding:18px; }
+    body.skade-kiosk-mode .skade-signature-title { font-size:1.05rem; }
+    body.skade-kiosk-mode .skade-signature-copy { font-size:1rem; line-height:1.5; }
+    body.skade-kiosk-mode .skade-signature-canvas { height:190px; min-height:190px; }
+    body.skade-kiosk-mode .skade-signature-tools .btn { min-height:58px; font-size:1rem; }
+    body.skade-kiosk-mode .skade-signature-status { font-size:.95rem; line-height:1.4; }
+    body.skade-kiosk-mode .skade-signature-disclaimer, body.skade-kiosk-mode .skade-sign-note { font-size:.9rem; line-height:1.5; }
+    body.skade-kiosk-mode .skade-customer-declaration { padding:0; font-size:1.1rem; line-height:1.65; }
+    body.skade-kiosk-mode .skade-customer-declaration h4 { padding:15px 18px; font-size:1.2rem; }
+    body.skade-kiosk-mode .skade-declaration-content { padding:18px; }
+    body.skade-kiosk-mode .skade-customer-declaration .skade-declaration-warning, body.skade-kiosk-mode .skade-customer-declaration .skade-declaration-payment { padding:14px 16px; }
+    body.skade-kiosk-mode .skade-form-actions { display:grid; grid-template-columns:minmax(0,1fr); gap:14px; margin-top:22px; }
+    body.skade-kiosk-mode .skade-form-actions p { font-size:.95rem; line-height:1.5; }
+    body.skade-kiosk-mode .skade-submit { width:100%; min-height:66px; font-size:1.12rem; }
+    .skade-kiosk-error { margin:0 0 16px; padding:15px 17px; border:1px solid #fecdca; border-left:5px solid #d92d20; border-radius:12px; background:#fff5f4; color:#912018; font-size:1rem; line-height:1.5; }
+    .skade-kiosk-notice { margin:0 0 16px; padding:15px 17px; border:1px solid #a9e7c0; border-left:5px solid #079455; border-radius:12px; background:#effaf3; color:#105b36; }
+    .skade-kiosk-notice strong { display:block; margin-bottom:4px; font-size:1.05rem; }
+    .skade-kiosk-notice p { margin:0; color:#31724d; font-size:.95rem; line-height:1.5; }
+    .skade-kiosk-notice.is-warning { border-color:#fedf89; border-left-color:#dc6803; background:#fffaeb; color:#93370d; }
+    .skade-kiosk-notice.is-warning p { color:#93370d; }
+    @media (max-width:680px) {
+        body.skade-kiosk-mode #main-content { padding-top:12px; }
+    }
+    <?php endif; ?>
+    .skade-hero { display:flex; align-items:flex-start; justify-content:space-between; gap:24px; margin:0 0 20px; padding:24px 26px; border:1px solid #d4e8ed; border-radius:20px; background:linear-gradient(125deg,#f2fbfd 0%,#fff 62%,#edf6f8 100%); box-shadow:0 12px 28px rgba(16,57,73,.06); }
+    .skade-hero-kicker { display:flex; align-items:center; gap:8px; margin:0 0 9px; color:#0f6d85; font-size:.72rem; font-weight:850; letter-spacing:.12em; text-transform:uppercase; }
+    .skade-hero h2 { max-width:720px; margin:0; color:#163343; font-size:clamp(1.35rem,2.7vw,2rem); letter-spacing:-.035em; line-height:1.16; }
+    .skade-hero p { max-width:730px; margin:10px 0 0; color:#5f7180; font-size:.93rem; }
+    .skade-device-instructions { display:block; max-width:730px; margin:8px 0 0; color:#657985; font-size:.75rem; line-height:1.5; }
+    .skade-hero-actions { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:9px; min-width:190px; }
+    .skade-hero-actions .btn { min-height:42px; }
+    .skade-layout { display:grid; grid-template-columns:minmax(0,1.35fr) minmax(310px,.8fr); align-items:start; gap:20px; }
+    .skade-main { min-width:0; }
+    .skade-card { margin:0 0 16px; padding:21px; border:1px solid var(--sk-line); border-radius:16px; background:#fff; box-shadow:0 7px 22px rgba(16,57,73,.045); }
+    .skade-card-head { display:flex; align-items:flex-start; gap:13px; margin:0 0 18px; }
+    .skade-step { display:grid; flex:0 0 34px; width:34px; height:34px; place-items:center; border-radius:11px; background:#eaf6f8; color:#0d6a80; font-size:.84rem; font-weight:850; }
+    .skade-card-head h3 { margin:0; color:#183645; font-size:1.03rem; letter-spacing:-.015em; }
+    .skade-card-head p { margin:3px 0 0; color:var(--sk-muted); font-size:.81rem; }
+    .skade-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px 16px; }
+    .skade-grid-three { grid-template-columns:repeat(3,minmax(0,1fr)); }
+    .skade-field { min-width:0; }
+    .skade-field-wide { grid-column:1/-1; }
+    .skade-date-control { display:flex; align-items:stretch; gap:8px; }
+    .skade-date-control > #sk-datum { flex:1 1 auto; min-width:0; }
+    .skade-calendar-trigger { position:relative; display:grid; flex:0 0 48px; width:48px; min-height:43px; place-items:center; border:1px solid #ccd8de; border-radius:10px; background:#fff; color:#0b7068; cursor:pointer; }
+    .skade-calendar-trigger svg { pointer-events:none; }
+    .skade-calendar-trigger:focus-within { outline:3px solid rgba(17,113,138,.2); outline-offset:2px; }
+    .skade-calendar-trigger .skade-calendar-input { position:absolute!important; inset:0!important; display:block; width:100%!important; height:100%!important; min-height:0!important; margin:0!important; padding:0!important; border:0!important; border-radius:10px!important; background:transparent!important; opacity:0; cursor:pointer; }
+    .skade-calendar-trigger .skade-calendar-input:focus { outline:0!important; box-shadow:none!important; }
+    .skade-label { display:block; margin:0 0 6px; color:#344957; font-size:.8rem; font-weight:760; }
+    .skade-label small { color:#87949d; font-size:.72rem; font-weight:500; }
+    .skade-field input:not([type=checkbox]):not([type=radio]), .skade-field select, .skade-field textarea { display:block; width:100%; min-height:43px; padding:10px 12px; border:1px solid #ccd8de; border-radius:10px; background:#fff; color:#172d3a; font:inherit; font-size:.9rem; box-shadow:inset 0 1px 1px rgba(16,57,73,.025); transition:border-color .15s,box-shadow .15s; }
+    .skade-field textarea { min-height:92px; resize:vertical; line-height:1.45; }
+    .skade-field input:focus, .skade-field select:focus, .skade-field textarea:focus { border-color:#38a0b7; outline:0; box-shadow:0 0 0 3px rgba(17,113,138,.12); }
+    .skade-required { color:#b42318; }
+    .skade-help { display:block; margin:6px 0 0; color:#75838c; font-size:.73rem; }
+    .skade-field-error { display:block; margin:6px 0 0; color:#b42318; font-size:.74rem; font-weight:680; line-height:1.35; }
+    .skade-field-error[hidden] { display:none!important; }
+    .skade-field input[aria-invalid="true"], .skade-field select[aria-invalid="true"], .skade-field textarea[aria-invalid="true"] { border-color:#d92d20!important; background:#fff8f7!important; box-shadow:0 0 0 3px rgba(217,45,32,.1)!important; }
+    .skade-choice input[aria-invalid="true"] { outline:2px solid #d92d20; outline-offset:2px; }
+    .skade-signature.has-error { border-color:#d92d20; box-shadow:0 0 0 3px rgba(217,45,32,.1); }
+    .skade-signature-canvas[aria-invalid="true"] { border-color:#d92d20; box-shadow:0 0 0 3px rgba(217,45,32,.12); }
+    .skade-checks { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; }
+    .skade-checks-three { grid-template-columns:repeat(3,minmax(0,1fr)); }
+    .skade-choice { display:flex; align-items:flex-start; gap:9px; min-width:0; padding:10px 11px; border:1px solid #e2e9ed; border-radius:11px; background:#fbfcfd; color:#344957; font-size:.82rem; line-height:1.35; cursor:pointer; }
+    .skade-choice:hover { border-color:#b5d8e0; background:#f7fcfd; }
+    .skade-choice input { flex:0 0 auto; width:19px; height:19px; margin:1px 0 0; accent-color:#11718a; }
+    .skade-company-choice input { width:22px; height:22px; margin:0; }
+    .skade-choice input:focus-visible { outline:3px solid rgba(17,113,138,.28); outline-offset:2px; }
+    .skade-choice strong { font-weight:730; }
+    .skade-inline { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; margin-top:13px; }
+    .skade-inline .skade-field input { min-height:39px; }
+    .skade-payment-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; }
+    .skade-progress { margin:0 0 15px; padding:12px 15px; border:1px solid #dce7eb; border-radius:12px; background:#fff; }
+    .skade-progress-row { display:flex; justify-content:space-between; gap:12px; margin-bottom:8px; color:#526774; font-size:.75rem; font-weight:700; }
+    .skade-progress-track { height:6px; overflow:hidden; border-radius:99px; background:#edf2f4; }
+    .skade-progress-bar { width:0; height:100%; border-radius:inherit; background:linear-gradient(90deg,#16728a,#39a2b5); transition:width .18s; }
+    .skade-consent { margin-top:17px; padding:14px; border:1px solid #d6e8ec; border-radius:12px; background:#f4fafb; }
+    .skade-consent .skade-choice { border:0; background:transparent; padding:0; font-size:.83rem; }
+    .skade-signature { margin-top:16px; padding:15px; border:1px solid #d6e5e9; border-radius:12px; background:#fbfdfe; }
+    .skade-signature-title { display:block; margin:0 0 4px; color:#344957; font-size:.83rem; font-weight:780; }
+    .skade-signature-copy { margin:0 0 10px; color:#687985; font-size:.75rem; }
+    .skade-signature-canvas { display:block; width:100%; height:auto; min-height:70px; border:1px solid #bdcbd1; border-radius:9px; background:#fff; cursor:crosshair; touch-action:none; user-select:none; }
+    .skade-signature-canvas:focus-visible { outline:3px solid rgba(17,113,138,.2); outline-offset:2px; }
+    .skade-signature-tools { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:8px; }
+    .skade-signature-status { color:#687985; font-size:.73rem; }
+    .skade-signature-status[data-state="error"] { color:#b42318; font-weight:700; }
+    .skade-signature-confirm { margin-top:14px; }
+    .skade-signature-disclaimer { display:block; margin:10px 0 0 26px; color:#6e7d86; font-size:.72rem; }
+    .skade-sign-note { margin:9px 0 0 26px; color:#6e7d86; font-size:.75rem; }
+    .skade-form-actions { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; margin:18px 0 0; }
+    .skade-form-actions p { margin:0; color:#71818a; font-size:.75rem; }
+    .skade-submit { min-height:48px; padding:12px 19px; border-radius:12px; background:#11718a; font-size:.9rem; box-shadow:0 7px 16px rgba(17,113,138,.17); }
+    .skade-preview { position:sticky; top:82px; min-width:0; overflow:hidden; border:1px solid #dce5e9; border-radius:16px; background:#fff; box-shadow:0 7px 22px rgba(16,57,73,.045); }
+    .skade-preview-details { min-width:0; }
+    .skade-preview-head { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:16px 18px; cursor:pointer; list-style:none; }
+    .skade-preview-head::-webkit-details-marker { display:none; }
+    .skade-preview-head::marker { content:""; }
+    .skade-preview-head-copy { min-width:0; }
+    .skade-preview-head h3 { margin:0; color:#173747; font-size:.99rem; }
+    .skade-preview-head p { margin:4px 0 0; color:#71818a; font-size:.76rem; }
+    .skade-preview-chevron { display:grid; flex:0 0 30px; width:30px; height:30px; place-items:center; border-radius:9px; background:#eff6f7; color:#176f85; font-size:1.2rem; line-height:1; }
+    .skade-preview-chevron::before { content:"+"; }
+    .skade-preview-details[open] .skade-preview-chevron::before { content:"−"; }
+    .skade-preview-content { padding:0 14px 14px; }
+    .skade-preview-links { display:flex; flex-wrap:wrap; gap:8px; margin:0 0 12px; }
+    .skade-preview-links .btn { flex:1 1 120px; min-width:0; min-height:40px; padding:8px 10px; font-size:.76rem; }
+    .skade-pdf-frame { display:block; width:100%; height:min(72vh,820px); min-height:540px; border:1px solid #e3ebee; border-radius:10px; background:#eef2f4; }
+    .skade-preview-empty { display:grid; min-height:160px; place-items:center; padding:24px; color:#71818a; text-align:center; font-size:.86rem; }
+    .skade-preview-toggle[hidden] { display:none!important; }
+    .skade-preview-toggle { min-height:42px; }
+    .skade-success { display:flex; align-items:flex-start; gap:14px; margin:0 0 17px; padding:16px 18px; border:1px solid #a9e7c0; border-radius:14px; background:#effaf3; color:#105b36; }
+    .skade-success-mark { display:grid; flex:0 0 31px; width:31px; height:31px; place-items:center; border-radius:50%; background:#d5f5df; font-weight:900; }
+    .skade-success h3 { margin:1px 0 3px; font-size:.94rem; }
+    .skade-success p { margin:0; color:#31724d; font-size:.82rem; }
+    .skade-success-actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:11px; }
+    .skade-text-fit-warning { margin:10px 0; padding:11px 13px; border:1px solid #fedf89; border-left:5px solid #dc6803; border-radius:10px; background:#fffaeb; color:#7a2e0e; font-size:.84rem; line-height:1.5; }
+    .skade-text-fit-warning strong { display:block; margin-bottom:3px; color:#7a2e0e; }
+    .skade-text-fit-warning p { margin:0; color:#7a2e0e; }
+    .skade-mail-note { margin-top:9px!important; color:#8b6114!important; }
+    .skade-email-retry { margin-top:10px; padding:12px; border:1px solid #eed99d; border-radius:11px; background:#fffbef; }
+    .skade-email-retry p { margin:0 0 9px; color:#6d571f; font-size:.77rem; line-height:1.45; }
+    .skade-email-retry .btn { min-height:44px; }
+    .skade-customer-declaration { margin:20px 0 0; padding:0; overflow:hidden; border:2px solid #244653; border-radius:10px; background:#fff; color:#203b49; font-size:1rem; line-height:1.6; }
+    .skade-customer-declaration h4 { margin:0; padding:12px 16px; border-bottom:1px solid #b9c9ce; background:#eaf4f6; color:#163847; font-size:1.05rem; font-weight:820; letter-spacing:0; }
+    .skade-declaration-content { padding:15px 17px 17px; }
+    .skade-customer-declaration p { margin:0; }
+    .skade-customer-declaration p + p { margin-top:12px; }
+    .skade-customer-declaration .skade-declaration-warning { padding:12px 14px; border:1px solid #e6c46c; border-radius:8px; background:#fff8e8; color:#59400d; }
+    .skade-customer-declaration .skade-declaration-payment { padding:12px 14px; border:1px solid #9ebdc5; border-radius:8px; background:#f1f7f8; }
+    .skade-customer-declaration strong { color:#142b3a; }
+    .skade-original-note { display:flex; gap:10px; margin:13px 0 0; padding:11px 12px; border-radius:10px; background:#f3f7f8; color:#536974; font-size:.74rem; }
+    .skade-mini-icon { flex:0 0 auto; color:#12718a; font-size:1rem; }
+    @media (max-width:1050px) { .skade-layout { display:flex; flex-direction:column; gap:16px; } .skade-preview { position:static; order:-1; width:100%; } .skade-main { order:0; width:100%; } .skade-pdf-frame { height:min(64vh,680px); min-height:420px; } }
+    @media (max-width:680px) { .skade-hero { flex-direction:column; padding:20px 17px; border-radius:15px; } .skade-hero-actions { justify-content:flex-start; } .skade-card { padding:17px 14px; } .skade-grid,.skade-payment-grid { grid-template-columns:1fr; } .skade-grid-three,.skade-checks-three { grid-template-columns:repeat(2,minmax(0,1fr)); } .skade-field-wide { grid-column:1; } .skade-form-actions { align-items:stretch; flex-direction:column; } .skade-form-actions .btn { width:100%; } .skade-preview-head { padding:13px 14px; } .skade-preview-content { padding:0 10px 10px; } .skade-pdf-frame { min-height:360px; height:62vh; } }
+    @media (max-width:680px) {
+        .skade-page { padding-bottom:calc(88px + env(safe-area-inset-bottom)); }
+        .skade-page .skade-form-actions .skade-submit {
+            position:fixed;
+            left:max(13px,env(safe-area-inset-left));
+            right:max(13px,env(safe-area-inset-right));
+            bottom:calc(6px + env(safe-area-inset-bottom));
+            z-index:35;
+            width:auto;
+            min-height:48px;
+            margin:0;
+            padding:8px 14px;
+            font-size:.9rem;
+            box-shadow:0 8px 24px rgba(17,113,138,.28);
+        }
+    }
+    @media (max-width:900px) and (max-height:560px) and (orientation:landscape) {
+        .skade-page { padding-bottom:calc(88px + env(safe-area-inset-bottom)); }
+        .skade-page .skade-form-actions .skade-submit {
+            position:fixed;
+            left:max(13px,env(safe-area-inset-left));
+            right:max(13px,env(safe-area-inset-right));
+            bottom:calc(6px + env(safe-area-inset-bottom));
+            z-index:35;
+            width:auto;
+            min-height:48px;
+            margin:0;
+            padding:8px 14px;
+            font-size:.9rem;
+            box-shadow:0 8px 24px rgba(17,113,138,.28);
+        }
+    }
+    @media print { .skade-hero-actions,.skade-progress,.skade-form-actions,.skade-preview,.skade-page form { display:none!important; } .skade-page { display:none!important; } }
+    /* Shared Tadega mobile design system for staff and customer PWA modes. */
+    .skade-page { --sk-ink:var(--ink); --sk-muted:var(--muted); --sk-line:var(--line); --sk-brand:var(--brand); --sk-bg:var(--canvas); }
+    .skade-hero { border-color:#cfe3dc; background:linear-gradient(125deg,#eaf6f0 0%,#fff 58%,#f2f8f5 100%); box-shadow:0 12px 30px rgba(18,54,58,.065); }
+    .skade-hero-kicker { color:#0b7068; }
+    .skade-card,.skade-preview { border-color:#dce7e4; box-shadow:0 9px 26px rgba(18,54,58,.055); }
+    .skade-step { background:#e7f4ee; color:#0b6d64; }
+    .skade-field input:focus,.skade-field select:focus,.skade-field textarea:focus { border-color:#69b4a7; box-shadow:0 0 0 4px rgba(11,122,114,.13); }
+    .skade-choice:hover { border-color:#acd5c9; background:#f3faf6; }
+    .skade-choice input { accent-color:#0b7a72; }
+    .skade-progress { border-color:#d6e6df; background:#fff; }
+    .skade-progress-track { background:#deece6; }
+    .skade-progress-bar { background:linear-gradient(90deg,#0b7a72,#27a28e); }
+    .skade-signature { border-color:#d4e5dd; background:#f8fbf9; }
+    .skade-signature-canvas { border-color:#b9cec6; }
+    .skade-signature-canvas:focus-visible { outline-color:rgba(11,122,114,.28); }
+    .skade-submit { border-color:#0b7770; background:linear-gradient(135deg,#0b7770,#169487); box-shadow:0 8px 20px rgba(11,122,114,.2); }
+    .skade-submit:hover { background:linear-gradient(135deg,#075c59,#0b7770); }
+    .skade-customer-declaration h4 { background:#eaf5ef; color:#164a43; }
+    .skade-preview-chevron { background:#e7f4ee; color:#0b6d64; }
+    .skade-original-note { background:#f0f6f3; }
+    body.skade-kiosk-mode { background:linear-gradient(180deg,#f6faf7,#edf5f1); }
+    body.skade-kiosk-mode .skade-hero { border-color:#cfe3dc; }
+    body.skade-kiosk-mode .skade-signature-canvas { min-height:190px; }
+    @media(max-width:680px) {
+        .skade-hero { border-radius:18px; }
+        .skade-card { border-radius:16px; }
+        .skade-page .skade-form-actions .skade-submit { background:linear-gradient(135deg,#0b7770,#169487); }
+        .skade-page .skade-form-actions .skade-submit:hover { background:linear-gradient(135deg,#075c59,#0b7770); }
+    }
+</style>
+
+<div class="skade-page">
+    <section class="skade-hero" aria-labelledby="skade-title">
+        <div>
+            <?php if ($skadeCustomerMode): ?>
+                <p class="skade-hero-kicker"><span aria-hidden="true">◈</span> Bilglas · kundformulär</p>
+                <h2 id="skade-title">Fyll i skadeblanketten</h2>
+                <p>Fält märkta med * är obligatoriska. Övriga fält är frivilliga. I sista steget ritar du din signatur.</p>
+            <?php else: ?>
+                <p class="skade-hero-kicker"><span aria-hidden="true">◈</span> Bilglas · kundunderlag</p>
+                <?php if ($skadeEditMode): ?>
+                    <h2 id="skade-title">Redigera skadeblankett</h2>
+                    <p>Uppgifterna har hämtats från Historik. När du sparar skapas en ny PDF-version och den tidigare PDF:en behålls. Den sparade signaturen visas; bekräfta den igen eller rensa och rita om.</p>
+                <?php elseif ($skadeEditError !== ''): ?>
+                    <h2 id="skade-title">Skadeblanketten kan inte redigeras</h2>
+                    <p><?= h($skadeEditError) ?></p>
+                <?php else: ?>
+                    <h2 id="skade-title">Skapa kundunderlag för skadeblanketten</h2>
+                    <p>Fyll i kund- och fordonsuppgifterna och låt kunden rita sin signatur på skärmen. Vi placerar dem på Bilrutans originalblankett. Skadedetaljer, tillägg, betalning och verkstadsdatum lämnas tomma så att ni kan komplettera dem.</p>
+                    <small class="skade-device-instructions">Kundläget är responsivt för moderna telefoner och surfplattor. iPhone/iPad: Safari → Dela → Lägg till på hemskärmen; Android: Chrome → ⋮ → Installera app eller Lägg till på startskärmen. Starta från ikonen för fristående vy. Kiosklås: iOS/iPadOS har Guidad åtkomst; Android har skärmfästning eller enhetens kioskläge. Menyer och stöd varierar mellan webbläsare; annars kan sidan användas direkt i webbläsaren.</small>
+                <?php endif; ?>
+            <?php endif; ?>
+        </div>
+        <?php if (!$skadeCustomerMode): ?>
+            <div class="skade-hero-actions">
+                <?php if ($skadeEditAttempted): ?><a class="btn btn-outline" href="?tab=archive">Tillbaka till Historik</a><?php endif; ?>
+                <a class="btn btn-main" href="./skadeblankett-kund.php" target="_blank" rel="noopener">Öppna kundläge på mobil eller surfplatta ↗</a>
+                <?php if ($skadePreviewAvailable): ?>
+                    <button class="btn btn-outline skade-preview-toggle" type="button" id="skade-preview-toggle" aria-controls="skade-preview-details" aria-expanded="true" hidden>Visa PDF-förhandsvisning</button>
+                <?php endif; ?>
+                <?php if ($skadeTemplateExists): ?>
+                    <a class="btn btn-outline" href="<?= h($skadeViewOriginal) ?>" target="_blank" rel="noopener">Öppna ifyllbar PDF ↗</a>
+                    <a class="btn btn-outline" href="<?= h($skadeDownloadOriginal) ?>">Ladda ned original</a>
+                <?php endif; ?>
+            </div>
+        <?php endif; ?>
+    </section>
+
+    <?php if ($skadeCustomerMode && $skadeCustomerError !== ''): ?>
+        <div class="skade-kiosk-error" role="alert" aria-live="assertive"><?= h($skadeCustomerError) ?></div>
+    <?php endif; ?>
+
+    <?php if ($skadeCustomerMode && $skadeCustomerDone): ?>
+        <div class="skade-kiosk-notice<?= ($skadeMailStatus === 'failed' || $skadePdfTextFitWarning) ? ' is-warning' : '' ?>" id="skade-kiosk-notice" role="status" aria-live="polite">
+            <strong>Blanketten är inskickad</strong>
+            <?php if ($skadePdfTextFitWarning): ?>
+                <p>En eller flera textrutor i PDF:en använder text mindre än 5 pt. Be personalen kontrollera att den går att läsa innan den används.</p>
+            <?php endif; ?>
+            <?php if ($skadeMailStatus === 'failed'): ?>
+                <p>Uppgifterna och PDF:en är sparade, men e-postaviseringen kunde inte skickas. Meddela personalen så att de kan kontrollera e-poststatusen och vid behov försöka igen. Nästa kund kan fylla i den tomma blanketten nedan.</p>
+            <?php else: ?>
+                <p>Nästa kund kan fylla i sin blankett nedan.</p>
+            <?php endif; ?>
+        </div>
+    <?php elseif (!$skadeCustomerMode && !$skadeEditMode && $skadePdfValid): ?>
+        <section class="skade-success" role="status" aria-live="polite">
+            <div class="skade-success-mark" aria-hidden="true">✓</div>
+            <div>
+                <h3><?= $skadeWasUpdated ? 'Skadeblanketten är uppdaterad' : 'Kundunderlaget är klart' ?></h3>
+                <?php if ($skadeWasUpdated): ?>
+                    <p>En ny PDF-version har skapats. Den tidigare versionen finns kvar under äldre versioner i Historik.</p>
+                <?php endif; ?>
+                <?php if ($skadePdfTextFitWarning): ?>
+                    <div class="skade-text-fit-warning" role="alert">
+                        <strong>Kontrollera PDF:en — text under 5 pt</strong>
+                        <p>Ett eller flera fält behövde mindre text för att rymmas. Kontrollera läsbarheten innan PDF:en används. Vid behov kan underlaget redigeras från Historik och en ny version skapas.</p>
+                    </div>
+                <?php endif; ?>
+                <?php if ($skadeSignatureStatus === 'drawn'): ?>
+                    <p>Kund- och fordonsuppgifterna samt kundens ritade signatur finns på en kopia av originalblanketten. Verkstadsuppgifterna återstår att fylla i.</p>
+                <?php elseif ($skadeSignatureStatus === 'missing'): ?>
+                    <p>Kund- och fordonsuppgifterna finns på en kopia av originalblanketten utan ritad signatur. Skriv ut PDF:en och låt kunden skriva under för hand innan blanketten används. Verkstadsuppgifterna återstår också att fylla i.</p>
+                <?php else: ?>
+                    <p>Kund- och fordonsuppgifterna finns på en kopia av originalblanketten. Kontrollera PDF:en och komplettera verkstadsuppgifterna innan den används.</p>
+                <?php endif; ?>
+                <div class="skade-success-actions">
+                    <a class="btn btn-main" href="?view_file=<?= rawurlencode($skadePdf) ?>" target="_blank" rel="noopener">Visa ifylld PDF</a>
+                    <a class="btn btn-outline" href="?download_file=<?= rawurlencode($skadePdf) ?>">Ladda ned PDF</a>
+                </div>
+                <?php if ($skadeMailStatus === 'sent'): ?>
+                    <?php if ($skadeEmailRetryResult === 'sent'): ?>
+                        <p style="margin-top:9px">E-posttransporten accepterade omförsöket till rl@tadega.com. Det bekräftar inte vidarebefordran eller leverans till inkorgen.</p>
+                    <?php else: ?>
+                        <p style="margin-top:9px">E-posttransporten accepterade utskicket till rl@tadega.com. Det bekräftar inte vidarebefordran eller leverans till inkorgen.</p>
+                    <?php endif; ?>
+                <?php elseif ($skadeMailStatus === 'failed'): ?>
+                    <p class="skade-mail-note"><?php if ($skadeEmailRetryResult === 'failed'): ?>Omförsöket kunde inte skickas.<?php else: ?>PDF:en är sparad, men e-postaviseringen kunde inte skickas.<?php endif; ?> Kontrollera E-poststatus för transport och teknisk felkod. En ny knapptryckning gör ett nytt försök med samma PDF.</p>
+                    <?php if ($skadeEmailRecordId !== '' && !$skadeEmailRetryPending): ?>
+                        <form class="skade-email-retry" method="post" action="<?= h('?tab=skadeblankett&pdf=' . rawurlencode($skadePdf)) ?>">
+                            <?= csrf_field() ?>
+                            <input type="hidden" name="action" value="retry_skade_email">
+                            <input type="hidden" name="record_id" value="<?= h($skadeEmailRecordId) ?>">
+                            <input type="hidden" name="retry_token" value="<?= h($skadeEmailRetryToken) ?>">
+                            <p>Skicka om den redan skapade PDF:en. Mottagaren är alltid rl@tadega.com; ingen kundkopia skickas. Varje sidvisning ger en engångsåtgärd, så dubbeltryck på samma knapp ger inte två nya försök.</p>
+                            <button class="btn btn-main" type="submit" <?= empty($csrfReady) || $skadeEmailRetryToken === '' ? 'disabled' : '' ?>>Försök skicka igen till rl@tadega.com</button>
+                        </form>
+                    <?php endif; ?>
+                <?php elseif ($skadeMailStatus === 'pending'): ?>
+                    <p class="skade-mail-note">Utskickets status kunde inte sparas säkert eller ett annat försök pågår. Kontrollera inkorgen och e-poststatusen innan ni försöker igen. Ingen faktisk leverans kan bekräftas av transportens svar.</p>
+                <?php endif; ?>
+            </div>
+        </section>
+    <?php endif; ?>
+
+    <div class="skade-layout">
+        <div class="skade-main">
+            <?php if ($skadeTextFitConfirmationRequired): ?>
+                <div class="skade-text-fit-warning" role="alert" aria-live="assertive">
+                    <strong>Bekräfta innan PDF skapas eller skickas</strong>
+                    <p><?= h(is_string($portalSkadeTextFitMessage ?? null) && $portalSkadeTextFitMessage !== '' ? $portalSkadeTextFitMessage : 'PDF-förhandskontrollen visar att text behöver vara mindre än 5 pt. Ingen PDF har sparats eller skickats.') ?> Uppgifterna är kvar i formuläret. Du kan ändra dem nu eller uttryckligen fortsätta med knappen nedan.</p>
+                </div>
+            <?php endif; ?>
+            <div class="skade-progress" aria-live="polite">
+                <div class="skade-progress-row"><span>Obligatoriska uppgifter</span><span id="skade-progress-text">0 av 0</span></div>
+                <div class="skade-progress-track"><div class="skade-progress-bar" id="skade-progress-bar"></div></div>
+            </div>
+
+            <form id="skade-form" data-validation-error="<?= $skadeValidationError ? '1' : '0' ?>" data-signature-required="<?= $skadeCustomerMode ? '1' : '0' ?>" method="post" action="<?= h($skadeCustomerMode ? './skadeblankett-kund.php' : '?tab=skadeblankett') ?>" autocomplete="<?= $skadeCustomerMode ? 'off' : 'on' ?>">
+                <input type="hidden" name="action" value="generate_skadeblankett">
+                <input type="hidden" name="form_version" value="skade-customer-v3-signature">
+                <input type="hidden" name="skade_submission_token" value="<?= h($skadeSubmissionToken) ?>">
+                <?php if ($skadeEditMode): ?>
+                    <input type="hidden" name="edit_id" value="<?= h($skadeEditId) ?>">
+                    <input type="hidden" name="edit_source_file" value="<?= h($skadeEditSourceFile) ?>">
+                <?php endif; ?>
+                <?= csrf_field() ?>
+                <?php if ($skadeTextFitConfirmationRequired): ?>
+                    <input type="hidden" name="confirm_small_text" value="1">
+                <?php endif; ?>
+
+                <section class="skade-card" aria-labelledby="skade-kund-heading">
+                    <div class="skade-card-head"><span class="skade-step">1</span><div><h3 id="skade-kund-heading">Kunduppgifter</h3><p>Ange uppgifterna precis som de ska stå på blanketten.</p></div></div>
+                    <div class="skade-grid">
+                        <div class="skade-field" style="display:flex;align-items:end;padding-bottom:3px">
+                            <label class="skade-choice skade-company-choice" style="width:100%"><input id="sk-foretag" type="checkbox" name="s[foretag]" value="1" <?= $skadeChecked('foretag') ? 'checked' : '' ?>><span><strong>Företagskund</strong><br><small>Markera om kunden är ett företag.</small></span></label>
+                        </div>
+                        <div class="skade-field skade-field-wide">
+                            <label class="skade-label" for="sk-namn">Namn, adress, postnummer och ort <span class="skade-required">*</span></label>
+                            <textarea id="sk-namn" name="s[namn_adress]" maxlength="250" autocomplete="<?= $skadeCustomerMode ? 'off' : 'street-address' ?>" required><?= $skadeText('namn_adress') ?></textarea>
+                        </div>
+                        <div class="skade-field">
+                            <label class="skade-label" for="sk-personnr">Personnummer / organisationsnummer <span class="skade-required">*</span></label>
+                            <input id="sk-personnr" name="s[person_orgnr]" maxlength="40" autocomplete="off" required value="<?= $skadeText('person_orgnr') ?>">
+                            <small class="skade-help">Ange kundens personnummer eller företagets organisationsnummer.</small>
+                        </div>
+                        <div class="skade-field">
+                            <label class="skade-label" for="sk-telefon">Telefonnummer <?php if ($skadeCustomerMode): ?><span class="skade-required">*</span><?php else: ?><small>(frivilligt)</small><?php endif; ?></label>
+                            <input id="sk-telefon" name="s[telefon]" type="tel" inputmode="numeric" maxlength="40" autocomplete="<?= $skadeCustomerMode ? 'off' : 'tel' ?>" <?= $skadeCustomerMode ? 'required' : '' ?> value="<?= $skadeText('telefon') ?>">
+                        </div>
+                        <div class="skade-field skade-field-wide">
+                            <label class="skade-label" for="sk-epost">E-postadress <small>(frivillig)</small></label>
+                            <input id="sk-epost" name="s[epost]" type="email" maxlength="254" autocomplete="<?= $skadeCustomerMode ? 'off' : 'email' ?>" value="<?= $skadeText('epost') ?>">
+                            <?php if ($skadeCustomerMode): ?>
+                                <small class="skade-help">Om du anger e-postadress skrivs den i blanketten.</small>
+                            <?php else: ?>
+                                <small class="skade-help">Om den anges skrivs adressen i blanketten. Den färdiga PDF:en mejlas automatiskt endast till rl@tadega.com.</small>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="skade-card" aria-labelledby="skade-fordon-heading">
+                    <div class="skade-card-head"><span class="skade-step">2</span><div><h3 id="skade-fordon-heading">Fordon och försäkring</h3><p>Uppgifterna förs över till fordonets fält på Bilrutan-blanketten.</p></div></div>
+                    <div class="skade-grid">
+                        <div class="skade-field">
+                            <label class="skade-label" for="sk-regnr">Registreringsnummer <span class="skade-required">*</span></label>
+                            <input id="sk-regnr" name="s[regnr]" type="text" maxlength="12" pattern="[A-Za-z0-9 -]{2,12}" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" aria-describedby="sk-regnr-help" required value="<?= $skadeText('regnr') ?>">
+                            <small class="skade-help" id="sk-regnr-help">Exempel: ABC123. Bokstäver blir versaler och mellanslag tas bort automatiskt.</small>
+                        </div>
+                        <div class="skade-field">
+                            <label class="skade-label" for="sk-modell">Fabrikat och modell <span class="skade-required">*</span></label>
+                            <input id="sk-modell" name="s[modell]" maxlength="70" required value="<?= $skadeText('modell') ?>">
+                            <small class="skade-help">Ange bilens märke och modell.</small>
+                        </div>
+                        <div class="skade-field"><label class="skade-label" for="sk-matarstallning">Aktuell mätarställning i kilometer <small>(valfritt)</small></label><input id="sk-matarstallning" name="s[matarstallning]" type="number" min="0" max="99999999" step="1" value="<?= $skadeText('matarstallning') ?>"></div>
+                        <div class="skade-field"><label class="skade-label" for="sk-forsakring">Försäkringsbolag <span class="skade-required">*</span></label><input id="sk-forsakring" name="s[forsakringsbolag]" maxlength="70" required value="<?= $skadeText('forsakringsbolag') ?>"></div>
+                        <div class="skade-field">
+                            <label class="skade-label" for="sk-datum">Skadedatum <?php if ($skadeAdminCanOmitAccidentDate): ?><small>(frivilligt för admin)</small><?php else: ?><span class="skade-required">*</span><?php endif; ?></label>
+                            <div class="skade-date-control">
+                                <input id="sk-datum" name="s[skadedatum]" type="text" inputmode="text" maxlength="32" autocomplete="off" placeholder="2026-03-21, 21.03.2026 eller 260321" aria-describedby="sk-datum-help" <?= $skadeAdminCanOmitAccidentDate ? '' : 'required' ?> value="<?= $skadeText('skadedatum') ?>">
+                                <div class="skade-calendar-trigger">
+                                    <svg viewBox="0 0 24 24" width="21" height="21" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M16 3v4M8 3v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"></path></svg>
+                                    <input class="skade-calendar-input" id="sk-datum-picker" type="date" aria-label="Välj skadedatum i kalendern" tabindex="0" value="<?= $skadeText('skadedatum') ?>">
+                                </div>
+                            </div>
+                            <small class="skade-help" id="sk-datum-help"><?php if ($skadeAdminCanOmitAccidentDate): ?>Skriv t.ex. 2026-03-21 eller 21.03.2026. Admin kan lämna fältet tomt när skadedatum saknas; PDF:en sparas och skickas som vanligt. Om datum anges måste det vara giltigt.<?php else: ?>Skriv t.ex. 2026-03-21 eller 21.03.2026. Sex siffror tolkas som ÅÅMMDD: 260321 blir 2026-03-21 (00–49 = 2000–2049, 50–99 = 1950–1999). Du kan även välja datum i kalendern.<?php endif; ?></small>
+                        </div>
+                        <div class="skade-field"><label class="skade-label" for="sk-plats">Skadeplats <small>(frivillig)</small></label><input id="sk-plats" name="s[skadeplats]" maxlength="80" value="<?= $skadeText('skadeplats') ?>"></div>
+                        <div class="skade-field"><label class="skade-label" for="sk-skadenr">Försäkrings- / skadenummer <small>(valfritt)</small></label><input id="sk-skadenr" name="s[skadenummer]" maxlength="80" value="<?= $skadeText('skadenummer') ?>"></div>
+                        <div class="skade-field" style="display:flex;align-items:end;padding-bottom:3px"><label class="skade-choice" style="width:100%"><input type="checkbox" name="s[nya_torkarblad_bestalls]" value="1" <?= $skadeChecked('nya_torkarblad_bestalls') ? 'checked' : '' ?>><span><strong>Beställ nya torkarblad</strong><br><small>Kostnad tillkommer om rutan markeras.</small></span></label></div>
+                    </div>
+                </section>
+
+                <section class="skade-card" aria-label="<?= h($skadeCustomerMode ? 'Bekräfta uppgifter' : 'Skapa kundunderlag') ?>">
+                    <div class="skade-card-head"><span class="skade-step" aria-hidden="true">✓</span><div><h3><?= $skadeCustomerMode ? 'Bekräfta uppgifterna' : 'Skapa kundunderlaget' ?></h3><p><?= $skadeCustomerMode ? 'Kontrollera att uppgifterna är riktiga. Rita din signatur och bekräfta innan du skickar.' : 'Skadedetaljer, åtgärd, utrustning, tilläggstjänster, betalning och datum lämnas utanför kundinmatningen och kompletteras av er.' ?></p></div></div>
+                    <div class="skade-signature" aria-labelledby="skade-signature-title">
+                        <p class="skade-signature-title" id="skade-signature-title"><?= $skadeCustomerMode ? 'Din digitala signatur' : 'Kundens digitala signatur' ?> <?php if ($skadeCustomerMode): ?><span class="skade-required">*</span><?php else: ?><small>(frivillig)</small><?php endif; ?></p>
+                        <p class="skade-signature-copy" id="skade-signature-help"><?= $skadeCustomerMode ? 'Skriv din namnteckning i ett lugnt, sammanhängande drag med finger eller penna. Ritytan jämnar ut små ryck och ger strecket naturlig avsmalning och diskret breddvariation; i PDF:en kan signaturen gå högst 1 cm utanför originalrutan. Rensa och försök igen om du vill börja om.' : 'Låt kunden skriva sin signatur i ett lugnt, sammanhängande drag med finger eller penna. Ritytan jämnar ut små ryck och ger strecket naturlig avsmalning och diskret breddvariation; i PDF:en kan signaturen gå högst 1 cm utanför originalrutan. Lämna rutan tom för utskrift och handskriven underskrift.' ?></p>
+                        <canvas id="skade-signature-pad" class="skade-signature-canvas" width="1600" height="360" role="img" aria-label="<?= h($skadeCustomerMode ? 'Rita din signatur här' : 'Rita kundens signatur här') ?>" aria-describedby="skade-signature-help skade-signature-status" tabindex="0"></canvas>
+                        <noscript><small class="skade-help"><?= $skadeCustomerMode ? 'Digital signering kräver JavaScript. Be personalen om hjälp.' : 'Ritning kräver JavaScript. Ni kan ändå skapa PDF:en utan digital signatur och låta kunden skriva under utskriften för hand.' ?></small></noscript>
+                        <input type="hidden" name="s[signature_png]" id="skade-signature-png" value="<?= $skadeText('signature_png') ?>">
+                        <div class="skade-signature-tools">
+                            <button class="btn btn-outline" type="button" id="skade-signature-clear">Rensa signatur</button>
+                            <span class="skade-signature-status" id="skade-signature-status" aria-live="polite">Ingen signatur ännu</span>
+                        </div>
+                        <!-- Web-only copy of the declaration and payment terms; the original PDF remains unchanged. -->
+                        <div class="skade-customer-declaration" role="note" aria-label="Intygande och betalningsvillkor">
+                            <h4>Intygande och betalningsvillkor</h4>
+                            <div class="skade-declaration-content">
+                                <p>Jag intygar härmed på heder och samvete att ovanstående uppgifter är med sanningen överensstämmande och att försäkringen gällde vid skadetillfället samt omfattar det valda skademomentet.</p>
+                                <p class="skade-declaration-warning"><strong>OBS:</strong> Godtar försäkringsbolaget inte skadan, är fordonsägaren alltid betalningsskyldig.</p>
+                                <p><strong>Datum och underskrift:</strong> Datum sätts automatiskt i PDF:en när den skickas. Bilägarens/förarens underskrift görs i signaturrutan ovan.</p>
+                                <p class="skade-declaration-payment">Gällande betalningsvillkor är <strong>betalning vid hämtning.</strong></p>
+                            </div>
+                        </div>
+                        <label class="skade-choice skade-signature-confirm" for="skade-signature-confirmed">
+                            <input type="checkbox" name="s[signature_confirmed]" id="skade-signature-confirmed" value="1" <?= $skadeCustomerMode ? 'required' : '' ?> <?= $skadeChecked('signature_confirmed') ? 'checked' : '' ?>>
+                            <span><?= $skadeCustomerMode ? 'Jag bekräftar att uppgifterna jag lämnar stämmer och att den ritade signaturen är min.' : ($skadeEditMode ? 'Jag bekräftar att den sparade signaturen tillhör kunden och att de ändrade uppgifterna är kontrollerade.' : 'Om du har ritat kundens signatur: bekräfta att uppgifterna stämmer och att signaturen är kundens.') ?> <?php if ($skadeCustomerMode): ?><span class="skade-required" aria-hidden="true">*</span><?php endif; ?></span>
+                        </label>
+                        <small class="skade-signature-disclaimer"><?= $skadeCustomerMode ? 'Formuläruppgifterna och signaturen sparas i portalens privata lagring så personalen kan redigera skadeblanketten. Gallringen körs vid en portalöppning (högst en kontroll per 24 timmar) när ett år har gått sedan senaste ändring, annars sedan skapandet; den körs inte när portalen är stängd. PDF-versionerna behålls. Säkerhetskopior på servern gallras också; nedladdade ZIP-kopior och redan skickade mejl/bilagor utanför portalen påverkas inte. Signaturen bäddas in i PDF:en och skickas endast till rl@tadega.com. En ritad signatur verifierar inte identiteten via BankID.' : 'Formuläruppgifterna och eventuell signatur sparas i portalens privata lagring för redigering. Gallringen körs vid en portalöppning (högst en kontroll per 24 timmar) när ett år har gått sedan senaste ändring, annars sedan skapandet; den körs inte när portalen är stängd. PDF-versionerna behålls. Säkerhetskopior på servern gallras också; nedladdade ZIP-kopior och redan skickade mejl/bilagor utanför portalen påverkas inte. PDF:en skickas endast till rl@tadega.com. Lämnas rutan tom kan PDF:en skrivas ut för handskriven underskrift. En ritad signatur verifierar inte kundens identitet via BankID.' ?></small>
+                    </div>
+                    <?php if (!$skadeCustomerMode): ?>
+                        <div class="skade-original-note"><span class="skade-mini-icon" aria-hidden="true">ⓘ</span><span>En ritad signatur placeras i originalets underskriftsruta. Lämna den tom om ni vill skriva ut blanketten utan underskrift; datumfältet och verkstadsuppgifterna kan kompletteras efteråt.</span></div>
+                    <?php endif; ?>
+                    <div class="skade-form-actions">
+                        <p><?= $skadeCustomerMode ? 'Kontrollera att allt är rätt innan du skickar uppgifterna.' : 'PDF:en sparas privat i arkivet. Loggen innehåller inte kund-, fordons- eller försäkringsuppgifter.' ?></p>
+                        <button class="btn btn-main skade-submit" type="submit" data-mobile-action-dock <?= empty($csrfReady) || $skadeSubmissionBlocked || $skadeEditError !== '' ? 'disabled' : '' ?>><?= $skadeTextFitConfirmationRequired ? ($skadeCustomerMode ? 'Skicka ändå — texten är liten' : 'Fortsätt ändå — skapa PDF med liten text') : ($skadeCustomerMode ? 'Skicka blanketten' : ($skadeEditMode ? 'Spara ändringar och skapa ny PDF' : 'Skapa PDF för utskrift')) ?> <span aria-hidden="true">→</span></button>
+                    </div>
+                </section>
+            </form>
+        </div>
+
+        <?php if (!$skadeCustomerMode): ?>
+        <aside class="skade-preview" aria-label="PDF-förhandsvisning">
+            <details class="skade-preview-details" id="skade-preview-details" data-has-generated="<?= $skadePdfValid ? '1' : '0' ?>" open>
+                <summary class="skade-preview-head">
+                    <span class="skade-preview-head-copy">
+                        <h3><?= h($skadePreviewTitle) ?></h3>
+                        <p><?= h($skadePreviewDescription) ?></p>
+                    </span>
+                    <span class="skade-preview-chevron" aria-hidden="true"></span>
+                </summary>
+                <div class="skade-preview-content">
+                    <?php if ($skadePreviewAvailable): ?>
+                        <div class="skade-preview-links">
+                            <a class="btn btn-main" href="<?= h($skadePreviewUrl) ?>" target="_blank" rel="noopener"><?= $skadePdfValid ? 'Öppna skapad PDF ↗' : 'Öppna original ↗' ?></a>
+                            <a class="btn btn-outline" href="<?= h($skadePreviewDownloadUrl) ?>"><?= $skadePdfValid ? 'Ladda ned PDF' : 'Ladda ned original' ?></a>
+                            <?php if ($skadePdfValid && $skadeTemplateExists): ?>
+                                <a class="btn btn-outline" href="<?= h($skadeViewOriginal) ?>" target="_blank" rel="noopener">Visa originalblankett</a>
+                            <?php endif; ?>
+                        </div>
+                        <iframe class="skade-pdf-frame" title="<?= h($skadePdfValid ? 'Förhandsvisning av skapad skadeblankett' : 'Förhandsvisning av Bilrutans ifyllbara originalblankett') ?>" src="<?= h($skadePreviewUrl) ?>#toolbar=0&navpanes=0&view=FitH" loading="lazy"></iframe>
+                        <div class="skade-original-note">
+                            <span class="skade-mini-icon" aria-hidden="true">ⓘ</span>
+                            <span>
+                                <?php if ($skadePdfValid): ?>
+                                    Detta är den skapade kundkopian. Kontrollera uppgifterna och komplettera verkstadsfälten innan den används.
+                                    <?php if ($skadeTemplateExists): ?><a href="<?= h($skadeViewOriginal) ?>" target="_blank" rel="noopener">Öppna originalblanketten.</a><?php endif; ?>
+                                <?php else: ?>
+                                    Originalblanketten visas före skapandet. Den skapade PDF:en visas här automatiskt när den har skapats.
+                                <?php endif; ?>
+                            </span>
+                        </div>
+                    <?php else: ?>
+                        <div class="skade-preview-empty">Original-PDF:en hittades inte i den konfigurerade mallmappen.</div>
+                    <?php endif; ?>
+                </div>
+            </details>
+        </aside>
+        <?php endif; ?>
+    </div>
+</div>
+
+<script>
+(function () {
+    var kioskNotice = document.getElementById('skade-kiosk-notice');
+    if (kioskNotice && window.history && typeof window.history.replaceState === 'function') {
+        window.history.replaceState(null, '', window.location.pathname);
+    }
+    var form = document.getElementById('skade-form');
+    if (!form) return;
+    form.noValidate = true;
+    var signatureRequired = form.getAttribute('data-signature-required') === '1';
+    var signatureConfirmedInput = document.getElementById('skade-signature-confirmed');
+    var validationAttempted = false;
+    var formSubmitting = false;
+    var reportedClientValidationKeys = Object.create(null);
+    var bar = document.getElementById('skade-progress-bar');
+    var text = document.getElementById('skade-progress-text');
+    var canvas = document.getElementById('skade-signature-pad');
+    var signatureInput = document.getElementById('skade-signature-png');
+    var signatureStatus = document.getElementById('skade-signature-status');
+    var clearButton = document.getElementById('skade-signature-clear');
+    var preview = document.getElementById('skade-preview-details');
+    var previewToggle = document.getElementById('skade-preview-toggle');
+    var regnrInput = document.getElementById('sk-regnr');
+    var skadeDateField = document.getElementById('sk-datum');
+    var skadeDatePicker = document.getElementById('sk-datum-picker');
+    function normalizeSkadeDate(value) {
+        function datePartsAreValid(year, month, day) {
+            if (year < 1 || year > 9999 || month < 1 || month > 12 || day < 1) return false;
+            var leapYear = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+            var daysInMonth = [31, leapYear ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+            return day <= daysInMonth[month - 1];
+        }
+        var raw = String(value || '').trim();
+        if (!raw) return '';
+        var match = raw.match(/^(\d{4})(?:[.\s-]|\/)(\d{1,2})(?:[.\s-]|\/)(\d{1,2})$/);
+        var year, month, day;
+        if (match) {
+            year = Number(match[1]);
+            month = Number(match[2]);
+            day = Number(match[3]);
+        } else if ((match = raw.match(/^(\d{1,2})(?:[.\s-]|\/)(\d{1,2})(?:[.\s-]|\/)(\d{4})$/))) {
+            day = Number(match[1]);
+            month = Number(match[2]);
+            year = Number(match[3]);
+        } else if (/^\d{6}$/.test(raw)) {
+            var shortYear = Number(raw.slice(0, 2));
+            year = shortYear <= 49 ? 2000 + shortYear : 1900 + shortYear;
+            month = Number(raw.slice(2, 4));
+            day = Number(raw.slice(4, 6));
+        } else if (/^\d{8}$/.test(raw)) {
+            var compactYear = Number(raw.slice(0, 4));
+            var compactMonth = Number(raw.slice(4, 6));
+            var compactDay = Number(raw.slice(6, 8));
+            if (compactYear >= 1000 && datePartsAreValid(compactYear, compactMonth, compactDay)) {
+                year = compactYear;
+                month = compactMonth;
+                day = compactDay;
+            } else {
+                day = Number(raw.slice(0, 2));
+                month = Number(raw.slice(2, 4));
+                year = Number(raw.slice(4, 8));
+            }
+        } else {
+            return '';
+        }
+        if (!datePartsAreValid(year, month, day)) return '';
+        return String(year).padStart(4, '0') + '-' + String(month).padStart(2, '0') + '-' + String(day).padStart(2, '0');
+    }
+    function syncSkadeDatePicker() {
+        if (!skadeDateField || !skadeDatePicker) return;
+        var rawDate = String(skadeDateField.value || '').trim();
+        var normalizedDate = normalizeSkadeDate(rawDate);
+        skadeDatePicker.value = normalizedDate;
+        if (normalizedDate && rawDate !== normalizedDate) {
+            skadeDateField.value = normalizedDate;
+        }
+    }
+    if (skadeDateField && skadeDatePicker) {
+        skadeDateField.addEventListener('input', syncSkadeDatePicker);
+        skadeDateField.addEventListener('change', syncSkadeDatePicker);
+        skadeDatePicker.addEventListener('change', function () {
+            if (!skadeDatePicker.value) return;
+            skadeDateField.value = skadeDatePicker.value;
+            skadeDateField.dispatchEvent(new Event('input', { bubbles:true }));
+            skadeDateField.dispatchEvent(new Event('change', { bubbles:true }));
+        });
+        syncSkadeDatePicker();
+    }
+    function normalizeRegnr(value) {
+        return String(value || '').toUpperCase().replace(/[^A-Z0-9-]/g, '');
+    }
+    function getValidationMessage(field) {
+        if (!field || field === canvas || field.type === 'hidden' || field.disabled) return '';
+        var currentValue = String(field.value || '').trim();
+        if (field.id === 'sk-epost' && currentValue === '') return '';
+        if (field.id === 'sk-datum' && currentValue !== '' && !normalizeSkadeDate(currentValue)) {
+            return 'Ange ett giltigt datum, t.ex. 2026-11-03 eller 03.11.2026.';
+        }
+        if (field.id === 'sk-telefon' && currentValue !== '') {
+            var phoneDigits = String(field.value).replace(/\D/g, '');
+            if (phoneDigits.length < 5) return 'Ange minst fem siffror eller lämna telefonfältet tomt.';
+        }
+        var validity = field.validity;
+        if (!validity || validity.valid) return '';
+        if (validity.valueMissing) {
+            if (field.type === 'checkbox') return 'Bekräfta uppgifterna genom att kryssa i rutan.';
+            if (field.id === 'sk-datum') return 'Ange skadedatum eller välj det i kalendern.';
+            return 'Fyll i det här fältet.';
+        }
+        if (validity.typeMismatch && field.type === 'email') return 'Skriv en giltig e-postadress.';
+        if (validity.patternMismatch && field.id === 'sk-regnr') return 'Ange 2–12 tecken med bokstäver, siffror eller bindestreck.';
+        if (validity.tooLong) return 'Värdet är för långt.';
+        if (validity.rangeUnderflow || validity.rangeOverflow) return 'Ange ett värde inom tillåtet intervall.';
+        if (validity.stepMismatch) return 'Ange ett giltigt heltal.';
+        if (validity.badInput) return 'Ange ett giltigt värde.';
+        return 'Kontrollera formatet på uppgiften.';
+    }
+    function validationContainer(field) {
+        if (field.id === 'skade-signature-confirmed') return field.closest('.skade-signature');
+        return field.closest('.skade-field') || field.closest('.skade-signature') || field.parentElement;
+    }
+    function showFieldError(field, message) {
+        var container = validationContainer(field);
+        if (!container) return;
+        var errorId = 'skade-error-' + (field.id || 'field');
+        var error = document.getElementById(errorId);
+        if (!error) {
+            error = document.createElement('small');
+            error.id = errorId;
+            error.className = 'skade-field-error';
+            error.setAttribute('aria-live', 'polite');
+            if (field.id === 'skade-signature-confirmed') {
+                var choice = field.closest('.skade-choice');
+                if (choice && choice.parentNode) choice.insertAdjacentElement('afterend', error);
+                else container.appendChild(error);
+            } else {
+                container.appendChild(error);
+            }
+        }
+        error.textContent = message;
+        error.hidden = false;
+        field.setAttribute('aria-invalid', 'true');
+        var descriptions = (field.getAttribute('aria-describedby') || '').split(' ').filter(Boolean);
+        if (descriptions.indexOf(errorId) === -1) descriptions.push(errorId);
+        field.setAttribute('aria-describedby', descriptions.join(' '));
+        container.classList.add('has-error');
+    }
+    function clearFieldError(field) {
+        if (!field) return;
+        var errorId = 'skade-error-' + (field.id || 'field');
+        var error = document.getElementById(errorId);
+        if (error) {
+            error.hidden = true;
+            error.textContent = '';
+        }
+        field.removeAttribute('aria-invalid');
+        var descriptions = (field.getAttribute('aria-describedby') || '').split(' ').filter(function (id) { return id && id !== errorId; });
+        if (descriptions.length) field.setAttribute('aria-describedby', descriptions.join(' '));
+        else field.removeAttribute('aria-describedby');
+        var container = validationContainer(field);
+        if (container && !container.querySelector('[aria-invalid="true"]')) container.classList.remove('has-error');
+    }
+    function validateField(field) {
+        if (field === canvas) {
+            if (signatureInput && signatureInput.value !== '') {
+                setSignatureStatus('Signaturen är klar för PDF:en.');
+                return true;
+            }
+            if (!signatureRequired) {
+                setSignatureStatus('Ingen ritad signatur. PDF:en kan skrivas ut för handskriven underskrift.');
+                return true;
+            }
+            setSignatureStatus('Rita signaturen innan du skickar.', 'error');
+            return false;
+        }
+        var message = getValidationMessage(field);
+        if (message) {
+            showFieldError(field, message);
+            return false;
+        }
+        clearFieldError(field);
+        return true;
+    }
+    function validateForm() {
+        var firstInvalid = null;
+        Array.prototype.forEach.call(form.querySelectorAll('input, textarea, select, canvas'), function (field) {
+            if (field === canvas) {
+                if (!validateField(field) && !firstInvalid) firstInvalid = field;
+                return;
+            }
+            if (field.type === 'hidden') return;
+            if (!validateField(field) && !firstInvalid) firstInvalid = field;
+        });
+        return firstInvalid;
+    }
+    function safeClientValidationField(field) {
+        if (field === canvas) return 'signature_png';
+        var name = field && typeof field.name === 'string' ? field.name : '';
+        var match = /^s\[([a-z0-9_]+)\](?:\[\])?$/.exec(name);
+        if (!match) return '';
+        var allowed = [
+            'regnr', 'namn_adress', 'person_orgnr', 'telefon', 'epost', 'modell', 'matarstallning',
+            'forsakringsbolag', 'skadedatum', 'skadeplats', 'skadenummer', 'other_cause',
+            'stone_count', 'mount_time', 'glass_price', 'notes', 'wiper_price', 'washer_liters',
+            'solar_price', 'payment_amount', 'signature_date', 'replacement_date', 'signature_png',
+            'signature_confirmed', 'damage_cause', 'payment_method', 'glass_locations', 'actions',
+            'equipment', 'foretag', 'nya_torkarblad_bestalls', 'wiper_service', 'solar_film', 'consent'
+        ];
+        return allowed.indexOf(match[1]) !== -1 ? match[1] : '';
+    }
+    function reportClientValidationFailure() {
+        if (typeof window.fetch !== 'function' || typeof window.URLSearchParams !== 'function') return;
+        var invalidControls = form.querySelectorAll('[aria-invalid="true"]');
+        var fieldKeys = [];
+        Array.prototype.forEach.call(invalidControls, function (field) {
+            var fieldKey = safeClientValidationField(field);
+            if (fieldKey && fieldKeys.indexOf(fieldKey) === -1 && fieldKeys.length < 20) fieldKeys.push(fieldKey);
+        });
+        fieldKeys.sort();
+        if (!fieldKeys.length) return;
+        var reportKey = fieldKeys.join(',');
+        if (reportedClientValidationKeys[reportKey]) return;
+        reportedClientValidationKeys[reportKey] = true;
+        var csrfInput = form.querySelector('input[name="csrf_token"]');
+        var csrfToken = csrfInput && typeof csrfInput.value === 'string' ? csrfInput.value : '';
+        if (!csrfToken) return;
+        var endpoint = form.action || window.location.href;
+        try {
+            var endpointUrl = new URL(endpoint, window.location.href);
+            if (endpointUrl.origin !== window.location.origin) return;
+        } catch (error) { return; }
+        var body = new URLSearchParams();
+        body.set('action', 'client_diagnostic');
+        body.set('csrf_token', csrfToken);
+        body.set('diagnostic_type', 'client_validation');
+        body.set('diagnostic_code', 'skade.client_validation_failed');
+        fieldKeys.forEach(function (fieldKey) { body.append('diagnostic_fields[]', fieldKey); });
+        window.fetch(endpoint, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+            body: body.toString(),
+            keepalive: true
+        }).catch(function () {});
+    }
+    function focusInvalidField(field) {
+        if (!field) return;
+        try {
+            if (typeof field.scrollIntoView === 'function') field.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } catch (error) {}
+        try { field.focus({ preventScroll: true }); }
+        catch (error) { try { field.focus(); } catch (ignored) {} }
+    }
+    if (regnrInput) {
+        var initialRegnr = normalizeRegnr(regnrInput.value);
+        if (regnrInput.value !== initialRegnr) regnrInput.value = initialRegnr;
+        regnrInput.addEventListener('input', function () {
+            var original = regnrInput.value;
+            var cursor = typeof regnrInput.selectionStart === 'number' ? regnrInput.selectionStart : original.length;
+            var normalized = normalizeRegnr(original);
+            if (original !== normalized) {
+                var normalizedCursor = normalizeRegnr(original.slice(0, cursor)).length;
+                regnrInput.value = normalized;
+                try { regnrInput.setSelectionRange(normalizedCursor, normalizedCursor); } catch (error) {}
+            }
+            if (validationAttempted) validateField(regnrInput);
+            updateProgress();
+        });
+    }
+    if (preview && previewToggle) {
+        var generatedPdf = preview.getAttribute('data-has-generated') === '1';
+        var compactLayout = window.matchMedia && window.matchMedia('(max-width: 1050px)').matches;
+        if (compactLayout && !generatedPdf) preview.open = false;
+        function syncPreviewToggle() {
+            previewToggle.hidden = false;
+            previewToggle.textContent = preview.open ? 'Dölj PDF-förhandsvisning' : 'Visa PDF-förhandsvisning';
+            previewToggle.setAttribute('aria-expanded', preview.open ? 'true' : 'false');
+        }
+        preview.addEventListener('toggle', syncPreviewToggle);
+        previewToggle.addEventListener('click', function () {
+            preview.open = !preview.open;
+            syncPreviewToggle();
+            if (preview.open && typeof preview.scrollIntoView === 'function') {
+                try { preview.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+                catch (error) { preview.scrollIntoView(); }
+            }
+        });
+        syncPreviewToggle();
+    }
+    function updateProgress() {
+        var required = Array.prototype.slice.call(form.querySelectorAll('[required]'));
+        var radioGroups = Object.create(null);
+        var complete = 0;
+        var total = 0;
+        required.forEach(function (field) {
+            if (field.type === 'radio') {
+                if (!radioGroups[field.name]) radioGroups[field.name] = { checked: false };
+                if (field.checked) radioGroups[field.name].checked = true;
+                return;
+            }
+            total++;
+            if (field.type === 'checkbox' ? field.checked : String(field.value || '').trim() !== '') complete++;
+        });
+        Object.keys(radioGroups).forEach(function (name) {
+            total++;
+            if (radioGroups[name].checked) complete++;
+        });
+        if (signatureRequired && signatureInput) {
+            total++;
+            if (signatureInput.value !== '') complete++;
+        }
+        if (bar) bar.style.width = (total ? Math.round(complete / total * 100) : 0) + '%';
+        if (text) text.textContent = complete + ' av ' + total;
+    }
+    function setSignatureStatus(message, state) {
+        if (signatureStatus) {
+            signatureStatus.textContent = message;
+            if (state) signatureStatus.setAttribute('data-state', state);
+            else signatureStatus.removeAttribute('data-state');
+        }
+        if (canvas) {
+            var signatureCard = canvas.closest('.skade-signature');
+            if (state === 'error') {
+                canvas.setAttribute('aria-invalid', 'true');
+                if (signatureCard) signatureCard.classList.add('has-error');
+            } else {
+                canvas.removeAttribute('aria-invalid');
+                if (signatureCard && !signatureCard.querySelector('[aria-invalid="true"]')) signatureCard.classList.remove('has-error');
+            }
+        }
+    }
+    function syncSignatureConfirmationRequirement() {
+        if (!signatureConfirmedInput) return;
+        var hasSignature = !!signatureInput && signatureInput.value !== '';
+        signatureConfirmedInput.required = signatureRequired || hasSignature;
+        if (!signatureRequired && !hasSignature) {
+            signatureConfirmedInput.checked = false;
+            if (validationAttempted) clearFieldError(signatureConfirmedInput);
+        }
+    }
+
+    if (canvas && signatureInput) {
+        var signaturePad = window.TadegaSignaturePad && typeof window.TadegaSignaturePad.attach === 'function'
+            ? window.TadegaSignaturePad.attach(canvas, {
+                color: '#18385f',
+                background: null,
+                onStart: function () {
+                    setSignatureStatus('Skriv signaturen i ett lugnt, sammanhängande drag.');
+                },
+                onEnd: function () {
+                    exportSignature();
+                }
+            })
+            : null;
+        var context = signaturePad ? signaturePad.context : null;
+        if (signaturePad && context) {
+            if (signatureInput.value.indexOf('data:image/png;base64,') === 0) {
+                var savedSignatureImage = new Image();
+                savedSignatureImage.onload = function () {
+                    signaturePad.setBaseImage(savedSignatureImage);
+                    setSignatureStatus('Sparad signatur visas. Bekräfta att den fortfarande tillhör kunden, eller rensa och rita om.');
+                    syncSignatureConfirmationRequirement();
+                    updateProgress();
+                };
+                savedSignatureImage.onerror = function () {
+                    signaturePad.clear();
+                    signatureInput.value = '';
+                    setSignatureStatus('Den sparade signaturen kunde inte visas. Rita om den eller be personalen kontrollera posten.', 'error');
+                    syncSignatureConfirmationRequirement();
+                    updateProgress();
+                };
+                savedSignatureImage.src = signatureInput.value;
+            }
+
+            function exportSignature() {
+                var pixels;
+                try {
+                    pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+                } catch (error) {
+                    signatureInput.value = '';
+                    syncSignatureConfirmationRequirement();
+                    setSignatureStatus('Signaturen kunde inte läsas. Rensa rutan och försök igen.', 'error');
+                    updateProgress();
+                    return;
+                }
+                var minX = canvas.width;
+                var minY = canvas.height;
+                var maxX = -1;
+                var maxY = -1;
+                for (var y = 0; y < canvas.height; y++) {
+                    for (var x = 0; x < canvas.width; x++) {
+                        var offset = (y * canvas.width + x) * 4;
+                        if (pixels[offset + 3] > 8 && (pixels[offset] < 245 || pixels[offset + 1] < 245 || pixels[offset + 2] < 245)) {
+                            if (x < minX) minX = x;
+                            if (x > maxX) maxX = x;
+                            if (y < minY) minY = y;
+                            if (y > maxY) maxY = y;
+                        }
+                    }
+                }
+                if (maxX < minX || maxY < minY) {
+                    signatureInput.value = '';
+                    syncSignatureConfirmationRequirement();
+                    setSignatureStatus('Ingen signatur ännu');
+                    updateProgress();
+                    return;
+                }
+                var padding = 40;
+                var left = Math.max(0, minX - padding);
+                var top = Math.max(0, minY - padding);
+                var right = Math.min(canvas.width - 1, maxX + padding);
+                var bottom = Math.min(canvas.height - 1, maxY + padding);
+                var cropWidth = right - left + 1;
+                var cropHeight = bottom - top + 1;
+                var output = document.createElement('canvas');
+                output.width = cropWidth;
+                output.height = cropHeight;
+                var outputContext = output.getContext('2d');
+                outputContext.imageSmoothingEnabled = true;
+                if ('imageSmoothingQuality' in outputContext) outputContext.imageSmoothingQuality = 'high';
+                outputContext.drawImage(canvas, left, top, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
+                var png = output.toDataURL('image/png');
+                if (png.length > 550000) {
+                    signatureInput.value = '';
+                    syncSignatureConfirmationRequirement();
+                    setSignatureStatus('Signaturen blev för stor. Rensa rutan och skriv en enklare signatur.', 'error');
+                    updateProgress();
+                    return;
+                }
+                signatureInput.value = png;
+                syncSignatureConfirmationRequirement();
+                setSignatureStatus('Signaturen är klar för PDF:en.');
+                updateProgress();
+            }
+
+            if (clearButton) {
+                clearButton.addEventListener('click', function () {
+                    signaturePad.clear();
+                    signatureInput.value = '';
+                    syncSignatureConfirmationRequirement();
+                    setSignatureStatus('Signaturen har rensats.');
+                    if (validationAttempted) validateField(canvas);
+                    updateProgress();
+                    canvas.focus();
+                });
+            }
+        } else {
+            setSignatureStatus('Digital signering kunde inte starta. Ladda om sidan eller lämna rutan tom för utskrift.', 'error');
+        }
+    }
+
+    form.addEventListener('input', function (event) {
+        updateProgress();
+        if (validationAttempted && event.target !== signatureInput) validateField(event.target);
+    });
+    form.addEventListener('change', function (event) {
+        updateProgress();
+        if (validationAttempted && event.target !== signatureInput) validateField(event.target);
+    });
+    form.addEventListener('submit', function (event) {
+        if (formSubmitting) {
+            event.preventDefault();
+            return;
+        }
+        validationAttempted = true;
+        var firstInvalid = validateForm();
+        if (firstInvalid) {
+            event.preventDefault();
+            reportClientValidationFailure();
+            focusInvalidField(firstInvalid);
+            return;
+        }
+        formSubmitting = true;
+        if (window.TadegaPortalSubmitState) {
+            window.TadegaPortalSubmitState.markBusy(form, null, event.submitter || null);
+        }
+    });
+    window.addEventListener('pageshow', function () { formSubmitting = false; });
+    syncSignatureConfirmationRequirement();
+    updateProgress();
+    if (form.getAttribute('data-validation-error') === '1') {
+        validationAttempted = true;
+        var serverFirstInvalid = validateForm();
+        if (serverFirstInvalid) focusInvalidField(serverFirstInvalid);
+    }
+}());
+</script>

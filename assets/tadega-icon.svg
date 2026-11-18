@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">Tadega Dokumentportalen</title>
+  <desc id="desc">Ett tydligt T-monogram och en godkännandebock i en turkos sköld mot mörkblå botten.</desc>
+  <rect width="512" height="512" rx="112" fill="#07172D"/>
+  <circle cx="256" cy="222" r="198" fill="#0B2946"/>
+  <path d="M256 54 409 119l-18 162c-11 80-70 139-135 176-65-37-124-96-135-176l-18-162z" fill="#18D8C8"/>
+  <path d="M256 70 394 128l-16 151c-10 70-63 123-122 158-59-35-112-88-122-158l-16-151z" fill="#102F4B"/>
+  <path d="M145 151h222v60h-81v158h-60V211h-81z" fill="#F7FCFF"/>
+  <path d="m260 320 15-16 28 28 76-82 17 16-92 99z" fill="#FFD16A"/>
+  <path d="m375 86 9 18 18 9-18 9-9 18-9-18-18-9 18-9z" fill="#8DF6E7"/>
+  <rect x="104" y="371" width="48" height="9" rx="4.5" fill="#45B8FF"/>
+  <rect x="126" y="393" width="34" height="9" rx="4.5" fill="#45F0D1"/>
+</svg>
