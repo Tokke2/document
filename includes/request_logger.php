@@ -42,7 +42,7 @@ final class TadegaRequestLogger
         $pages = ['protocol','invoice','skadeblankett','files','archive','customers','settings','admin','calendar','search'];
         $actions = ['central_admin_login','central_admin_logout','central_admin_enroll','central_admin_change_pin',
             'invoice_pin_login','invoice_pin_logout','protocol_pin_login','protocol_pin_logout',
-            'portal_release_check','portal_release_install','save_protocol','save_invoice','generate_skadeblankett',
+            'portal_release_check','portal_release_install','portal_release_install_latest','save_protocol','save_invoice','generate_skadeblankett',
             'calendar_save','calendar_delete','client_diagnostic','autosave_draft','voice_learning'];
         $allowed = static fn(mixed $value, array $list, string $fallback): string => is_string($value) && in_array($value, $list, true) ? $value : $fallback;
         $number = static fn(mixed $value, int $max): int => is_int($value) ? max(0, min($value, $max)) : 0;

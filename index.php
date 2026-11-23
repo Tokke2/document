@@ -2620,7 +2620,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 http_response_code(($result['code'] ?? '') === 'forbidden' ? 403 : 400);
                 $portalPostError = $portalLanguage === 'en' ? 'Could not save. Check the form, access, storage and whether the item was changed elsewhere.' : 'Kunde inte spara. Kontrollera formulär, behörighet och lagring samt om arbetet ändrats på annat håll.';
             }
-        } elseif (in_array($action, ['portal_release_check', 'portal_release_install'], true)) {
+        } elseif (in_array($action, ['portal_release_check', 'portal_release_install', 'portal_release_install_latest'], true)) {
             if ($activeTab !== 'admin' || $portalIsScopedPwa) {
                 http_response_code(404);
                 if (ob_get_level() > 0 && !headers_sent()) {
@@ -2631,6 +2631,18 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 http_response_code(403);
                 TadegaRequestLogger::outcome('denied');
                 $portalPostError = 'Endast en aktiv central admin kan använda releasefunktionen.';
+            } elseif ($action === 'portal_release_install_latest') {
+                // The button itself is the explicit approval. Compare and install
+                // within this request; never accept a plan from the client.
+                if (function_exists('set_time_limit')) @set_time_limit(300);
+                unset($_SESSION['github_release_review']);
+                $portalReleaseResult = portal_github_release_install_latest(__DIR__);
+                $portalReleaseResult['action'] = 'install';
+                TadegaRequestLogger::outcome(($portalReleaseResult['ok'] ?? false) ? 'success' : (($portalReleaseResult['code'] ?? '') === 'rollback_failed' ? 'rollback_failed' : 'failure'));
+                if (($portalReleaseResult['ok'] ?? false) === true) {
+                    $marker = portal_github_release_install_marker(__DIR__, $portalReleaseResult['tag'], $portalReleaseResult['commit']);
+                    portal_redirect('admin', $marker === null ? 'release_marker_error' : (($portalReleaseResult['code'] ?? '') === 'installed' ? 'release_install_success' : 'release_already_current'));
+                }
             } elseif ($action === 'portal_release_check') {
                 if (function_exists('set_time_limit')) {
                     @set_time_limit(180);
@@ -4492,6 +4504,7 @@ $languageLink = static function (string $language): string {
         central_admin_enroll: 'Skapar central admin…',
         central_admin_change_pin: 'Byter central admin-PIN…',
         central_admin_logout: 'Loggar ut…',
+        portal_release_install_latest: 'Kontrollerar och uppdaterar…',
         invoice_admin_test_email: 'Skickar testmejl…',
         skade_admin_test_email: 'Skickar testmejl…'
     };

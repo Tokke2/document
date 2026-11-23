@@ -6,7 +6,7 @@ I fakturaunderlaget kan du öppna **Röst och snabb inmatning**. Röstigenkänni
 
 Välj serviceprotokoll och de rader som ska kopieras från fakturavyn. Detta kräver behörighet till både faktura- och protokollområdet och fungerar inte i den isolerade faktura-PWA:n. Kontrollera antal och enhet och ange priser innan sparning. Tidigare priser är en indikation för samma beskrivning, enhet och momsläge, inte ett automatiskt prisförslag.
 
-GitHub-uppdateraren kontrollerar senaste stabila releasen vid adminbesök och kräver manuell granskning och installation. Den litar på GitHub-releasen utan separat signatur; ta alltid en fullständig backup först. Arbetsorderintegration och bildavläsning ingår inte ännu.
+GitHub-uppdateraren kontrollerar senaste stabila releasen vid adminbesök och installerar först när central admin trycker på uppdateringsknappen, utan separat filgranskning. Den litar på GitHub-releasen utan separat signatur; ta alltid en fullständig backup först. Arbetsorderintegration och bildavläsning ingår inte ännu.
 
 ## Tester
 

@@ -111,29 +111,16 @@ $assert(str_contains($active, '6–10 siffror') && str_contains($active, 'högst
 $assert(!str_contains($active, 'new-password') && !str_contains($active, 'current-password') && !str_contains($active, 'inga lösenord'), 'The central PIN interface must not be described or autofilled as a password.');
 $assert(str_contains($active, 'GitHub-releasekontroll') && str_contains($active, 'Aktiv'), 'Only authenticated central admins should see GitHub release status.');
 $assert(str_contains($active, 'Ingen separat signatur kontrolleras') && str_contains($active, 'Tokke2/document'), 'The admin panel explains the unsigned GitHub trust boundary.');
-$assert(str_contains($active, 'Så fungerar releaseuppdateringen') && str_contains($active, 'Kontrollera') && str_contains($active, 'Granska') && str_contains($active, 'Godkänn och installera'), 'The release workflow should clearly show its three separate steps.');
-$assert(str_contains($active, 'name="action" value="portal_release_check"') && !str_contains($active, 'name="action" value="portal_release_install"'), 'A check is offered but installation requires a separate review.');
-$review = render_admin_panel_for_test('configured', $activeUser, null, 'configured', [
-    'ok' => true,
-    'code' => 'release_checked',
-    'action' => 'check',
-    'tag' => 'v2.0.0',
-    'version' => '2.0.0',
-    'manifest_sha256' => str_repeat('a', 64),
-    'changed' => ['includes/nested/release.php'],
-    'unchanged' => [],
-]);
-$assert(str_contains($review, '1 fil avviker') && str_contains($review, 'includes/nested/release.php'), 'A release review should show a clear singular file count and its exact path.');
-$assert(str_contains($review, 'Visa jämförelsens innehållsdigest') && str_contains($review, str_repeat('a', 64)), 'A release review should expose the exact approval digest on demand.');
-$assert(str_contains($review, 'name="action" value="portal_release_install"') && str_contains($review, 'name="confirm_install"'), 'A reviewed release requires a separate confirmation.');
-$assert(str_contains($review, '1. Kryssa i bekräftelserutan') && str_contains($review, '2. Tryck sedan på knappen en gång') && str_contains($review, 'for="release-confirm-install"'), 'The confirmation and single install press must be prominent and associated.');
-$assert(str_contains($review, 'name="confirm_install" value="1" required') && !str_contains($review, 'name="confirm_install" value="1" required checked'), 'The confirmation remains explicit and unchecked by default.');
-$disabledCheck = render_admin_panel_for_test('configured', $activeUser, null, 'configured', ['ok' => false, 'code' => 'configuration_incomplete', 'action' => 'check']);
-$assert(!str_contains($disabledCheck, 'name="action" value="portal_release_install"'), 'Failed checks never offer installation.');
+$assert(str_contains($active, 'Ett knapptryck kontrollerar och installerar') && str_contains($active, 'Ta en separat backup') && str_contains($active, 'utan att först visa en fillista'), 'The one-click workflow and risks are clearly explained.');
+$assert(str_contains($active, 'name="action" value="portal_release_install_latest"') && !str_contains($active, 'name="confirm_install"'), 'One explicit button initiates the update without a checkbox.');
+$failed = render_admin_panel_for_test('configured', $activeUser, null, 'configured', ['ok' => false, 'code' => 'release_changed_since_approval', 'action' => 'install']);
+$assert(str_contains($failed, 'GitHub ändrade releasen under kontrollen') && str_contains($failed, 'name="action" value="portal_release_install_latest"'), 'A changed release is reported and the update can be retried.');
+$critical = render_admin_panel_for_test('configured', $activeUser, null, 'configured', ['ok' => false, 'code' => 'rollback_failed', 'action' => 'install']);
+$assert(str_contains($critical, 'Återställningen misslyckades') && !str_contains($critical, 'name="action" value="portal_release_install_latest"'), 'The update button is hidden when rollback fails.');
 
 $controllerSource = file_get_contents(__DIR__ . '/../../index.php');
 $csrfPosition = is_string($controllerSource) ? strpos($controllerSource, 'if (!csrf_is_valid())') : false;
-$releaseActionPosition = is_string($controllerSource) ? strpos($controllerSource, "if (in_array(\$action, ['portal_release_check', 'portal_release_install'], true))") : false;
+$releaseActionPosition = is_string($controllerSource) ? strpos($controllerSource, "if (in_array(\$action, ['portal_release_check', 'portal_release_install', 'portal_release_install_latest'], true))") : false;
 $releaseBranchEnd = is_string($controllerSource) && is_int($releaseActionPosition)
     ? strpos($controllerSource, "} elseif (\$action === 'portal_search')", $releaseActionPosition)
     : false;
@@ -143,7 +130,7 @@ $releaseBranch = is_string($controllerSource) && is_int($releaseActionPosition) 
     : '';
 $assert(str_contains($releaseBranch, "\$activeTab !== 'admin' || \$portalIsScopedPwa"), 'Release endpoints must be confined to the full Adminpanel route, not scoped PWAs.');
 $assert(str_contains($releaseBranch, '!$centralAdminCanAccess') && str_contains($releaseBranch, 'is_array($centralAdminUser)'), 'Release endpoints must require an authenticated central admin.');
-$assert(str_contains($releaseBranch, "\$_POST['confirm_install']") && str_contains($releaseBranch, 'portal_github_release_install_approved'), 'Installation must require server-verified explicit admin approval.');
+$assert(str_contains($releaseBranch, "\$action === 'portal_release_install_latest'") && str_contains($releaseBranch, 'portal_github_release_install_latest(__DIR__)'), 'One-click installation must be explicitly requested on the protected POST route.');
 $assert(str_contains($controllerSource, "str_starts_with(\$msgKey, 'release_') && (\$activeTab !== 'admin' || !\$centralAdminCanAccess)"), 'Release notices must be hidden outside the authenticated Adminpanel.');
 
 $expiredUser = $activeUser;

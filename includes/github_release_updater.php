@@ -177,3 +177,19 @@ function portal_github_release_install_approved(string $root, array $review): ar
         return portal_release_install_package($rootReal,$zip,'',$review['tag'],$review['tag'],$review['manifest_sha256'],'github',$review['before']);
     } finally { @unlink($zip); }
 }
+
+/** A single explicit admin action: compare, then revalidate and install the same
+ * release. No client-supplied plan or persistent approval is trusted. */
+function portal_github_release_install_latest(string $root, ?callable $check = null, ?callable $install = null): array
+{
+    $plan = $check ? $check($root) : portal_github_release_check_latest($root);
+    if (!is_array($plan) || ($plan['ok'] ?? false) !== true) return is_array($plan) ? $plan : ['ok'=>false,'code'=>'check_failed'];
+    if (!is_string($plan['tag'] ?? null) || !is_string($plan['commit'] ?? null)) return ['ok'=>false,'code'=>'check_failed'];
+    $result = $install ? $install($root, $plan) : portal_github_release_install_approved($root, $plan);
+    if (!is_array($result)) return ['ok'=>false,'code'=>'install_failed'];
+    if (($result['ok'] ?? false) === true) {
+        $result['tag'] = $plan['tag'];
+        $result['commit'] = $plan['commit'];
+    }
+    return $result;
+}

@@ -252,7 +252,6 @@ $releaseChangedFiles = [];
 $releaseChangedFileTotal = 0;
 $releaseApprovedTag = is_string($releaseUpdateResult['tag'] ?? null) ? $releaseUpdateResult['tag'] : '';
 $releaseApprovedVersion = is_string($releaseUpdateResult['version'] ?? null) ? $releaseUpdateResult['version'] : '';
-$releaseApprovedManifestSha256 = is_string($releaseUpdateResult['manifest_sha256'] ?? null) ? $releaseUpdateResult['manifest_sha256'] : '';
 $releaseCriticalFailure = $releaseResultAction === 'install' && $releaseResultCode === 'rollback_failed';
 if (is_array($releaseUpdateResult)) {
     $releaseSucceeded = ($releaseUpdateResult['ok'] ?? false) === true;
@@ -261,7 +260,7 @@ if (is_array($releaseUpdateResult)) {
         $releaseResultTone = $releaseChangedFiles === [] ? 'success' : 'warning';
         $releaseResultMessage = $releaseChangedFiles === []
             ? 'Senaste GitHub-releasen har jämförts. Inga tillåtna programfiler skiljer sig från de installerade filerna.'
-            : 'GitHub-releasen har jämförts utan separat signatur. Ingen fil har ändrats; installation kräver ett separat godkännande nedan.';
+            : 'GitHub-releasen har jämförts utan separat signatur. Ingen fil har ändrats; använd uppdateringsknappen för att installera.';
     } elseif ($releaseSucceeded && $releaseResultAction === 'install' && $releaseResultCode === 'installed') {
         $releaseChangedFiles = is_array($releaseUpdateResult['changed'] ?? null) ? $releaseUpdateResult['changed'] : [];
         $releaseResultTone = 'success';
@@ -289,11 +288,11 @@ if (is_array($releaseUpdateResult)) {
             'target_directory_not_writable', 'target_file_not_writable' => 'Servern saknar skrivbehörighet för minst en ändrad programfil. Inga filer installerades.',
             'target_parent_missing' => 'En målmapp saknas. Uppdateraren skapar inte nya mappar automatiskt.',
             'target_symlink', 'target_path_escape', 'target_path_conflict' => 'En målsökväg innehåller en länk eller en osäker sökväg. Installationen stoppades.',
-            'target_changed_since_check' => 'En fil ändrades efter kontrollen. Kör releasekontrollen igen innan du godkänner.',
+            'target_changed_since_check' => 'En fil ändrades under uppdateringen. Försök igen.',
             'update_lock_unavailable' => 'En annan uppdatering pågår eller portalens låsfil kan inte läsas. Försök igen när den är klar.',
             'approval_required' => 'Installationen kräver en uttrycklig kryssrute-bekräftelse från admin.',
             'approval_invalid', 'approval_mismatch' => 'Godkännandet har gått ut eller stämmer inte med den granskade releasen eller filerna. Kontrollera releasen igen.',
-            'release_changed_since_approval' => 'GitHub har ändrat senaste releasen sedan kontrollen. Kör kontrollen igen och granska den nya versionen.',
+            'release_changed_since_approval' => 'GitHub ändrade releasen under kontrollen. Ingen installation gjordes; försök igen.',
             'install_failed_no_changes' => 'Installationen stoppades innan någon programfil ändrades. Kontrollera serverns filrättigheter och försök igen efter manuell backup.',
             'install_failed_rolled_back' => 'Installationen misslyckades. Uppdateraren återställde och verifierade de filer den hunnit ersätta.',
             'rollback_failed' => 'KRITISKT: återställningen kunde inte verifieras. Sluta använda portalen och återställ från webbhotellets manuella säkerhetskopia innan fortsatt drift.',
@@ -306,9 +305,6 @@ if (is_array($releaseUpdateResult)) {
     $releaseChangedFiles = array_values(array_filter($releaseChangedFiles, static fn ($path): bool => is_string($path) && portal_release_path_is_allowed($path)));
     $releaseChangedFileTotal = count($releaseChangedFiles);
 }
-$releaseApprovalDataValid = preg_match('/\\A[A-Za-z0-9][A-Za-z0-9.+_-]{0,119}\\z/D', $releaseApprovedTag) === 1
-    && preg_match('/\\A[A-Za-z0-9][A-Za-z0-9.+_-]{0,79}\\z/D', $releaseApprovedVersion) === 1
-    && preg_match('/\\A[a-f0-9]{64}\\z/D', $releaseApprovedManifestSha256) === 1;
 ?>
 <style>
     .central-admin-page { display:grid; gap:18px; }
@@ -366,6 +362,7 @@ $releaseApprovalDataValid = preg_match('/\\A[A-Za-z0-9][A-Za-z0-9.+_-]{0,119}\\z
     .central-admin-release-step-copy strong { color:#25335d; font-size:.76rem; }
     .central-admin-release-step-copy small { color:#66728a; font-size:.69rem; line-height:1.45; }
     .central-admin-release-note { display:grid; grid-template-columns:28px minmax(0,1fr); gap:10px; margin-top:14px; padding:13px 14px; border:1px solid var(--color-warning-border); border-radius:12px; background:var(--color-warning-soft); }
+    p.central-admin-release-note { display:block; overflow-wrap:anywhere; }
     .central-admin-release-note-mark { display:grid; width:25px; height:25px; place-items:center; border-radius:50%; background:#fff1c2; color:#8a4b08; font-size:.86rem; font-weight:900; }
     .central-admin-release-note-copy { display:grid; gap:3px; min-width:0; }
     .central-admin-release-note-copy strong { color:#7a2e0e; font-size:.78rem; }
@@ -478,18 +475,14 @@ $releaseApprovalDataValid = preg_match('/\\A[A-Za-z0-9][A-Za-z0-9.+_-]{0,119}\\z
                 <div>
                     <span class="central-admin-release-kicker">Endast central admin · manuell installation</span>
                     <h2 id="central-admin-release-title"><?= ($portalLanguage ?? 'sv') === 'en' ? 'GitHub release check' : 'GitHub-releasekontroll' ?></h2>
-                    <p><?= ($portalLanguage ?? 'sv') === 'en' ? 'Check the release first, review the entire change list and install separately. Updates do not run automatically.' : 'Kontrollera releasen först, granska hela ändringslistan och installera separat. Ingen automatisk uppdatering körs.' ?></p>
+                    <p><?= ($portalLanguage ?? 'sv') === 'en' ? 'One press checks and installs the latest stable release. Nothing is installed automatically.' : 'Ett knapptryck kontrollerar och installerar senaste stabila releasen direkt. Ingenting installeras automatiskt.' ?></p>
                 </div>
                 <span class="central-admin-status <?= ($releaseUpdateConfiguration['ok'] ?? false) === true ? '' : 'central-admin-status-warning' ?>">
                     <?= ($releaseUpdateConfiguration['ok'] ?? false) === true ? 'Aktiv' : 'Avstängd' ?>
                 </span>
             </div>
 
-            <ol class="central-admin-release-steps" aria-label="Så fungerar releaseuppdateringen">
-                <li><span class="central-admin-release-step-number" aria-hidden="true">1</span><span class="central-admin-release-step-copy"><strong><?= ($portalLanguage ?? 'sv') === 'en' ? 'Check' : 'Kontrollera' ?></strong><small><?= ($portalLanguage ?? 'sv') === 'en' ? 'Checks the latest stable release at an admin visit at most every six hours. No program files are written.' : 'Kontrollerar senaste stabila releasen automatiskt vid adminbesök högst var sjätte timme. Inga programfiler skrivs.' ?></small></span></li>
-                <li><span class="central-admin-release-step-number" aria-hidden="true">2</span><span class="central-admin-release-step-copy"><strong><?= ($portalLanguage ?? 'sv') === 'en' ? 'Review' : 'Granska' ?></strong><small><?= ($portalLanguage ?? 'sv') === 'en' ? 'Shows the version and the complete list of new or changed files.' : 'Visar versionen och den fullständiga listan över nya eller ändrade filer.' ?></small></span></li>
-                <li><span class="central-admin-release-step-number" aria-hidden="true">3</span><span class="central-admin-release-step-copy"><strong><?= ($portalLanguage ?? 'sv') === 'en' ? 'Approve and install' : 'Godkänn och installera' ?></strong><small><?= ($portalLanguage ?? 'sv') === 'en' ? 'Requires separate confirmation and comparison of the same release and file contents.' : 'Kräver separat bekräftelse och jämförelse av samma release och filinnehåll.' ?></small></span></li>
-            </ol>
+            <p><strong><?= ($portalLanguage ?? 'sv') === 'en' ? 'Take a separate backup before updating.' : 'Ta en separat backup före uppdatering.' ?></strong> <?= ($portalLanguage ?? 'sv') === 'en' ? 'The button installs without showing a file list first. Rollback is best effort and does not replace a backup.' : 'Knappen installerar utan att först visa en fillista. Återställning vid fel är inte garanterad och ersätter inte backup.' ?></p>
 
             <?php if (($releaseUpdateConfiguration['ok'] ?? false) !== true): ?>
                 <div class="central-admin-release-note" role="status">
@@ -500,16 +493,16 @@ $releaseApprovalDataValid = preg_match('/\\A[A-Za-z0-9][A-Za-z0-9.+_-]{0,119}\\z
                 
                 <p class="central-admin-release-note"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Source: Tokke2/document. No separate cryptographic signature is checked; only trust releases published by the authorized GitHub account. Hashes compare files and do not authenticate the publisher.' : 'Källa: Tokke2/document. Ingen separat signatur kontrolleras; lita endast på releaser från det behöriga GitHub-kontot. Hashar jämför filer men bevisar inte vem som publicerat dem.' ?></p>
                 <?php if (is_array($releaseAutoStatus)): ?>
-                    <p role="status"><?php if (($releaseAutoStatus['ok'] ?? false) === true && is_string($releaseAutoStatus['tag'] ?? null)): ?><?= ($portalLanguage ?? 'sv') === 'en' ? 'Latest release:' : 'Senaste release:' ?> <strong><?= h($releaseAutoStatus['tag']) ?></strong> · <?= ($portalLanguage ?? 'sv') === 'en' ? 'Check files to compare with this installation.' : 'Kontrollera filerna för att jämföra med installationen.' ?><?php elseif (($releaseAutoStatus['code'] ?? '') === 'no_published_release'): ?><?= ($portalLanguage ?? 'sv') === 'en' ? 'No stable release has been published yet.' : 'Ingen stabil release har publicerats ännu.' ?><?php else: ?><?= ($portalLanguage ?? 'sv') === 'en' ? 'Automatic check unavailable. Try a manual check.' : 'Automatisk kontroll kunde inte slutföras. Prova manuell kontroll.' ?><?php endif; ?></p>
+                    <p role="status"><?php if (($releaseAutoStatus['ok'] ?? false) === true && is_string($releaseAutoStatus['tag'] ?? null)): ?><?= ($portalLanguage ?? 'sv') === 'en' ? 'Latest release:' : 'Senaste release:' ?> <strong><?= h($releaseAutoStatus['tag']) ?></strong> · <?= ($portalLanguage ?? 'sv') === 'en' ? 'Press the update button to compare and install.' : 'Tryck på uppdateringsknappen för att jämföra och installera.' ?><?php elseif (($releaseAutoStatus['code'] ?? '') === 'no_published_release'): ?><?= ($portalLanguage ?? 'sv') === 'en' ? 'No stable release has been published yet.' : 'Ingen stabil release har publicerats ännu.' ?><?php else: ?><?= ($portalLanguage ?? 'sv') === 'en' ? 'Automatic check unavailable. The update button retries and installs if successful.' : 'Automatisk kontroll kunde inte slutföras. Uppdateringsknappen försöker igen och installerar om kontrollen lyckas.' ?><?php endif; ?></p>
                 <?php endif; ?>
-                <?php if (is_array($releaseInstalledMarker)): ?><p><?= ($portalLanguage ?? 'sv') === 'en' ? 'Last installed or matched through this panel:' : 'Senast installerad eller matchad via panelen:' ?> <strong><?= h($releaseInstalledMarker['tag']) ?></strong><?php if (is_string($releaseInstalledMarker['commit'] ?? null)): ?> · <code><?= h(substr($releaseInstalledMarker['commit'],0,12)) ?></code><?php endif; ?><?php if (is_array($releaseAutoStatus) && portal_github_release_marker_differs($releaseAutoStatus,$releaseInstalledMarker)): ?> · <?= ($portalLanguage ?? 'sv') === 'en' ? 'A different release commit is available, even if the version number is unchanged. Check its files before installing.' : 'En annan releasecommit finns, även om versionsnumret är oförändrat. Kontrollera filerna före installation.' ?><?php elseif (!is_string($releaseInstalledMarker['commit'] ?? null)): ?> · <?= ($portalLanguage ?? 'sv') === 'en' ? 'Run a file check to identify the installed commit.' : 'Kontrollera filerna för att identifiera installerad commit.' ?><?php endif; ?></p><?php endif; ?>
+                <?php if (is_array($releaseInstalledMarker)): ?><p><?= ($portalLanguage ?? 'sv') === 'en' ? 'Last installed or matched through this panel:' : 'Senast installerad eller matchad via panelen:' ?> <strong><?= h($releaseInstalledMarker['tag']) ?></strong><?php if (is_string($releaseInstalledMarker['commit'] ?? null)): ?> · <code><?= h(substr($releaseInstalledMarker['commit'],0,12)) ?></code><?php endif; ?><?php if (is_array($releaseAutoStatus) && portal_github_release_marker_differs($releaseAutoStatus,$releaseInstalledMarker)): ?> · <?= ($portalLanguage ?? 'sv') === 'en' ? 'A different release commit is available, even if the version number is unchanged.' : 'En annan releasecommit finns, även om versionsnumret är oförändrat.' ?><?php elseif (!is_string($releaseInstalledMarker['commit'] ?? null)): ?> · <?= ($portalLanguage ?? 'sv') === 'en' ? 'Use the update button to identify the installed commit.' : 'Använd uppdateringsknappen för att identifiera installerad commit.' ?><?php endif; ?></p><?php endif; ?>
                 <?php if ($releaseCriticalFailure): ?>
                     <div class="central-admin-release-result is-error" role="alert">Återställningen misslyckades. Använd inte uppdateraren igen förrän du har återställt från webbhotellets kända säkerhetskopia och verifierat appen manuellt.</div>
                 <?php else: ?>
-                    <form class="central-admin-actions" method="post" action="?tab=admin">
-                        <input type="hidden" name="action" value="portal_release_check">
+                    <form class="central-admin-actions central-admin-release-one-click" method="post" action="?tab=admin">
+                        <input type="hidden" name="action" value="portal_release_install_latest">
                         <?= csrf_field() ?>
-                        <button class="btn btn-outline" type="submit" <?= !$csrfReady ? 'disabled' : '' ?>><?= ($portalLanguage ?? 'sv') === 'en' ? 'Check latest release' : 'Kontrollera senaste release' ?></button>
+                        <button class="btn btn-main" type="submit" <?= !$csrfReady ? 'disabled' : '' ?>><?= ($portalLanguage ?? 'sv') === 'en' ? 'Update to latest release' : 'Uppdatera till senaste release' ?></button>
                     </form>
                 <?php endif; ?>
             <?php endif; ?>
@@ -523,37 +516,7 @@ $releaseApprovalDataValid = preg_match('/\\A[A-Za-z0-9][A-Za-z0-9.+_-]{0,119}\\z
                             <div><dt><?= ($portalLanguage ?? 'sv') === 'en' ? 'GitHub tag' : 'GitHub-tagg' ?></dt><dd><code><?= h($releaseApprovedTag) ?></code></dd></div>
                             <?php if (is_string($releaseUpdateResult['commit'] ?? null)): ?><div><dt>Commit</dt><dd><code><?= h($releaseUpdateResult['commit']) ?></code></dd></div><?php endif; ?>
                         </dl>
-                        <?php if ($releaseResultAction === 'check' && $releaseApprovalDataValid): ?>
-                            <details class="central-admin-release-digest">
-                                <summary>Visa jämförelsens innehållsdigest (SHA-256, inte en signatur)</summary>
-                                <code><?= h($releaseApprovedManifestSha256) ?></code>
-                            </details>
-                        <?php endif; ?>
-                        <?php if ($releaseResultAction === 'check' && $releaseChangedFileTotal > 0): ?>
-                            <div class="central-admin-release-file-plan">
-                                <p><strong><?= h((string) $releaseChangedFileTotal) ?> <?= $releaseChangedFileTotal === 1 ? 'fil avviker' : 'filer avviker' ?></strong> från den installerade versionen. Bara dessa filer ingår i skrivplanen; identiska filer hoppas över.</p>
-                                <ul class="central-admin-release-files" aria-label="Filer som föreslås för installation">
-                                    <?php foreach ($releaseChangedFiles as $releasePath): ?><li><?= h($releasePath) ?></li><?php endforeach; ?>
-                                </ul>
-                            </div>
-                            <?php if (($releaseUpdateConfiguration['ok'] ?? false) === true && $releaseApprovalDataValid && !$releaseCriticalFailure): ?>
-                                <form class="central-admin-release-approval" method="post" action="?tab=admin">
-                                    <input type="hidden" name="action" value="portal_release_install">
-                                    <?= csrf_field() ?>
-                                    <div class="central-admin-release-backup-note">
-                                        <strong><?= ($portalLanguage ?? 'sv') === 'en' ? 'Create a manual backup before installation' : 'Ta en manuell backup före installationen' ?></strong>
-                                        <p><?= ($portalLanguage ?? 'sv') === 'en' ? 'The updater also creates a temporary recovery copy and attempts rollback on error. A hosting backup is needed if the process is interrupted or recovery fails.' : 'Uppdateraren tar också en tillfällig återställningskopia och försöker rulla tillbaka vid fel. Webbhotellets backup behövs om processen avbryts eller återställningen misslyckas.' ?></p>
-                                    </div>
-                                    <h3 class="central-admin-release-confirm-title"><?= ($portalLanguage ?? 'sv') === 'en' ? '1. Tick the confirmation box' : '1. Kryssa i bekräftelserutan' ?></h3>
-                                    <label class="central-admin-release-confirm" for="release-confirm-install">
-                                        <input id="release-confirm-install" type="checkbox" name="confirm_install" value="1" required>
-                                        <span><strong><?= ($portalLanguage ?? 'sv') === 'en' ? 'I have reviewed the files and made a backup' : 'Jag har granskat filerna och tagit backup' ?></strong><?= ($portalLanguage ?? 'sv') === 'en' ? 'I approve installation of the listed program files. Customer data and local settings will not be overwritten.' : 'Jag godkänner installation av de listade programfilerna. Kunddata och lokala inställningar skrivs inte över.' ?></span>
-                                    </label>
-                                    <p class="central-admin-release-next"><?= ($portalLanguage ?? 'sv') === 'en' ? '2. Then press the button once' : '2. Tryck sedan på knappen en gång' ?></p>
-                                    <button class="btn btn-main" type="submit" <?= !$csrfReady ? 'disabled' : '' ?>><?= ($portalLanguage ?? 'sv') === 'en' ? 'Approve and install' : 'Godkänn och installera' ?></button>
-                                </form>
-                            <?php endif; ?>
-                        <?php elseif ($releaseResultAction === 'install' && $releaseResultCode === 'installed'): ?>
+                        <?php if ($releaseResultAction === 'install' && $releaseResultCode === 'installed'): ?>
                             <p><?= h((string) $releaseChangedFileTotal) ?> <?= $releaseChangedFileTotal === 1 ? 'ändrad fil installerades.' : 'ändrade filer installerades.' ?> Identiska filer lämnades orörda.</p>
                             <?php if ($releaseChangedFileTotal > 0): ?>
                                 <ul class="central-admin-release-files" aria-label="Installerade filer">
