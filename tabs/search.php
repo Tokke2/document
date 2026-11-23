@@ -88,24 +88,24 @@ if ($searchCanRun) {
 @media print{.portal-global-search{display:none!important}}
 </style>
 <section class="portal-global-search" aria-labelledby="portal-global-search-title">
-    <h2 class="portal-global-search-sr-only" id="portal-global-search-title">Sök i Dokumentportalen</h2>
-    <p class="portal-global-search-intro">Sökningen visar bara uppgifter från områden där du redan är inloggad. Kund- och fakturaunderlag kräver fakturakontot; serviceprotokoll kräver det separata protokollkontot.</p>
+    <h2 class="portal-global-search-sr-only" id="portal-global-search-title"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Search the Document Portal' : 'Sök i Dokumentportalen' ?></h2>
+    <p class="portal-global-search-intro"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Search only shows information from areas where you are already signed in. Customers and invoice records require an invoice account; service reports require a separate service report account.' : 'Sökningen visar bara uppgifter från områden där du redan är inloggad. Kund- och fakturaunderlag kräver fakturakontot; serviceprotokoll kräver det separata protokollkontot.' ?></p>
 
     <?php if ($searchInvoiceUser === null && $searchProtocolUser === null): ?>
         <div class="portal-global-search-no-auth">
-            <h2>Logga in för att söka</h2>
-            <p>Sökfunktionen blir tillgänglig när du har loggat in på minst ett behörigt personalområde. Kund- och fakturaunderlag samt serviceprotokoll har separata inloggningar.</p>
-            <div><a class="btn btn-outline" href="?tab=invoice">Logga in på Fakturaunderlag</a><a class="btn btn-outline" href="?tab=protocol">Logga in på Serviceprotokoll</a></div>
+            <h2><?= ($portalLanguage ?? 'sv') === 'en' ? 'Sign in to search' : 'Logga in för att söka' ?></h2>
+            <p><?= ($portalLanguage ?? 'sv') === 'en' ? 'Search becomes available once you sign in to at least one authorized staff area. Customer and invoice records and service reports have separate sign-ins.' : 'Sökfunktionen blir tillgänglig när du har loggat in på minst ett behörigt personalområde. Kund- och fakturaunderlag samt serviceprotokoll har separata inloggningar.' ?></p>
+            <div><a class="btn btn-outline" href="?tab=invoice"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Sign in to invoice records' : 'Logga in på Fakturaunderlag' ?></a><a class="btn btn-outline" href="?tab=protocol"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Sign in to service reports' : 'Logga in på Serviceprotokoll' ?></a></div>
         </div>
     <?php else: ?>
-    <form class="portal-global-search-form" method="post" action="?tab=search" role="search" aria-label="Sök i Dokumentportalen">
+    <form class="portal-global-search-form" method="post" action="?tab=search" role="search" aria-label="<?= ($portalLanguage ?? 'sv') === 'en' ? 'Search the Document Portal' : 'Sök i Dokumentportalen' ?>">
         <input type="hidden" name="action" value="portal_search">
         <?= csrf_field() ?>
         <div>
-            <label for="portal-global-search-query">Sök kunder, underlag eller serviceprotokoll</label>
+            <label for="portal-global-search-query"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Search customers, invoice records or service reports' : 'Sök kunder, underlag eller serviceprotokoll' ?></label>
             <input id="portal-global-search-query" name="q" type="search" value="<?= h($searchQuery) ?>" maxlength="120" minlength="2" placeholder="Namn, telefon, Fortnox-nr, registreringsnummer, artikeltext…" autocomplete="off" spellcheck="false" enterkeyhint="search">
         </div>
-        <button class="btn btn-main" type="submit">Sök</button>
+        <button class="btn btn-main" type="submit"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Search' : 'Sök' ?></button>
     </form>
     <p class="portal-global-search-help" role="status" aria-live="polite">
         <?php if (!$searchHasQuery): ?>Skriv minst två tecken för att söka. Alla ord i sökningen måste finnas i samma post.<?php elseif (!$searchCanRun): ?>Ange minst två tecken för att söka.<?php else: ?>Visar högst 10 träffar i varje lista. Förfina sökningen om du inte hittar rätt post.<?php endif; ?>
@@ -114,36 +114,36 @@ if ($searchCanRun) {
     <div class="portal-global-search-areas">
         <section class="portal-global-search-area" aria-labelledby="portal-global-search-invoice-heading">
             <header class="portal-global-search-area-head">
-                <div><h2 id="portal-global-search-invoice-heading">Kunder och fakturaunderlag</h2><p>Träffar i kundregistret och sparade fakturaunderlag.</p></div>
+                <div><h2 id="portal-global-search-invoice-heading"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Customers and invoice records' : 'Kunder och fakturaunderlag' ?></h2><p><?= ($portalLanguage ?? 'sv') === 'en' ? 'Results in the customer register and saved invoice records.' : 'Träffar i kundregistret och sparade fakturaunderlag.' ?></p></div>
                 <?php if ($searchInvoiceUser !== null && $searchCanRun): ?><span class="portal-global-search-count" aria-label="Kundträffar och underlagsträffar"><?= count($searchCustomerResults) + count($searchInvoiceResults) ?> visade</span><?php endif; ?>
             </header>
             <?php if ($searchInvoiceUser === null): ?>
-                <div class="portal-global-search-login"><p>Logga in med ditt fakturakonto för att söka i kundregistret och fakturaunderlagen.</p><a class="btn btn-outline" href="?tab=invoice">Öppna fakturainloggning</a></div>
+                <div class="portal-global-search-login"><p>Logga in med ditt fakturakonto för att söka i kundregistret och fakturaunderlagen.</p><a class="btn btn-outline" href="?tab=invoice"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Open invoice sign-in' : 'Öppna fakturainloggning' ?></a></div>
             <?php elseif (!$searchCanRun): ?>
                 <div class="portal-global-search-empty"><p>Ange en sökfras med minst två tecken för att visa kund- och underlagsträffar.</p></div>
             <?php else: ?>
                 <section class="portal-global-search-subsection" aria-labelledby="portal-global-search-customers-heading">
-                    <header class="portal-global-search-subsection-head"><h3 id="portal-global-search-customers-heading">Kunder</h3><span><?= count($searchCustomerResults) ?> visade</span></header>
+                    <header class="portal-global-search-subsection-head"><h3 id="portal-global-search-customers-heading"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Customers' : 'Kunder' ?></h3><span><?= count($searchCustomerResults) ?> visade</span></header>
                     <?php if ($searchCustomerResults): ?>
                         <ul class="portal-global-search-list">
                             <?php foreach ($searchCustomerResults as $result): ?>
-                                <li><article class="portal-global-search-hit"><div><h3><?= h($result['title']) ?></h3><p><?= h($result['subtitle']) ?></p></div><a class="btn btn-outline" href="?tab=customers&amp;edit_id=<?= h(rawurlencode($result['id'])) ?>" aria-label="Öppna kund <?= h($result['title']) ?>">Öppna</a></article></li>
+                                <li><article class="portal-global-search-hit"><div><h3><?= h($result['title']) ?></h3><p><?= h($result['subtitle']) ?></p></div><a class="btn btn-outline" href="?tab=customers&amp;edit_id=<?= h(rawurlencode($result['id'])) ?>" aria-label="Öppna kund <?= h($result['title']) ?>"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Open' : 'Öppna' ?></a></article></li>
                             <?php endforeach; ?>
                         </ul>
                     <?php else: ?>
-                        <div class="portal-global-search-empty"><p>Inga kundträffar.</p></div>
+                        <div class="portal-global-search-empty"><p><?= ($portalLanguage ?? 'sv') === 'en' ? 'No matching customers.' : 'Inga kundträffar.' ?></p></div>
                     <?php endif; ?>
                 </section>
                 <section class="portal-global-search-subsection" aria-labelledby="portal-global-search-invoices-heading">
-                    <header class="portal-global-search-subsection-head"><h3 id="portal-global-search-invoices-heading">Fakturaunderlag</h3><span><?= count($searchInvoiceResults) ?> visade</span></header>
+                    <header class="portal-global-search-subsection-head"><h3 id="portal-global-search-invoices-heading"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Invoice records' : 'Fakturaunderlag' ?></h3><span><?= count($searchInvoiceResults) ?> visade</span></header>
                     <?php if ($searchInvoiceResults): ?>
                         <ul class="portal-global-search-list">
                             <?php foreach ($searchInvoiceResults as $result): ?>
-                                <li><article class="portal-global-search-hit"><div><h3><?= h($result['title']) ?></h3><p><?= h($result['subtitle']) ?></p></div><a class="btn btn-outline" href="?tab=invoice&amp;edit_id=<?= h(rawurlencode($result['id'])) ?>" aria-label="Öppna <?= h($result['title']) ?>">Öppna</a></article></li>
+                                <li><article class="portal-global-search-hit"><div><h3><?= h($result['title']) ?></h3><p><?= h($result['subtitle']) ?></p></div><a class="btn btn-outline" href="?tab=invoice&amp;edit_id=<?= h(rawurlencode($result['id'])) ?>" aria-label="Öppna <?= h($result['title']) ?>"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Open' : 'Öppna' ?></a></article></li>
                             <?php endforeach; ?>
                         </ul>
                     <?php else: ?>
-                        <div class="portal-global-search-empty"><p>Inga underlagsträffar.</p></div>
+                        <div class="portal-global-search-empty"><p><?= ($portalLanguage ?? 'sv') === 'en' ? 'No matching invoice records.' : 'Inga underlagsträffar.' ?></p></div>
                     <?php endif; ?>
                 </section>
             <?php endif; ?>
@@ -151,25 +151,25 @@ if ($searchCanRun) {
 
         <section class="portal-global-search-area protocol" aria-labelledby="portal-global-search-protocol-heading">
             <header class="portal-global-search-area-head">
-                <div><h2 id="portal-global-search-protocol-heading">Serviceprotokoll</h2><p>Träffar i sparade protokoll, inklusive registreringsnummer, kund, arbetstext och rader.</p></div>
+                <div><h2 id="portal-global-search-protocol-heading"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Service reports' : 'Serviceprotokoll' ?></h2><p>Träffar i sparade protokoll, inklusive registreringsnummer, kund, arbetstext och rader.</p></div>
                 <?php if ($searchProtocolUser !== null && $searchCanRun): ?><span class="portal-global-search-count"><?= count($searchProtocolResults) ?> visade</span><?php endif; ?>
             </header>
             <?php if ($searchProtocolUser === null): ?>
-                <div class="portal-global-search-login"><p>Logga in med ditt separata protokollkonto för att söka bland serviceprotokoll.</p><a class="btn btn-outline" href="?tab=protocol">Öppna protokollinloggning</a></div>
+                <div class="portal-global-search-login"><p>Logga in med ditt separata protokollkonto för att söka bland serviceprotokoll.</p><a class="btn btn-outline" href="?tab=protocol"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Open service report sign-in' : 'Öppna protokollinloggning' ?></a></div>
             <?php elseif (!$searchCanRun): ?>
                 <div class="portal-global-search-empty"><p>Ange en sökfras med minst två tecken för att visa protokollträffar.</p></div>
             <?php elseif ($searchProtocolResults): ?>
                 <ul class="portal-global-search-list">
                     <?php foreach ($searchProtocolResults as $result): ?>
-                        <li><article class="portal-global-search-hit"><div><h3><?= h($result['title']) ?></h3><p><?= h($result['subtitle']) ?></p></div><a class="btn btn-outline" href="?tab=protocol&amp;view_id=<?= h(rawurlencode($result['id'])) ?>" aria-label="Öppna <?= h($result['title']) ?>">Öppna</a></article></li>
+                        <li><article class="portal-global-search-hit"><div><h3><?= h($result['title']) ?></h3><p><?= h($result['subtitle']) ?></p></div><a class="btn btn-outline" href="?tab=protocol&amp;view_id=<?= h(rawurlencode($result['id'])) ?>" aria-label="Öppna <?= h($result['title']) ?>"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Open' : 'Öppna' ?></a></article></li>
                     <?php endforeach; ?>
                 </ul>
             <?php else: ?>
-                <div class="portal-global-search-empty"><p>Inga protokollträffar.</p></div>
+                <div class="portal-global-search-empty"><p><?= ($portalLanguage ?? 'sv') === 'en' ? 'No matching reports.' : 'Inga protokollträffar.' ?></p></div>
             <?php endif; ?>
         </section>
     </div>
 
-    <p class="portal-global-search-safe-note">Sökningen är endast för läsning. Den matchar inte kunders personnummer och visar inte signaturbilder, fotofiler, prisrader eller summeringar.</p>
+    <p class="portal-global-search-safe-note"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Search is read-only. It does not match customers\' personal identification numbers or show signature images, photo files, price lines or totals.' : 'Sökningen är endast för läsning. Den matchar inte kunders personnummer och visar inte signaturbilder, fotofiler, prisrader eller summeringar.' ?></p>
     <?php endif; ?>
 </section>

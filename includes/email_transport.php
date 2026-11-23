@@ -62,7 +62,7 @@ function portal_email_transport_normalize_config(array $config): array
     $username = isset($config['username']) && is_string($config['username']) ? trim($config['username']) : '';
     $password = isset($config['password']) && is_string($config['password']) ? $config['password'] : '';
     $fromEmail = isset($config['from_email']) && is_string($config['from_email']) ? trim($config['from_email']) : $username;
-    $fromName = isset($config['from_name']) && is_string($config['from_name']) ? trim($config['from_name']) : 'Tadega Portal';
+    $fromName = isset($config['from_name']) && is_string($config['from_name']) ? trim($config['from_name']) : 'Dokumentportalen';
     $timeout = is_numeric($config['timeout'] ?? null) ? (int) $config['timeout'] : 15;
 
     if (
@@ -172,7 +172,7 @@ function portal_email_transport_status(): array
         'security' => 'ssl',
         'username' => '',
         'from_email' => '',
-        'from_name' => 'Tadega Portal',
+        'from_name' => 'Dokumentportalen',
         'has_password' => false,
         'locked' => false,
         'tested' => false,
@@ -244,7 +244,7 @@ function portal_email_transport_save_settings(array $input): array
         'username' => $username,
         'password' => $password,
         'from_email' => $fromEmail !== '' ? $fromEmail : $username,
-        'from_name' => isset($input['smtp_from_name']) && is_string($input['smtp_from_name']) ? $input['smtp_from_name'] : 'Tadega Portal',
+        'from_name' => isset($input['smtp_from_name']) && is_string($input['smtp_from_name']) ? $input['smtp_from_name'] : 'Dokumentportalen',
         'timeout' => 15,
         'locked' => false,
         'tested' => false,
@@ -413,7 +413,7 @@ function portal_email_smtp_build_message(string $recipient, string $subject, str
 
     $messageHeaders = [
         'Date: ' . date(DATE_RFC2822),
-        'Message-ID: <' . $messageId . '@tadega.com>',
+        'Message-ID: <' . $messageId . '@' . substr(strrchr($config['from_email'], '@'), 1) . '>',
         'From: ' . $encodedFromName . ' <' . $config['from_email'] . '>',
         'To: ' . $recipient,
         'Subject: ' . $encodedSubject,
@@ -488,7 +488,7 @@ function portal_email_smtp_send(string $recipient, string $subject, string $body
         if (($reply['code'] ?? 0) !== 220) {
             return ['accepted' => false, 'transport' => 'smtp', 'code' => 'greeting_failed'];
         }
-        $reply = portal_email_smtp_command($socket, 'EHLO tadega.com');
+        $reply = portal_email_smtp_command($socket, 'EHLO documentportal.local');
         if (($reply['code'] ?? 0) !== 250) {
             return ['accepted' => false, 'transport' => 'smtp', 'code' => 'ehlo_failed'];
         }
@@ -500,7 +500,7 @@ function portal_email_smtp_send(string $recipient, string $subject, string $body
             if (($reply['code'] ?? 0) !== 220 || @stream_socket_enable_crypto($socket, true, STREAM_CRYPTO_METHOD_TLS_CLIENT) !== true) {
                 return ['accepted' => false, 'transport' => 'smtp', 'code' => 'tls_failed'];
             }
-            $reply = portal_email_smtp_command($socket, 'EHLO tadega.com');
+            $reply = portal_email_smtp_command($socket, 'EHLO documentportal.local');
             if (($reply['code'] ?? 0) !== 250) {
                 return ['accepted' => false, 'transport' => 'smtp', 'code' => 'ehlo_failed'];
             }

@@ -676,7 +676,7 @@ $tc_actions_ready = $tc_data_ready && $tc_csrf_ready;
 
     <?php if ($tc_edit_not_found): ?>
         <div class="tc-alert tc-alert-info" role="status">
-            <span aria-hidden="true">i</span><div>Kunden kunde inte hittas. Du kan lägga till en ny kund nedan.</div>
+            <span aria-hidden="true">i</span><div><?= ($portalLanguage ?? 'sv') === 'en' ? 'Customer not found. You can add a new customer below.' : 'Kunden kunde inte hittas. Du kan lägga till en ny kund nedan.' ?></div>
         </div>
     <?php endif; ?>
 
@@ -684,7 +684,7 @@ $tc_actions_ready = $tc_data_ready && $tc_csrf_ready;
         <div class="tc-panel-head">
             <div>
                 <h2 class="tc-panel-title" id="tc-form-title"><?= $tc_form_is_edit ? 'Redigera kund' : 'Lägg till kund' ?></h2>
-                <p class="tc-panel-help">Börja med namn och telefon. Övriga uppgifter är valfria.</p>
+                <p class="tc-panel-help"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Start with a name and phone number. Other details are optional.' : 'Börja med namn och telefon. Övriga uppgifter är valfria.' ?></p>
             </div>
         </div>
 
@@ -699,8 +699,8 @@ $tc_actions_ready = $tc_data_ready && $tc_csrf_ready;
                 <div class="tc-alert tc-alert-warning" role="alert" aria-live="assertive">
                     <span aria-hidden="true">⚠</span>
                     <div>
-                        <strong>Möjliga dubbletter hittades</strong>
-                        <p>Inget har sparats ännu. Jämför posterna nedan. Ändra uppgifterna om kunden redan finns; välj annars ”Spara ändå” för att fortsätta.</p>
+                        <strong><?= ($portalLanguage ?? 'sv') === 'en' ? 'Possible duplicates found' : 'Möjliga dubbletter hittades' ?></strong>
+                        <p><?= ($portalLanguage ?? 'sv') === 'en' ? 'Nothing has been saved yet. Compare the records below. Change the details if the customer already exists; otherwise choose Save anyway to continue.' : 'Inget har sparats ännu. Jämför posterna nedan. Ändra uppgifterna om kunden redan finns; välj annars ”Spara ändå” för att fortsätta.' ?></p>
                         <ul class="tc-duplicate-matches">
                             <?php foreach ($tc_duplicate_matches as $tc_duplicate_match): ?>
                                 <?php
@@ -723,24 +723,24 @@ $tc_actions_ready = $tc_data_ready && $tc_csrf_ready;
 
             <div class="tc-fields">
                 <div class="tc-field">
-                    <label class="tc-label" for="tc-name">Företag / namn <span class="tc-required" aria-label="obligatoriskt">*</span></label>
+                    <label class="tc-label" for="tc-name"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Company / name' : 'Företag / namn' ?> <span class="tc-required" aria-label="obligatoriskt">*</span></label>
                     <input class="tc-input" id="tc-name" name="name" type="text" maxlength="160" required autocomplete="organization" placeholder="Exempel: Anna Andersson" value="<?= $tc_escape($tc_form_values['name'] ?? '') ?>" <?= isset($tc_form_errors['name']) ? 'aria-invalid="true" aria-describedby="tc-error-name"' : '' ?> <?= !$tc_actions_ready ? 'readonly' : '' ?>>
                     <?php if (isset($tc_form_errors['name'])): ?><p class="tc-field-error" id="tc-error-name"><?= $tc_escape($tc_form_errors['name']) ?></p><?php endif; ?>
                 </div>
                 <div class="tc-field">
-                    <label class="tc-label" for="tc-phone">Telefonnummer <span class="tc-required" aria-label="obligatoriskt">*</span></label>
+                    <label class="tc-label" for="tc-phone"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Phone number' : 'Telefonnummer' ?> <span class="tc-required" aria-label="obligatoriskt">*</span></label>
                     <input class="tc-input" id="tc-phone" name="phone" type="tel" inputmode="tel" maxlength="32" required autocomplete="tel" placeholder="+46 70 123 45 67" value="<?= $tc_escape($tc_form_values['phone'] ?? '') ?>" <?= isset($tc_form_errors['phone']) ? 'aria-invalid="true" aria-describedby="tc-error-phone"' : '' ?> <?= !$tc_actions_ready ? 'readonly' : '' ?>>
                     <?php if (isset($tc_form_errors['phone'])): ?><p class="tc-field-error" id="tc-error-phone"><?= $tc_escape($tc_form_errors['phone']) ?></p><?php endif; ?>
                 </div>
                 <div class="tc-field">
-                    <label class="tc-label" for="tc-email">E-post <span class="tc-optional">valfritt</span></label>
+                    <label class="tc-label" for="tc-email"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Email' : 'E-post' ?> <span class="tc-optional"><?= ($portalLanguage ?? 'sv') === 'en' ? 'optional' : 'valfritt' ?></span></label>
                     <input class="tc-input" id="tc-email" name="email" type="email" maxlength="254" autocomplete="email" placeholder="namn@exempel.se" value="<?= $tc_escape($tc_form_values['email'] ?? '') ?>" <?= isset($tc_form_errors['email']) ? 'aria-invalid="true" aria-describedby="tc-error-email"' : '' ?> <?= !$tc_actions_ready ? 'readonly' : '' ?>>
                     <?php if (isset($tc_form_errors['email'])): ?><p class="tc-field-error" id="tc-error-email"><?= $tc_escape($tc_form_errors['email']) ?></p><?php endif; ?>
                 </div>
             </div>
 
             <details class="tc-extra" <?= $tc_extra_open ? 'open' : '' ?>>
-                <summary>Fler uppgifter <span class="tc-optional">valfritt</span></summary>
+                <summary><?= ($portalLanguage ?? 'sv') === 'en' ? 'More details' : 'Fler uppgifter' ?> <span class="tc-optional"><?= ($portalLanguage ?? 'sv') === 'en' ? 'optional' : 'valfritt' ?></span></summary>
                 <div class="tc-fields tc-extra-grid">
                     <?php
                     $tc_form_references = is_array($tc_form_values['references'] ?? null)
@@ -749,33 +749,33 @@ $tc_actions_ready = $tc_data_ready && $tc_csrf_ready;
                     $tc_reference_row_count = max(1, count($tc_form_references));
                     ?>
                     <div class="tc-field tc-field-wide">
-                        <label class="tc-label" id="tc-references-label">Referenser <span class="tc-optional">valfritt · flera går bra</span></label>
+                        <label class="tc-label" id="tc-references-label"><?= ($portalLanguage ?? 'sv') === 'en' ? 'References' : 'Referenser' ?> <span class="tc-optional">valfritt · flera går bra</span></label>
                         <div class="tc-reference-list" id="tc-reference-list" data-next-index="<?= $tc_reference_row_count ?>" aria-labelledby="tc-references-label">
                             <?php for ($tc_reference_index = 0; $tc_reference_index < $tc_reference_row_count; $tc_reference_index++): ?>
                                 <?php $tc_reference_value = $tc_form_references[$tc_reference_index] ?? ''; ?>
                                 <div class="tc-reference-row" data-reference-row>
                                     <label class="tc-visually-hidden" for="tc-reference-<?= $tc_reference_index ?>">Referens <?= $tc_reference_index + 1 ?></label>
                                     <input class="tc-input" id="tc-reference-<?= $tc_reference_index ?>" name="references[]" type="text" maxlength="120" autocomplete="off" placeholder="Kontaktperson, kundnummer eller annan referens" value="<?= $tc_escape($tc_reference_value) ?>" <?= isset($tc_form_errors['references']) ? 'aria-invalid="true" aria-describedby="tc-error-references"' : '' ?> <?= !$tc_actions_ready ? 'readonly' : '' ?>>
-                                    <button class="tc-link-btn tc-reference-remove" type="button" data-remove-reference aria-label="Ta bort referens <?= $tc_reference_index + 1 ?>" <?= !$tc_actions_ready ? 'disabled' : '' ?>>Ta bort</button>
+                                    <button class="tc-link-btn tc-reference-remove" type="button" data-remove-reference aria-label="Ta bort referens <?= $tc_reference_index + 1 ?>" <?= !$tc_actions_ready ? 'disabled' : '' ?>><?= ($portalLanguage ?? 'sv') === 'en' ? 'Remove' : 'Ta bort' ?></button>
                                 </div>
                             <?php endfor; ?>
                         </div>
-                        <button class="tc-btn tc-btn-secondary tc-add-reference" id="tc-add-reference" type="button" <?= !$tc_actions_ready || $tc_reference_row_count >= 20 ? 'disabled' : '' ?>>+ Lägg till referens</button>
-                        <p class="tc-help">Referenserna sparas var för sig. Välj den som passar när du snabbfyller ett fakturaunderlag.</p>
+                        <button class="tc-btn tc-btn-secondary tc-add-reference" id="tc-add-reference" type="button" <?= !$tc_actions_ready || $tc_reference_row_count >= 20 ? 'disabled' : '' ?>><?= ($portalLanguage ?? 'sv') === 'en' ? '+ Add reference' : '+ Lägg till referens' ?></button>
+                        <p class="tc-help"><?= ($portalLanguage ?? 'sv') === 'en' ? 'References are saved separately. Choose the appropriate one when quick-filling an invoice record.' : 'Referenserna sparas var för sig. Välj den som passar när du snabbfyller ett fakturaunderlag.' ?></p>
                         <?php if (isset($tc_form_errors['references'])): ?><p class="tc-field-error" id="tc-error-references"><?= $tc_escape($tc_form_errors['references']) ?></p><?php endif; ?>
                     </div>
                     <div class="tc-field">
-                        <label class="tc-label" for="tc-personal-id">Person-/organisationsnummer <span class="tc-optional">valfritt</span></label>
+                        <label class="tc-label" for="tc-personal-id"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Personal / company identification number' : 'Person-/organisationsnummer' ?> <span class="tc-optional"><?= ($portalLanguage ?? 'sv') === 'en' ? 'optional' : 'valfritt' ?></span></label>
                         <input class="tc-input" id="tc-personal-id" name="personal_id" type="text" maxlength="40" autocomplete="off" spellcheck="false" placeholder="Fyll bara i om det behövs" value="<?= $tc_escape($tc_form_values['personal_id'] ?? '') ?>" <?= isset($tc_form_errors['personal_id']) ? 'aria-invalid="true" aria-describedby="tc-error-personal-id"' : '' ?> <?= !$tc_actions_ready ? 'readonly' : '' ?>>
                         <?php if (isset($tc_form_errors['personal_id'])): ?><p class="tc-field-error" id="tc-error-personal-id"><?= $tc_escape($tc_form_errors['personal_id']) ?></p><?php endif; ?>
                     </div>
                     <div class="tc-field">
-                        <label class="tc-label" for="tc-property-id">Fastighetsbeteckning <span class="tc-optional">valfritt</span></label>
-                        <input class="tc-input" id="tc-property-id" name="property_id" type="text" maxlength="120" autocomplete="off" placeholder="Exempel: Västervik 1:23" value="<?= $tc_escape($tc_form_values['property_id'] ?? '') ?>" <?= isset($tc_form_errors['property_id']) ? 'aria-invalid="true" aria-describedby="tc-error-property-id"' : '' ?> <?= !$tc_actions_ready ? 'readonly' : '' ?>>
+                        <label class="tc-label" for="tc-property-id"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Property designation' : 'Fastighetsbeteckning' ?> <span class="tc-optional"><?= ($portalLanguage ?? 'sv') === 'en' ? 'optional' : 'valfritt' ?></span></label>
+                        <input class="tc-input" id="tc-property-id" name="property_id" type="text" maxlength="120" autocomplete="off" placeholder="Exempel: Staden 1:23" value="<?= $tc_escape($tc_form_values['property_id'] ?? '') ?>" <?= isset($tc_form_errors['property_id']) ? 'aria-invalid="true" aria-describedby="tc-error-property-id"' : '' ?> <?= !$tc_actions_ready ? 'readonly' : '' ?>>
                         <?php if (isset($tc_form_errors['property_id'])): ?><p class="tc-field-error" id="tc-error-property-id"><?= $tc_escape($tc_form_errors['property_id']) ?></p><?php endif; ?>
                     </div>
                 </div>
-                <p class="tc-privacy-note"><span aria-hidden="true">🔒</span><span>Person- och organisationsnummer är känsliga uppgifter. Registrera dem bara när verksamheten faktiskt behöver dem.</span></p>
+                <p class="tc-privacy-note"><span aria-hidden="true">🔒</span><span><?= ($portalLanguage ?? 'sv') === 'en' ? 'Personal and company identification numbers are sensitive information. Enter them only when the business needs them.' : 'Person- och organisationsnummer är känsliga uppgifter. Registrera dem bara när verksamheten faktiskt behöver dem.' ?></span></p>
             </details>
 
             <div class="tc-form-actions">
@@ -783,10 +783,10 @@ $tc_actions_ready = $tc_data_ready && $tc_csrf_ready;
                     <?= $tc_duplicate_warning ? 'Kontrollera igen' : ($tc_form_is_edit ? 'Spara ändringar' : 'Lägg till kund') ?>
                 </button>
                 <?php if ($tc_duplicate_warning): ?>
-                    <button class="tc-btn tc-btn-primary" type="submit" name="confirm_possible_duplicates" value="1" data-mobile-action-dock <?= !$tc_actions_ready ? 'disabled' : '' ?>>Spara ändå</button>
+                    <button class="tc-btn tc-btn-primary" type="submit" name="confirm_possible_duplicates" value="1" data-mobile-action-dock <?= !$tc_actions_ready ? 'disabled' : '' ?>><?= ($portalLanguage ?? 'sv') === 'en' ? 'Save anyway' : 'Spara ändå' ?></button>
                 <?php endif; ?>
                 <?php if ($tc_form_is_edit): ?>
-                    <a class="tc-btn tc-btn-secondary" href="index.php?tab=customers">Avbryt</a>
+                    <a class="tc-btn tc-btn-secondary" href="index.php?tab=customers"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Cancel' : 'Avbryt' ?></a>
                 <?php endif; ?>
             </div>
         </form>
@@ -795,15 +795,15 @@ $tc_actions_ready = $tc_data_ready && $tc_csrf_ready;
     <section aria-labelledby="tc-list-title">
         <div class="tc-list-head">
             <div>
-                <h2 class="tc-list-title" id="tc-list-title">Kundlista</h2>
-                <p class="tc-list-subtitle">Sök bland namn, telefon, e-post och referens.</p>
+                <h2 class="tc-list-title" id="tc-list-title"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Customer list' : 'Kundlista' ?></h2>
+                <p class="tc-list-subtitle"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Search names, phone numbers, email addresses and references.' : 'Sök bland namn, telefon, e-post och referens.' ?></p>
                 <div class="tc-count-badge" aria-label="Totalt antal kunder">
                     <strong><?= count($tc_customers) ?></strong>
                     <?= count($tc_customers) === 1 ? 'kund sparad' : 'kunder sparade' ?>
                 </div>
             </div>
             <label class="tc-search-wrap">
-                <span class="tc-visually-hidden">Sök kunder</span>
+                <span class="tc-visually-hidden"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Search customers' : 'Sök kunder' ?></span>
                 <svg class="tc-search-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8" stroke="currentColor" stroke-width="1.8"/><path d="m16 16 4.2 4.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
                 <input class="tc-search" id="tc-customer-search" type="search" placeholder="Sök kunder…" autocomplete="off" aria-controls="tc-customer-list">
             </label>
@@ -855,12 +855,12 @@ $tc_actions_ready = $tc_data_ready && $tc_csrf_ready;
                         <?php endif; ?>
                     </div>
                     <div class="tc-card-actions">
-                        <a class="tc-link-btn" href="index.php?tab=customers&amp;edit_id=<?= rawurlencode($tc_customer['id']) ?>">Redigera</a>
+                        <a class="tc-link-btn" href="index.php?tab=customers&amp;edit_id=<?= rawurlencode($tc_customer['id']) ?>"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Edit' : 'Redigera' ?></a>
                         <form class="tc-delete-form" method="post" onsubmit="return confirm('Vill du verkligen radera den här kunden?');">
                             <input type="hidden" name="action" value="delete_customer">
                             <input type="hidden" name="id" value="<?= $tc_escape($tc_customer['id']) ?>">
                             <?php if ($tc_csrf_ready): ?><input type="hidden" name="csrf_token" value="<?= $tc_escape($tc_csrf_token) ?>"><?php endif; ?>
-                            <button class="tc-link-btn tc-link-danger" type="submit" <?= !$tc_actions_ready ? 'disabled' : '' ?>>Radera</button>
+                            <button class="tc-link-btn tc-link-danger" type="submit" <?= !$tc_actions_ready ? 'disabled' : '' ?>><?= ($portalLanguage ?? 'sv') === 'en' ? 'Delete' : 'Radera' ?></button>
                         </form>
                     </div>
                 </article>
@@ -869,15 +869,15 @@ $tc_actions_ready = $tc_data_ready && $tc_csrf_ready;
 
         <div class="tc-empty" id="tc-no-customers" <?= count($tc_customers) > 0 ? 'hidden' : '' ?>>
             <div class="tc-empty-icon" aria-hidden="true">＋</div>
-            <h3>Inga kunder ännu</h3>
-            <p>Lägg till den första kunden i formuläret ovan. Det räcker med namn och telefonnummer för att komma igång.</p>
-            <a class="tc-btn tc-btn-primary" href="#tc-customer-form">Lägg till första kunden</a>
+            <h3><?= ($portalLanguage ?? 'sv') === 'en' ? 'No customers yet' : 'Inga kunder ännu' ?></h3>
+            <p><?= ($portalLanguage ?? 'sv') === 'en' ? 'Add the first customer using the form above. A name and phone number are enough to get started.' : 'Lägg till den första kunden i formuläret ovan. Det räcker med namn och telefonnummer för att komma igång.' ?></p>
+            <a class="tc-btn tc-btn-primary" href="#tc-customer-form"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Add first customer' : 'Lägg till första kunden' ?></a>
         </div>
         <div class="tc-empty" id="tc-no-results" hidden>
             <div class="tc-empty-icon" aria-hidden="true">⌕</div>
-            <h3>Inga träffar</h3>
-            <p>Prova ett annat namn, telefonnummer eller en annan sökning.</p>
-            <button class="tc-btn tc-btn-secondary" id="tc-clear-search" type="button">Rensa sökning</button>
+            <h3><?= ($portalLanguage ?? 'sv') === 'en' ? 'No results' : 'Inga träffar' ?></h3>
+            <p><?= ($portalLanguage ?? 'sv') === 'en' ? 'Try another name, phone number or search.' : 'Prova ett annat namn, telefonnummer eller en annan sökning.' ?></p>
+            <button class="tc-btn tc-btn-secondary" id="tc-clear-search" type="button"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Clear search' : 'Rensa sökning' ?></button>
         </div>
     </section>
 </section>

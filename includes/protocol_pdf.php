@@ -93,29 +93,12 @@ function portal_protocol_generate_pdf_bytes(array $protocol): string|false
         $pdf->SetAutoPageBreak(true, 14);
         $pdf->AddPage();
         $pdf->SetTitle(portal_protocol_pdf_text('Serviceprotokoll ' . (string) ($protocol['nummer'] ?? '')));
-        $pdf->SetAuthor('Tadega Dokumentportalen');
-        $pdf->SetCreator('Tadega Dokumentportalen');
+        $pdf->SetAuthor('Dokumentportalen');
+        $pdf->SetCreator('Dokumentportalen');
 
         $pdf->SetTextColor(24, 43, 57);
-        $logoPath = __DIR__ . '/../assets/tadega-logo-fpdf.png';
-        $logoInfo = !is_link($logoPath) && is_file($logoPath) && is_readable($logoPath) ? @getimagesize($logoPath) : false;
-        $logoWidthPx = is_array($logoInfo) ? (int) ($logoInfo[0] ?? 0) : 0;
-        $logoHeightPx = is_array($logoInfo) ? (int) ($logoInfo[1] ?? 0) : 0;
-        if (
-            is_array($logoInfo) && ($logoInfo['mime'] ?? '') === 'image/png' &&
-            $logoWidthPx >= 1 && $logoHeightPx >= 1 && $logoWidthPx <= 5000 && $logoHeightPx <= 2000
-        ) {
-            $logoWidth = 80.0;
-            $logoHeight = $logoWidth * ($logoHeightPx / $logoWidthPx);
-            $pdf->Image($logoPath, 15, 14, $logoWidth, $logoHeight, 'PNG');
-            $pdf->SetFont('Arial', 'B', 15);
-            $pdf->SetXY(100, 14 + max(0.0, ($logoHeight - 10.0) / 2));
-            $pdf->Cell(95, 10, portal_protocol_pdf_text('Serviceprotokoll'), 0, 0, 'R');
-            $pdf->SetY(14 + max($logoHeight, 10.0) + 4);
-        } else {
-            $pdf->SetFont('Arial', 'B', 18);
-            $pdf->Cell(180, 10, portal_protocol_pdf_text('Serviceprotokoll'), 0, 1, 'L');
-        }
+        $pdf->SetFont('Arial', 'B', 18);
+        $pdf->Cell(180, 10, portal_protocol_pdf_text('Serviceprotokoll'), 0, 1, 'L');
         $pdf->SetDrawColor(34, 96, 125);
         $pdf->SetLineWidth(0.7);
         $pdf->Line(15, $pdf->GetY(), 195, $pdf->GetY());

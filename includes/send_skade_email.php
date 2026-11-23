@@ -27,16 +27,20 @@ function send_skadeblankett_email(string $pdfPath, array $data, string $regnr): 
 
     // User-confirmed delivery rule: send skadeblanketter only to the owner's
     // inbox. Do not copy the customer or the portal's additional recipients.
-    $ownerEmail = 'rl@tadega.com';
-    if (!filter_var($ownerEmail, FILTER_VALIDATE_EMAIL)) {
-        return false;
+    $settings = function_exists('load_settings') ? load_settings() : [];
+    $ownerEmail = is_string($settings['skade_recipient_email'] ?? null) ? trim($settings['skade_recipient_email']) : '';
+    if (!filter_var($ownerEmail, FILTER_VALIDATE_EMAIL) || preg_match('/[\r\n\x00]/', $ownerEmail)) {
+        return ['accepted' => false, 'transport' => 'none', 'code' => 'recipient_not_configured'];
     }
+    $companyName = is_string($settings['company_name'] ?? null) ? trim($settings['company_name']) : '';
+    $companyName = str_replace(["\r", "\n"], ' ', $companyName);
+    $companyName = $companyName !== '' ? $companyName : 'Dokumentportalen';
 
     $safeRegnr = strtoupper(preg_replace('/[^A-Z0-9 -]/i', '', $regnr));
     $retryAttempt = !empty($data['retry_attempt']);
     $textFitWarning = !empty($data['pdf_text_fit_warning']);
     $textFitWarningText = 'VARNING: Ett eller flera PDF-textfält behövde en teckenstorlek under 5 pt. Granska läsbarheten i den bifogade PDF:en innan den används.';
-    $subject = ($retryAttempt ? 'Nytt försök: ' : '') . 'Skadeblankett Bilglas - ' . $safeRegnr . ' - Tadega';
+    $subject = ($retryAttempt ? 'Nytt försök: ' : '') . 'Skadeblankett Bilglas - ' . $safeRegnr;
     if ($retryAttempt) {
         // Retry sends only the already-created PDF and minimal metadata; do not
         // persist or reconstruct customer details for the retry message.
@@ -44,14 +48,14 @@ function send_skadeblankett_email(string $pdfPath, array $data, string $regnr): 
         if ($textFitWarning) {
             $bodyText .= $textFitWarningText . "\n\n";
         }
-        $bodyText .= "Med vänlig hälsning\nTadega AB\n";
+        $bodyText .= "Med vänlig hälsning\n" . $companyName . "\n";
         $htmlBody = '<!doctype html><html lang="sv"><meta charset="utf-8"><body style="font-family:Arial,sans-serif">';
         $htmlBody .= '<h2>Nytt mejlförsök: skadeblankett</h2><p>Reg.nr: <strong>' . h($safeRegnr) . '</strong></p>';
         $htmlBody .= '<p>Den tidigare skapade skadeblanketten bifogas igen.</p>';
         if ($textFitWarning) {
             $htmlBody .= '<p style="color:#8a3b00"><strong>' . h($textFitWarningText) . '</strong></p>';
         }
-        $htmlBody .= '<p>Med vänlig hälsning,<br>Tadega AB</p></body></html>';
+        $htmlBody .= '<p>Med vänlig hälsning,<br>' . h($companyName) . '</p></body></html>';
     } else {
         $name = trim((string) ($data['namn_adress'] ?? ''));
         $model = trim((string) ($data['modell'] ?? ''));
@@ -71,7 +75,7 @@ function send_skadeblankett_email(string $pdfPath, array $data, string $regnr): 
         if ($textFitWarning) {
             $bodyText .= $textFitWarningText . "\n";
         }
-        $bodyText .= "\nMed vänlig hälsning\nTadega AB\n";
+        $bodyText .= "\nMed vänlig hälsning\n" . $companyName . "\n";
 
         $htmlBody = '<!doctype html><html lang="sv"><meta charset="utf-8"><body style="font-family:Arial,sans-serif">';
         $htmlBody .= '<h2>Skadeblankett Bilglas</h2><p>Reg.nr: <strong>' . h($safeRegnr) . '</strong></p>';
@@ -80,7 +84,7 @@ function send_skadeblankett_email(string $pdfPath, array $data, string $regnr): 
         if ($textFitWarning) {
             $htmlBody .= '<p style="color:#8a3b00"><strong>' . h($textFitWarningText) . '</strong></p>';
         }
-        $htmlBody .= '<p>Med vänlig hälsning,<br>Tadega AB</p></body></html>';
+        $htmlBody .= '<p>Med vänlig hälsning,<br>' . h($companyName) . '</p></body></html>';
     }
 
     try {
@@ -90,7 +94,7 @@ function send_skadeblankett_email(string $pdfPath, array $data, string $regnr): 
     }
 
     $replyTo = $ownerEmail;
-    $headers = "From: Tadega Portal <noreply@tadega.com>\r\n";
+    $headers = "From: Dokumentportalen <" . $ownerEmail . ">\r\n";
     if (is_string($replyTo) && filter_var($replyTo, FILTER_VALIDATE_EMAIL)) {
         $headers .= 'Reply-To: ' . $replyTo . "\r\n";
     }

@@ -1,0 +1,26 @@
+<?php
+declare(strict_types=1);
+$root = __DIR__ . '/.calendar-sandbox';
+@mkdir($root); @mkdir($root . '/includes'); @mkdir($root . '/storage');
+copy(__DIR__ . '/../../functions.php', $root . '/functions.php');
+foreach (['calendar.php','logger.php','email_transport.php'] as $name) copy(__DIR__ . '/../../includes/' . $name, $root . '/includes/' . $name);
+file_put_contents($root . '/storage/.htaccess', "Require all denied\n");
+require $root . '/functions.php'; require $root . '/includes/calendar.php';
+$n = 0;
+$assert = static function (bool $ok, string $msg) use (&$n): void { $n++; if (!$ok) throw new RuntimeException($msg); };
+$actor = str_repeat('a',32);
+$post = ['title'=>'Test', 'notes'=>'', 'date'=>'2026-11-18', 'start_time'=>'08:00','end_time'=>'','status'=>'planned'];
+$assert(portal_calendar_read() === [], 'Missing file is empty');
+$assert(portal_calendar_update($actor, 'save', $post, [])['ok'] === true, 'Atomic save succeeds');
+$assert(count(portal_calendar_read() ?? []) === 1, 'Saved record can be read');
+file_put_contents(portal_calendar_path(), '{corrupt');
+$assert(portal_calendar_read() === null, 'Corrupt storage fails closed');
+$assert(portal_calendar_update($actor, 'save', $post, [])['ok'] === false, 'Corrupt storage is not overwritten');
+$assert(file_get_contents(portal_calendar_path()) === '{corrupt', 'Data retained after failed write');
+file_put_contents($root . '/storage/.htaccess', '# no guard');
+$assert(portal_calendar_read() === null, 'Missing deny rule fails closed');
+foreach (glob($root . '/storage/*') ?: [] as $file) unlink($file);
+@unlink($root . '/storage/.htaccess'); rmdir($root . '/storage');
+foreach (glob($root . '/includes/*') ?: [] as $file) unlink($file);
+rmdir($root . '/includes'); unlink($root . '/functions.php'); rmdir($root);
+echo "PASS: $n calendar storage checks.\n";

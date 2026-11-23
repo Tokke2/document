@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../../includes/release_updater.php';
+require_once __DIR__ . '/../../includes/github_release_updater.php';
 
 function h(mixed $value): string
 {
@@ -108,10 +109,10 @@ $assert(!str_contains($active, dirname(__DIR__, 2)), 'The health check must not 
 $assert(!str_contains($active, 'central_admin_login"'), 'An authenticated central admin should not be shown the login form.');
 $assert(str_contains($active, '6–10 siffror') && str_contains($active, 'högst 2 valfria specialtecken') && str_contains($active, 'minlength="6" maxlength="12"'), 'PIN enrollment and rotation should explain and constrain the numeric PIN format.');
 $assert(!str_contains($active, 'new-password') && !str_contains($active, 'current-password') && !str_contains($active, 'inga lösenord'), 'The central PIN interface must not be described or autofilled as a password.');
-$assert(str_contains($active, 'GitHub-releasekontroll') && str_contains($active, 'Avstängd'), 'Only the authenticated Adminpanel should show the dormant GitHub release status.');
-$assert(str_contains($active, 'includes/release_config.php') && str_contains($active, 'ingen GitHub-begäran'), 'The Adminpanel should explain that blank configuration performs no GitHub check.');
+$assert(str_contains($active, 'GitHub-releasekontroll') && str_contains($active, 'Aktiv'), 'Only authenticated central admins should see GitHub release status.');
+$assert(str_contains($active, 'Ingen separat signatur kontrolleras') && str_contains($active, 'Tokke2/document'), 'The admin panel explains the unsigned GitHub trust boundary.');
 $assert(str_contains($active, 'Så fungerar releaseuppdateringen') && str_contains($active, 'Kontrollera') && str_contains($active, 'Granska') && str_contains($active, 'Godkänn och installera'), 'The release workflow should clearly show its three separate steps.');
-$assert(!str_contains($active, 'name="action" value="portal_release_check"') && !str_contains($active, 'portal_release_install'), 'Unconfigured release checks and installation must not be offered.');
+$assert(str_contains($active, 'name="action" value="portal_release_check"') && !str_contains($active, 'name="action" value="portal_release_install"'), 'A check is offered but installation requires a separate review.');
 $review = render_admin_panel_for_test('configured', $activeUser, null, 'configured', [
     'ok' => true,
     'code' => 'release_checked',
@@ -123,10 +124,10 @@ $review = render_admin_panel_for_test('configured', $activeUser, null, 'configur
     'unchanged' => [],
 ]);
 $assert(str_contains($review, '1 fil avviker') && str_contains($review, 'includes/nested/release.php'), 'A release review should show a clear singular file count and its exact path.');
-$assert(str_contains($review, 'Visa manifestets godkännandedigest') && str_contains($review, str_repeat('a', 64)), 'A release review should expose the exact approval digest on demand.');
-$assert(!str_contains($review, 'name="action" value="portal_release_install"'), 'A release review must not offer installation while trust configuration is incomplete.');
+$assert(str_contains($review, 'Visa jämförelsens innehållsdigest') && str_contains($review, str_repeat('a', 64)), 'A release review should expose the exact approval digest on demand.');
+$assert(str_contains($review, 'name="action" value="portal_release_install"') && str_contains($review, 'name="confirm_install"'), 'A reviewed release requires a separate confirmation.');
 $disabledCheck = render_admin_panel_for_test('configured', $activeUser, null, 'configured', ['ok' => false, 'code' => 'configuration_incomplete', 'action' => 'check']);
-$assert(str_contains($disabledCheck, 'GitHub-repo') && !str_contains($disabledCheck, 'name="action" value="portal_release_install"'), 'An incomplete release configuration must show only a disabled explanation, not an install form.');
+$assert(!str_contains($disabledCheck, 'name="action" value="portal_release_install"'), 'Failed checks never offer installation.');
 
 $controllerSource = file_get_contents(__DIR__ . '/../../index.php');
 $csrfPosition = is_string($controllerSource) ? strpos($controllerSource, 'if (!csrf_is_valid())') : false;
@@ -140,7 +141,7 @@ $releaseBranch = is_string($controllerSource) && is_int($releaseActionPosition) 
     : '';
 $assert(str_contains($releaseBranch, "\$activeTab !== 'admin' || \$portalIsScopedPwa"), 'Release endpoints must be confined to the full Adminpanel route, not scoped PWAs.');
 $assert(str_contains($releaseBranch, '!$centralAdminCanAccess') && str_contains($releaseBranch, 'is_array($centralAdminUser)'), 'Release endpoints must require an authenticated central admin.');
-$assert(str_contains($releaseBranch, "\$_POST['confirm_install']") && str_contains($releaseBranch, 'portal_release_install_approved'), 'Installation must require server-verified explicit admin approval.');
+$assert(str_contains($releaseBranch, "\$_POST['confirm_install']") && str_contains($releaseBranch, 'portal_github_release_install_approved'), 'Installation must require server-verified explicit admin approval.');
 $assert(str_contains($controllerSource, "str_starts_with(\$msgKey, 'release_') && (\$activeTab !== 'admin' || !\$centralAdminCanAccess)"), 'Release notices must be hidden outside the authenticated Adminpanel.');
 
 $expiredUser = $activeUser;

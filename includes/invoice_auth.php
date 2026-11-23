@@ -587,6 +587,15 @@ function portal_invoice_auth_current_user(): ?array
             return $centralAdmin;
         }
     }
+    return portal_invoice_auth_personal_user();
+}
+
+/** Resolve a personal invoice identity without treating the shared central PIN as a person. */
+function portal_invoice_auth_personal_user(): ?array
+{
+    if (session_status() !== PHP_SESSION_ACTIVE) {
+        return null;
+    }
     $sessionUser = $_SESSION['portal_invoice_auth'] ?? null;
     if (!is_array($sessionUser)) {
         return portal_invoice_auth_restore_remembered_session();

@@ -224,16 +224,20 @@ function portal_email_send_test(string $service): array
         if (!is_string($recipient) || !filter_var($recipient, FILTER_VALIDATE_EMAIL)) {
             return ['result' => 'not_configured', 'transport' => 'none', 'code' => 'recipient_not_configured', 'recorded' => portal_email_status_record('invoice', 'not_configured', 'test', 'none', 'recipient_not_configured')];
         }
-        $subject = 'Tadega Portal – test av e-post för fakturaunderlag';
-        $body = "Detta är ett manuellt testutskick från Tadega Portal för e-postflödet Fakturaunderlag.\n\nE-posttransportens svar visar endast om servern accepterade anropet; det bekräftar inte vidarebefordran eller leverans till inkorgen.\n";
+        $subject = 'Dokumentportalen – test av e-post för fakturaunderlag';
+        $body = "Detta är ett manuellt testutskick från Dokumentportalen för e-postflödet Fakturaunderlag.\n\nE-posttransportens svar visar endast om servern accepterade anropet; det bekräftar inte vidarebefordran eller leverans till inkorgen.\n";
         $kind = 'test';
     } else {
-        $recipient = 'rl@tadega.com';
-        $subject = 'Tadega Portal – test av skadeblankettens e-post';
-        $body = "Detta är ett manuellt testutskick från Tadega Portal för e-postflödet Skadeblankett.\n\nInga kunduppgifter eller PDF-bilagor ingår. Mottagaren är fast: rl@tadega.com. E-posttransportens svar bekräftar inte faktisk leverans.\n";
+        $settings = load_settings();
+        $recipient = $settings['skade_recipient_email'] ?? '';
+        if (!is_string($recipient) || !filter_var($recipient, FILTER_VALIDATE_EMAIL)) {
+            return ['result' => 'not_configured', 'transport' => 'none', 'code' => 'recipient_not_configured', 'recorded' => portal_email_status_record('skadeblankett', 'not_configured', 'test', 'none', 'recipient_not_configured')];
+        }
+        $subject = 'Dokumentportalen – test av skadeblankettens e-post';
+        $body = "Detta är ett manuellt testutskick från Dokumentportalen för e-postflödet Skadeblankett.\n\nInga kunduppgifter eller PDF-bilagor ingår. Mottagaren är vald av admin. E-posttransportens svar bekräftar inte faktisk leverans.\n";
         $kind = 'test';
     }
-    $headers = "From: Tadega Portal <noreply@tadega.com>\r\n";
+    $headers = "From: Dokumentportalen <" . $recipient . ">\r\n";
     $headers .= "MIME-Version: 1.0\r\nContent-Type: text/plain; charset=UTF-8\r\n";
     $delivery = portal_email_transport_send($recipient, $subject, $body, $headers);
     $result = ($delivery['accepted'] ?? false) === true ? 'accepted' : 'failed';

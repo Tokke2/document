@@ -1,0 +1,21 @@
+# Private runtime data and local credentials
+/storage/*
+!/storage/index.php
+!/storage/.htaccess
+/logs/*
+!/logs/index.php
+!/logs/.htaccess
+/pdf/*
+!/pdf/.htaccess
+!/pdf/Bilrutan Skadeblankett.pdf
+/svg/*
+!/svg/.htaccess
+/uploads/*
+!/uploads/.htaccess
+*.lock
+settings.json
+# Dependencies and local test output
+node_modules/
+test-results/
+playwright-report/
+tests/php/.*-sandbox/

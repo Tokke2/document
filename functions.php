@@ -203,10 +203,11 @@ function portal_log(mixed $message, array $context = [], mixed $level = 'INFO'):
 function load_settings(): array
 {
     $defaults = [
-        'notification_email' => 'rl@tadega.com',
-        'admin_email' => 'rl@tadega.com',
-        'additional_emails' => ['info@tadega.com'],
-        'company_name' => 'Tadega AB',
+        'notification_email' => '',
+        'admin_email' => '',
+        'additional_emails' => [],
+        'company_name' => '',
+        'skade_recipient_email' => '',
         'low_stock_threshold' => 2,
         'quality_report_url' => '',
     ];
@@ -260,7 +261,7 @@ function send_notification(string $type, mixed $data, ?array $settings = null): 
 
     $safeType = trim(preg_replace('/[\r\n]+/', ' ', (string) $type));
     $safeType = substr($safeType, 0, 100);
-    $subject = 'Tadega Portal: ' . $safeType;
+    $subject = 'Dokumentportalen: ' . $safeType;
     $body = '<!doctype html><html lang="sv"><meta charset="utf-8"><body style="font-family:system-ui,sans-serif;color:#172033">';
     $body .= '<h2>' . h($safeType) . '</h2><table style="border-collapse:collapse">';
     if (is_array($data)) {
@@ -272,7 +273,7 @@ function send_notification(string $type, mixed $data, ?array $settings = null): 
         }
     }
     $body .= '</table><p style="color:#667085;font-size:12px">Sparad: ' . h(date('Y-m-d H:i')) . '</p></body></html>';
-    $headers = "MIME-Version: 1.0\r\nContent-Type: text/html; charset=UTF-8\r\nFrom: Tadega Portal <noreply@tadega.com>\r\n";
+    $headers = "MIME-Version: 1.0\r\nContent-Type: text/html; charset=UTF-8\r\n";
 
     $sent = false;
     foreach ($toList as $to) {
@@ -656,10 +657,11 @@ function ensure_base_files(): void
 {
     $files = [
         SETTINGS_FILE => [
-            'notification_email' => 'rl@tadega.com',
-            'admin_email' => 'rl@tadega.com',
-            'additional_emails' => ['info@tadega.com'],
-            'company_name' => 'Tadega AB',
+            'notification_email' => '',
+            'admin_email' => '',
+            'additional_emails' => [],
+            'company_name' => '',
+            'skade_recipient_email' => '',
             'low_stock_threshold' => 2,
         ],
         PROTOCOLS_FILE => [],

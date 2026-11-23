@@ -140,7 +140,7 @@ function portal_autosaved_drafts_sanitize_payload(string $type, array $post, boo
     }
 
     $keys = $type === 'invoice'
-        ? ['id' => 128, 'date' => 10, 'ref' => 160, 'customer' => 180, 'description' => 5000, 'vat_mode' => 8]
+        ? ['id' => 128, 'date' => 10, 'ref' => 160, 'customer' => 180, 'description' => 5000, 'vat_mode' => 8, 'source_protocol_id' => 128]
         : ['id' => 128, 'reg' => 20, 'date' => 10, 'km' => 20, 'customer' => 180, 'tech' => 120, 'description' => 5000];
     $cleanForm = [];
     foreach ($keys as $key => $maxLength) {
@@ -157,6 +157,9 @@ function portal_autosaved_drafts_sanitize_payload(string $type, array $post, boo
         return null;
     }
     if ($type === 'invoice') {
+        if ($cleanForm['source_protocol_id'] !== '' && !preg_match('/\A[A-Za-z0-9_-]{1,128}\z/D', $cleanForm['source_protocol_id'])) {
+            return null;
+        }
         if (!in_array($cleanForm['vat_mode'], ['ex', 'inc'], true)) {
             return null;
         }
@@ -208,7 +211,14 @@ function portal_autosaved_drafts_sanitize_payload(string $type, array $post, boo
             if (($qty !== '' && (!is_numeric($qty) || (float) $qty < 0 || (float) $qty > 100000)) || ($price !== '' && (!is_numeric($price) || (float) $price < 0 || (float) $price > 10000000))) {
                 return null;
             }
-            $cleanItems[] = ['art' => $art, 'unit' => $unit, 'qty' => $qty, 'price' => $price];
+            $itemData = ['art' => $art, 'unit' => $unit, 'qty' => $qty, 'price' => $price];
+            $voiceToken = $item['voice_token'] ?? '';
+            if (!is_string($voiceToken) || strlen($voiceToken) > 4096 || ($voiceToken !== '' && preg_match('/\A[a-f0-9]{32}\.[A-Za-z0-9_-]+\z/D', $voiceToken) !== 1)) return null;
+            if ($voiceToken !== '') $itemData['voice_token'] = $voiceToken;
+            $fixedLock = $item['fixed_lock'] ?? '';
+            if (!is_string($fixedLock) || ($fixedLock !== '' && preg_match('/\A[a-f0-9]{32}\z/D', $fixedLock) !== 1)) return null;
+            if ($fixedLock !== '') $itemData['fixed_lock'] = $fixedLock;
+            $cleanItems[] = $itemData;
         } else {
             $art = portal_autosaved_drafts_text($item, 'art', 200);
             $qty = portal_autosaved_drafts_text($item, 'qty', 32);

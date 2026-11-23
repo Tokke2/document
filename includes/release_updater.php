@@ -2,9 +2,9 @@
 declare(strict_types=1);
 
 /**
- * Admin-only GitHub Release preparation and transactional file installer.
+ * Transactional file installer shared by the signed legacy and unsigned GitHub source modes.
  *
- * The release ZIP contains manifest.json and manifest.sig at its root. The
+ * In legacy signed mode, the release ZIP contains manifest.json and manifest.sig at its root. The
  * exact manifest bytes are signed with RSA/ECDSA + SHA-256; the public key is
  * pinned in the local, web-denied release_config.php file. ZIP entries are
  * read as streams and never extracted. Paths are allowlisted, storage/ and
@@ -539,7 +539,7 @@ function portal_release_http_get(string $url, array $headers, int $maxBytes, int
         CURLOPT_FOLLOWLOCATION => false,
         CURLOPT_CONNECTTIMEOUT => 8,
         CURLOPT_TIMEOUT => max(5, min($timeoutSeconds, 60)),
-        CURLOPT_USERAGENT => 'Tadega-Documentportal-Release-Checker/1.0',
+        CURLOPT_USERAGENT => 'Documentportal-Release-Checker/1.0',
         CURLOPT_HTTPHEADER => $headers,
         CURLOPT_SSL_VERIFYPEER => true,
         CURLOPT_SSL_VERIFYHOST => 2,
@@ -626,7 +626,7 @@ function portal_release_download_asset(string $url, string $destination, int $ex
             CURLOPT_FOLLOWLOCATION => false,
             CURLOPT_CONNECTTIMEOUT => 8,
             CURLOPT_TIMEOUT => 120,
-            CURLOPT_USERAGENT => 'Tadega-Documentportal-Release-Checker/1.0',
+            CURLOPT_USERAGENT => 'Documentportal-Release-Checker/1.0',
             CURLOPT_HTTPHEADER => ['Accept: application/octet-stream'],
             CURLOPT_SSL_VERIFYPEER => true,
             CURLOPT_SSL_VERIFYHOST => 2,
@@ -1268,7 +1268,9 @@ function portal_release_install_package(
     string $publicKeyPem,
     string $approvedTag,
     string $approvedVersion,
-    string $approvedManifestSha256
+    string $approvedManifestSha256,
+    string $mode = 'signed',
+    ?array $reviewedBefore = null
 ): array {
     $failure = static function (string $code, array $extra = []): array {
         return array_merge(['ok' => false, 'code' => $code, 'changed' => []], $extra);
@@ -1280,6 +1282,7 @@ function portal_release_install_package(
     ) {
         return $failure('approval_invalid');
     }
+    if (!in_array($mode, ['signed', 'github'], true) || ($mode === 'github' && (!function_exists('portal_github_release_compare') || !is_array($reviewedBefore) || $approvedTag !== $approvedVersion))) return $failure('approval_invalid');
     $applicationRootReal = realpath($applicationRoot);
     if ($applicationRootReal === false || is_link($applicationRoot) || !is_dir($applicationRootReal)) {
         return $failure('application_root_unavailable');
@@ -1293,13 +1296,14 @@ function portal_release_install_package(
     $keepRecoverySnapshot = false;
     $applied = [];
     try {
-        $comparison = portal_release_compare_zip_files($applicationRootReal, $zipPath, $publicKeyPem);
+        $comparison = $mode === 'github' ? portal_github_release_compare($applicationRootReal, $zipPath, $approvedTag) : portal_release_compare_zip_files($applicationRootReal, $zipPath, $publicKeyPem);
         if (($comparison['ok'] ?? false) !== true) {
             return $failure((string) ($comparison['code'] ?? 'comparison_failed'));
         }
         if (
             !hash_equals($approvedVersion, (string) $comparison['version']) ||
-            !hash_equals($approvedManifestSha256, (string) $comparison['manifest_sha256'])
+            !hash_equals($approvedManifestSha256, (string) $comparison['manifest_sha256']) ||
+            ($mode === 'github' && $reviewedBefore !== $comparison['before'])
         ) {
             return $failure('approval_mismatch');
         }
@@ -1328,7 +1332,7 @@ function portal_release_install_package(
             return $failure('zip_invalid');
         }
         try {
-            $verifiedZip = portal_release_read_verified_zip($zip, $publicKeyPem);
+            $verifiedZip = $mode === 'github' ? portal_github_release_read_zip($zip, $approvedTag) : portal_release_read_verified_zip($zip, $publicKeyPem);
             if (
                 ($verifiedZip['ok'] ?? false) !== true ||
                 !hash_equals((string) $comparison['manifest_sha256'], (string) ($verifiedZip['manifest_sha256'] ?? '')) ||

@@ -38,7 +38,7 @@ function portal_send_protocol_saved_email(array $protocol): array
     $attachmentName = 'Serviceprotokoll' . ($fileParts !== [] ? '-' . implode('-', $fileParts) : '') . '.pdf';
     $attachmentName = preg_replace('/[^A-Za-z0-9._-]/', '-', $attachmentName) ?? 'Serviceprotokoll.pdf';
 
-    $rawSubject = 'Tadega Portal – Serviceprotokoll som fakturaunderlag';
+    $rawSubject = 'Dokumentportalen – Serviceprotokoll som fakturaunderlag';
     if ($protocolNumber !== '') {
         $rawSubject .= ' – ' . $protocolNumber;
     }
@@ -46,7 +46,7 @@ function portal_send_protocol_saved_email(array $protocol): array
         ? mb_encode_mimeheader($rawSubject, 'UTF-8', 'B', "\r\n")
         : '=?UTF-8?B?' . base64_encode($rawSubject) . '?=';
 
-    $plainText = "Ett serviceprotokoll har sparats i Tadega Portal.\n\n"
+    $plainText = "Ett serviceprotokoll har sparats i Dokumentportalen.\n\n"
         . "PDF-bilagan är avsedd som internt fakturaunderlag. Skapa fakturan manuellt i Fortnox.\n"
         . "Meddelandet skickas endast till portalens primära interna mottagare; ingen kundkopia har skickats.\n";
     if ($protocolNumber !== '') {

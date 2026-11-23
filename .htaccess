@@ -1,0 +1,5 @@
+Options -Indexes
+<FilesMatch "\.(json|jsonl|lock|zip|log)$">
+    Require all denied
+</FilesMatch>
+AddType application/manifest+json .webmanifest

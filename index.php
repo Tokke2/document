@@ -23,7 +23,7 @@ if (!headers_sent()) {
     header('X-Frame-Options: SAMEORIGIN');
     header('Referrer-Policy: strict-origin-when-cross-origin');
     // Permit only this same-origin portal to initiate camera capture for a service-protocol photo.
-    header('Permissions-Policy: camera=(self), microphone=(), geolocation=()');
+    header('Permissions-Policy: camera=(self), microphone=(self), geolocation=()');
     header('Cache-Control: no-store, private, max-age=0, must-revalidate');
     header('Pragma: no-cache');
     header("Content-Security-Policy: default-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; frame-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'");
@@ -52,7 +52,7 @@ if ($portalIsScopedPwa) {
 // separately; the customer register continues to share the invoice PIN session.
 // During first-admin setup, keep the default portal session for its CSRF token.
 $requestedSessionTab = isset($_GET['tab']) && is_string($_GET['tab']) ? $_GET['tab'] : 'protocol';
-if (!in_array($requestedSessionTab, ['protocol', 'search', 'invoice', 'skadeblankett', 'files', 'archive', 'customers', 'settings', 'admin'], true)) {
+if (!in_array($requestedSessionTab, ['protocol', 'search', 'invoice', 'skadeblankett', 'files', 'archive', 'customers', 'settings', 'admin', 'calendar'], true)) {
     $requestedSessionTab = 'protocol';
 }
 $useProtocolSession = false;
@@ -133,15 +133,20 @@ if (session_status() !== PHP_SESSION_ACTIVE && !headers_sent()) {
 require_once __DIR__ . '/functions.php';
 require_once __DIR__ . '/includes/ui_components.php';
 require_once __DIR__ . '/includes/invoice_auth.php';
+require_once __DIR__ . '/includes/invoice_voice_learning.php';
+require_once __DIR__ . '/includes/calendar.php';
 require_once __DIR__ . '/includes/protocol_auth.php';
 require_once __DIR__ . '/includes/central_admin_auth.php';
 require_once __DIR__ . '/includes/autosaved_drafts.php';
 require_once __DIR__ . '/includes/email_status.php';
 require_once __DIR__ . '/includes/send_protocol_email.php';
 require_once __DIR__ . '/includes/invoice_catalog.php';
+require_once __DIR__ . '/includes/invoice_shared_learning.php';
 require_once __DIR__ . '/includes/protocol_catalog.php';
 require_once __DIR__ . '/includes/portal_search.php';
+require_once __DIR__ . '/includes/archive_delete.php';
 require_once __DIR__ . '/includes/release_updater.php';
+require_once __DIR__ . '/includes/github_release_updater.php';
 
 /** Read the separate protocol login while preserving the active invoice session. */
 function portal_search_protocol_auth_user(): ?array
@@ -197,7 +202,13 @@ function portal_search_protocol_auth_user(): ?array
     return is_array($protocolUser) ? $protocolUser : null;
 }
 
+// The language preference affects interface copy, never persisted document contents.
+$portalLanguage = isset($_GET['lang']) && in_array($_GET['lang'], ['sv', 'en'], true) ? $_GET['lang'] : (in_array($_COOKIE['portal_language'] ?? '', ['sv', 'en'], true) ? $_COOKIE['portal_language'] : 'sv');
+if (isset($_GET['lang']) && in_array($_GET['lang'], ['sv', 'en'], true)) {
+    setcookie('portal_language', $portalLanguage, ['expires' => time() + 31536000, 'path' => '/', 'secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off', 'httponly' => true, 'samesite' => 'Lax']);
+}
 $portalTabs = [
+    'calendar' => ['Kalender', 'Din planering och dagsöversikt.'],
     'protocol' => ['Serviceprotokoll', 'Skapa och spara verkstadsprotokoll.'],
     'search' => ['Sök', 'Sök i de dokument och register du har behörighet att se.'],
     'invoice' => ['Fakturaunderlag', 'Samla arbetstid, material och belopp.'],
@@ -209,6 +220,10 @@ $portalTabs = [
     'admin' => ['Adminpanel', 'Central behörighet och åtkomst till portalens personalsidor.'],
 ];
 
+if ($portalLanguage === 'en') {
+    $englishTabs = ['calendar'=>['Calendar','Your schedule and daily overview.'], 'protocol'=>['Service report','Create and save service reports.'], 'search'=>['Search','Search authorized documents and registers.'], 'invoice'=>['Invoice basis','Collect time, materials and amounts.'], 'skadeblankett'=>['Damage form','Complete the damage form and create a PDF.'], 'files'=>['PDF archive','Find and manage archived documents.'], 'archive'=>['History','Overview of saved documents and files.'], 'customers'=>['Customers','Find and manage customers.'], 'settings'=>['Settings','Email and company settings.'], 'admin'=>['Administration','Central access and administration.']];
+    $portalTabs = $englishTabs;
+}
 $activeTab = isset($_GET['tab']) && is_string($_GET['tab']) ? $_GET['tab'] : 'protocol';
 if (!isset($portalTabs[$activeTab])) {
     $activeTab = 'protocol';
@@ -245,7 +260,7 @@ $invoiceAuthUser = in_array($activeTab, ['invoice', 'customers', 'search', 'admi
 
 function portal_redirect(string $tab, string $message = '', array $context = []): never
 {
-    $allowed = ['protocol', 'search', 'invoice', 'skadeblankett', 'files', 'archive', 'customers', 'settings', 'admin'];
+    $allowed = ['protocol', 'search', 'invoice', 'skadeblankett', 'files', 'archive', 'customers', 'settings', 'admin', 'calendar'];
     if (!in_array($tab, $allowed, true)) {
         $tab = 'protocol';
     }
@@ -256,7 +271,7 @@ function portal_redirect(string $tab, string $message = '', array $context = [])
     $contextSuffix = '';
     if ($tab === 'invoice') {
         foreach (['draft_id', 'edit_id', 'copy_id'] as $contextKey) {
-            $contextValue = isset($_GET[$contextKey]) && is_string($_GET[$contextKey]) ? $_GET[$contextKey] : '';
+            $contextValue = isset($context[$contextKey]) && is_string($context[$contextKey]) ? $context[$contextKey] : (isset($_GET[$contextKey]) && is_string($_GET[$contextKey]) ? $_GET[$contextKey] : '');
             if ($contextValue !== '' && preg_match('/\A[A-Za-z0-9_-]{1,128}\z/D', $contextValue)) {
                 $contextSuffix .= '&' . rawurlencode($contextKey) . '=' . rawurlencode($contextValue);
             }
@@ -370,7 +385,14 @@ function portal_process_items(mixed $rawItems, string $kind): ?array
             if ($name === '' || !in_array($unit, array_keys(portal_invoice_catalog_units()), true)) {
                 return null;
             }
-            $items[] = ['art' => $name, 'unit' => $unit, 'qty' => $qty, 'price' => $price];
+            $itemData = ['art' => $name, 'unit' => $unit, 'qty' => $qty, 'price' => $price];
+            $voiceToken = $row['voice_token'] ?? '';
+            if (!is_string($voiceToken) || strlen($voiceToken) > 4096 || ($voiceToken !== '' && preg_match('/\A[a-f0-9]{32}\.[A-Za-z0-9_-]+\z/D', $voiceToken) !== 1)) return null;
+            if ($voiceToken !== '') $itemData['voice_token'] = $voiceToken;
+            $fixedLock = $row['fixed_lock'] ?? '';
+            if (!is_string($fixedLock) || ($fixedLock !== '' && preg_match('/\A[a-f0-9]{32}\z/D', $fixedLock) !== 1)) return null;
+            if ($fixedLock !== '') $itemData['fixed_lock'] = $fixedLock;
+            $items[] = $itemData;
         } else {
             $name = portal_post_text($row, 'art', 200);
             $qtyRaw = $row['qty'] ?? '';
@@ -873,7 +895,7 @@ function portal_send_invoice_saved_email(array $invoice, string $kind = 'invoice
     // customer or the portal's additional notification recipients.
     $number = trim(preg_replace('/[\r\n\x00-\x1F\x7F]+/u', ' ', (string) ($invoice['nummer'] ?? '')) ?? '');
     $number = function_exists('mb_substr') ? mb_substr($number, 0, 100, 'UTF-8') : substr($number, 0, 100);
-    $rawSubject = 'Tadega Portal – fakturaunderlag sparat' . ($number !== '' ? ' – ' . $number : '');
+    $rawSubject = 'Dokumentportalen – fakturaunderlag sparat' . ($number !== '' ? ' – ' . $number : '');
     $subject = function_exists('mb_encode_mimeheader')
         ? mb_encode_mimeheader($rawSubject, 'UTF-8', 'B', "\r\n")
         : '=?UTF-8?B?' . base64_encode($rawSubject) . '?=';
@@ -892,7 +914,7 @@ function portal_send_invoice_saved_email(array $invoice, string $kind = 'invoice
     };
 
     $body = [
-        'Ett fakturaunderlag har sparats i Tadega Portal.',
+        'Ett fakturaunderlag har sparats i Dokumentportalen.',
         'Detta är en intern avisering; ingen kundkopia skickas.',
         '',
         'Underlagsnummer: ' . $number,
@@ -928,11 +950,10 @@ function portal_send_invoice_saved_email(array $invoice, string $kind = 'invoice
     }
     $body[] = '';
     $body[] = 'Fakturaunderlaget är inte en faktura och förs inte automatiskt över till det separata fakturasystemet.';
-    $body[] = 'Separat fakturasystem: https://tadega.com/faktura/';
     $body[] = '';
-    $body[] = 'Tadega Portal';
+    $body[] = 'Dokumentportalen';
 
-    $headers = "From: Tadega Portal <noreply@tadega.com>\r\n";
+    $headers = "From: Dokumentportalen <" . $recipient . ">\r\n";
     $headers .= "MIME-Version: 1.0\r\nContent-Type: text/plain; charset=UTF-8\r\n";
     $delivery = portal_email_transport_send($recipient, $subject, implode("\r\n", $body), $headers);
     $accepted = ($delivery['accepted'] ?? false) === true;
@@ -984,6 +1005,7 @@ function portal_invoice_email_status_update(string $invoiceId, array $emailResul
 
 function portal_save_invoice(): bool
 {
+    unset($_SESSION['portal_invoice_fixed_error']);
     $_SESSION['portal_invoice_email_sent'] = false;
     $_SESSION['portal_invoice_email_status_saved'] = false;
     $invoiceUser = portal_invoice_auth_current_user();
@@ -1002,6 +1024,7 @@ function portal_save_invoice(): bool
         'ref' => portal_post_text($i, 'ref', 160),
         'customer' => portal_post_text($i, 'customer', 180),
         'description' => portal_post_text($i, 'description', 5000),
+        'source_protocol_id' => portal_post_text($i, 'source_protocol_id', 128),
     ];
     foreach ($fields as $value) {
         if ($value === null) {
@@ -1047,6 +1070,9 @@ function portal_save_invoice(): bool
     // and do not derive net, VAT, or gross totals in the portal.
     $lineTotal = round($lineTotal, 2);
 
+    $catalogLock = portal_invoice_catalog_lock();
+    if (!is_resource($catalogLock)) { $_SESSION['portal_invoice_fixed_error'] = true; return false; }
+    try {
     $records = load_data(INVOICES_FILE, []);
     $editIndex = null;
     if ($fields['id'] !== '') {
@@ -1061,6 +1087,31 @@ function portal_save_invoice(): bool
         }
     }
     $old = $editIndex !== null ? $records[$editIndex] : [];
+    $catalogRecords = portal_invoice_catalog_read();
+    $catalogRules = is_array($catalogRecords) ? portal_invoice_catalog_fixed_rules($catalogRecords) : null;
+    $protectedItems = is_array($catalogRules) ? portal_invoice_catalog_enforce_fixed($items, $old, $catalogRules) : null;
+    if (!is_array($protectedItems)) {
+        $_SESSION['portal_invoice_fixed_error'] = true;
+        return false;
+    }
+    $items = $protectedItems;
+    // Never attribute another user's changes on a shared row to the speaker.
+    $items = portal_voice_learning_filter_shared_tokens($items, $old, is_string($invoiceUser['id'] ?? null) ? $invoiceUser['id'] : '');
+    // Existing links cannot be changed by a crafted POST. New links require
+    // access to both independently authenticated areas and a real protocol.
+    $sourceProtocolId = $editIndex !== null && is_string($old['source_protocol_id'] ?? null) ? $old['source_protocol_id'] : '';
+    if ($editIndex === null && $fields['source_protocol_id'] !== '') {
+        $requestedSource = $fields['source_protocol_id'];
+        if (!preg_match('/\A[A-Za-z0-9_-]{1,128}\z/D', $requestedSource) || !empty($GLOBALS['portalIsScopedPwa']) || !is_array(portal_search_protocol_auth_user())) {
+            return false;
+        }
+        $sourceExists = false;
+        foreach (load_data(PROTOCOLS_FILE, []) as $sourceRecord) {
+            if (is_array($sourceRecord) && ($sourceRecord['id'] ?? null) === $requestedSource) { $sourceExists = true; break; }
+        }
+        if (!$sourceExists) return false;
+        $sourceProtocolId = $requestedSource;
+    }
     $now = gmdate('Y-m-d\TH:i:s\Z');
     $actor = [
         'id' => (string) ($invoiceUser['id'] ?? ''),
@@ -1086,6 +1137,7 @@ function portal_save_invoice(): bool
         'description' => $fields['description'],
         'vat_mode' => $fields['vat_mode'],
         'items' => $items,
+        'source_protocol_id' => $sourceProtocolId,
         'total_sum' => $lineTotal,
         'updated_at' => $now,
         'updated_by' => $actor,
@@ -1112,6 +1164,7 @@ function portal_save_invoice(): bool
     if (!save_data(INVOICES_FILE, array_values($records))) {
         return false;
     }
+    } finally { portal_invoice_catalog_unlock($catalogLock); }
     TadegaPrivacyLogger::event($event);
     $emailResult = portal_send_invoice_saved_email($invoice);
     $_SESSION['portal_invoice_email_sent'] = $emailResult['accepted'] === true;
@@ -2398,7 +2451,7 @@ function portal_serve_asset_route(): void
     if (
         $baseName === 'assets' &&
         (($extension === 'css' && basename($real) !== 'portal.css') ||
-            ($extension === 'js' && basename($real) !== 'signature_pad.js') ||
+            ($extension === 'js' && !in_array(basename($real), ['signature_pad.js', 'invoice_voice.js'], true)) ||
             ($extension === 'svg' && !in_array(basename($real), ['tadega-icon.svg', 'tadega-logo.svg'], true)))
     ) {
         http_response_code(404);
@@ -2510,9 +2563,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     $pwaAllowedActions = match ($portalPwaApp) {
         'protocol' => ['client_diagnostic', 'autosave_draft', 'delete_autosaved_draft', 'protocol_pin_login', 'protocol_pin_logout', 'save_protocol', 'protocol_catalog_quick_save'],
         'invoice' => [
-            'client_diagnostic', 'autosave_draft', 'delete_autosaved_draft', 'invoice_first_admin_setup',
+            'client_diagnostic', 'autosave_draft', 'voice_learning', 'delete_autosaved_draft', 'invoice_first_admin_setup',
             'invoice_pin_login', 'invoice_pin_logout', 'save_invoice', 'invoice_catalog_save_article',
-            'invoice_catalog_delete_article', 'invoice_catalog_quick_save', 'retry_invoice_email',
+            'invoice_catalog_delete_article', 'invoice_catalog_quick_save', 'invoice_shared_approve', 'retry_invoice_email',
             'invoice_admin_set_fortnox_number', 'invoice_admin_save_email_transport',
             'invoice_admin_lock_email_transport', 'invoice_admin_unlock_email_transport',
             'invoice_admin_test_email', 'invoice_admin_create_user', 'invoice_admin_reset_pin',
@@ -2524,7 +2577,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         http_response_code(403);
         $portalCsrfFailed = true;
         TadegaPrivacyLogger::event('system.php_error');
-        if (in_array($action, ['autosave_draft', 'client_diagnostic'], true)) {
+        if (in_array($action, ['autosave_draft', 'client_diagnostic', 'voice_learning'], true)) {
             header('Content-Type: application/json; charset=UTF-8');
             header('Cache-Control: no-store, private, max-age=0, must-revalidate');
             echo json_encode(['ok' => false, 'code' => 'csrf_failed']);
@@ -2542,7 +2595,28 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     ) {
         portal_redirect('invoice');
     } else {
-        if (in_array($action, ['portal_release_check', 'portal_release_install'], true)) {
+        if ($action === 'calendar_login') {
+            if ($activeTab !== 'calendar' || $portalIsScopedPwa) { http_response_code(403); $portalPostError = 'Åtkomst nekad.'; }
+            else {
+                $login = portal_invoice_auth_login(is_string($_POST['username'] ?? null) ? $_POST['username'] : '', is_string($_POST['pin'] ?? null) ? $_POST['pin'] : '');
+                if ($login['ok'] ?? false) portal_redirect('calendar');
+                $portalPostError = $portalLanguage === 'en' ? 'Login failed. Check your credentials or try again later.' : 'Inloggningen misslyckades. Kontrollera uppgifterna eller försök igen senare.';
+            }
+        } elseif ($action === 'calendar_logout') {
+            if ($activeTab !== 'calendar' || $portalIsScopedPwa) { http_response_code(403); $portalPostError = 'Åtkomst nekad.'; }
+            else { portal_invoice_auth_logout(); portal_redirect('calendar'); }
+        } elseif (in_array($action, ['calendar_save', 'calendar_delete'], true)) {
+            $actor = !$portalIsScopedPwa && $activeTab === 'calendar' ? portal_invoice_auth_personal_user() : null;
+            if (!is_array($actor) || !portal_calendar_valid_id($actor['id'] ?? null)) { http_response_code(403); $portalPostError = 'Åtkomst nekad.'; }
+            else {
+                $recipients = [];
+                foreach (portal_invoice_auth_read_users() as $u) if (($u['active'] ?? false) === true && in_array($u['role'] ?? '', ['admin', 'staff'], true) && portal_calendar_valid_id($u['id'] ?? null)) $recipients[] = $u['id'];
+                $result = portal_calendar_update($actor['id'], $action === 'calendar_save' ? 'save' : 'delete', $_POST, $recipients);
+                if ($result['ok'] ?? false) portal_redirect('calendar', 'calendar_' . $result['code']);
+                http_response_code(($result['code'] ?? '') === 'forbidden' ? 403 : 400);
+                $portalPostError = $portalLanguage === 'en' ? 'Could not save. Check the form, access, storage and whether the item was changed elsewhere.' : 'Kunde inte spara. Kontrollera formulär, behörighet och lagring samt om arbetet ändrats på annat håll.';
+            }
+        } elseif (in_array($action, ['portal_release_check', 'portal_release_install'], true)) {
             if ($activeTab !== 'admin' || $portalIsScopedPwa) {
                 http_response_code(404);
                 if (ob_get_level() > 0 && !headers_sent()) {
@@ -2556,32 +2630,30 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 if (function_exists('set_time_limit')) {
                     @set_time_limit(180);
                 }
-                $portalReleaseResult = portal_release_check_latest(__DIR__);
+                unset($_SESSION['github_release_review']);
+                $portalReleaseResult = portal_github_release_check_latest(__DIR__);
+                if (($portalReleaseResult['ok'] ?? false) === true) {
+                    $_SESSION['github_release_review'] = $portalReleaseResult + ['reviewed_at'=>time()];
+                    if ($portalReleaseResult['changed'] === []) portal_github_release_install_marker(__DIR__, $portalReleaseResult['tag'], $portalReleaseResult['commit']);
+                }
                 $portalReleaseResult['action'] = 'check';
             } else {
                 if (function_exists('set_time_limit')) {
                     @set_time_limit(180);
                 }
-                $approvedTag = portal_post_text($_POST, 'approved_tag', 120);
-                $approvedVersion = portal_post_text($_POST, 'approved_version', 80);
-                $approvedManifestSha256 = portal_post_text($_POST, 'approved_manifest_sha256', 64);
+                $review = $_SESSION['github_release_review'] ?? null;
                 $approvalConfirmed = isset($_POST['confirm_install']) && is_string($_POST['confirm_install']) && $_POST['confirm_install'] === '1';
                 if (!$approvalConfirmed) {
-                    $portalReleaseResult = ['ok' => false, 'code' => 'approval_required', 'action' => 'install'];
-                } elseif ($approvedTag === null || $approvedVersion === null || $approvedManifestSha256 === null) {
-                    $portalReleaseResult = ['ok' => false, 'code' => 'approval_invalid', 'action' => 'install'];
+                    $portalReleaseResult = ['ok'=>false,'code'=>'approval_required','action'=>'install'];
+                } elseif (!is_array($review) || !is_int($review['reviewed_at'] ?? null) || $review['reviewed_at'] > time() || time() - $review['reviewed_at'] > 1800) {
+                    $portalReleaseResult = ['ok'=>false,'code'=>'approval_invalid','action'=>'install'];
                 } else {
-                    $portalReleaseResult = portal_release_install_approved(
-                        __DIR__,
-                        $approvedTag,
-                        $approvedVersion,
-                        $approvedManifestSha256
-                    );
+                    unset($_SESSION['github_release_review']);
+                    $portalReleaseResult = portal_github_release_install_approved(__DIR__, $review);
                     $portalReleaseResult['action'] = 'install';
                     if (($portalReleaseResult['ok'] ?? false) === true) {
-                        portal_redirect('admin', ($portalReleaseResult['code'] ?? '') === 'installed'
-                            ? 'release_install_success'
-                            : 'release_already_current');
+                        $marker = portal_github_release_install_marker(__DIR__, $review['tag'], $review['commit']);
+                        portal_redirect('admin', $marker === null ? 'release_marker_error' : (($portalReleaseResult['code'] ?? '') === 'installed' ? 'release_install_success' : 'release_already_current'));
                     }
                 }
             }
@@ -2675,6 +2747,24 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             header('Content-Type: application/json; charset=UTF-8');
             header('Cache-Control: no-store, private, max-age=0, must-revalidate');
             echo json_encode(['ok' => true]);
+            exit;
+        }
+        if ($action === 'voice_learning') {
+            header('Content-Type: application/json; charset=UTF-8');
+            header('Cache-Control: no-store, private, max-age=0, must-revalidate');
+            $voiceUser = $activeTab === 'invoice' ? portal_invoice_auth_current_user() : null;
+            $voiceId = is_array($voiceUser) ? ($voiceUser['id'] ?? '') : '';
+            // Never use a submitted owner ID, and never use the shared central PIN.
+            if (!is_array($voiceUser) || ($voiceUser['auth_source'] ?? '') === 'central_admin' || !portal_voice_learning_id_valid($voiceId)) {
+                http_response_code(403); echo json_encode(['ok'=>false,'code'=>'forbidden']); exit;
+            }
+            $operation = is_string($_POST['operation'] ?? null) ? $_POST['operation'] : '';
+            if ($operation === 'load') {
+                $profile = portal_voice_learning_read($voiceId);
+                $result = is_array($profile) ? ['ok'=>true,'profile'=>portal_voice_learning_public($profile)] : ['ok'=>false,'code'=>'storage_error'];
+            } else $result = portal_voice_learning_update($voiceId, $operation, $_POST);
+            if (!($result['ok'] ?? false)) http_response_code(($result['code'] ?? '') === 'storage_error' ? 503 : 400);
+            echo json_encode($result, JSON_INVALID_UTF8_SUBSTITUTE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
             exit;
         }
         if ($action === 'autosave_draft') {
@@ -3002,7 +3092,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             if (($quickCatalogUser['role'] ?? '') !== 'admin') {
                 portal_json_response(['ok' => false, 'code' => 'admin_required'], 403);
             }
-            $quickCatalogResult = portal_invoice_catalog_save($_POST);
+            $quickCatalogResult = portal_invoice_catalog_save($_POST, ($quickCatalogUser['role'] ?? '') === 'admin' && ($quickCatalogUser['auth_source'] ?? '') !== 'central_admin', $quickCatalogUser);
             if (($quickCatalogResult['ok'] ?? false) === true) {
                 portal_json_response(['ok' => true, 'code' => $quickCatalogResult['code'] ?? 'saved']);
             }
@@ -3031,6 +3121,14 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 ['ok' => false, 'code' => $quickProtocolCode],
                 $quickProtocolCode === 'storage_error' ? 503 : 422
             );
+        } elseif ($action === 'invoice_shared_approve') {
+            $sharedAdmin = $activeTab === 'invoice' ? portal_invoice_auth_current_user() : null;
+            if ($activeTab !== 'invoice' || ($_GET['invoice_view'] ?? '') !== 'articles' || !portal_voice_shared_is_admin($sharedAdmin)) {
+                http_response_code(403); $portalPostError = 'Endast personlig fakturaadmin kan granska delade rättningar.';
+            } else {
+                $sharedResult = portal_voice_shared_approve($sharedAdmin, portal_invoice_auth_read_users(), $_POST['shared_user'] ?? null, $_POST['shared_heard'] ?? null, $_POST['shared_approved'] ?? null, $_POST['shared_article'] ?? null);
+                portal_redirect('invoice', ($sharedResult['ok'] ?? false) ? 'invoice_shared_approved' : 'invoice_shared_error');
+            }
         } elseif ($action === 'invoice_catalog_save_article' || $action === 'invoice_catalog_delete_article') {
             if ($activeTab !== 'invoice' || !isset($_GET['invoice_view']) || $_GET['invoice_view'] !== 'articles') {
                 portal_redirect('invoice');
@@ -3040,23 +3138,28 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 portal_redirect('invoice', 'invoice_login_required');
             }
             if ($action === 'invoice_catalog_save_article') {
-                $catalogResult = portal_invoice_catalog_save($_POST);
+                $catalogResult = portal_invoice_catalog_save($_POST, ($catalogUser['role'] ?? '') === 'admin' && ($catalogUser['auth_source'] ?? '') !== 'central_admin', $catalogUser);
                 if (($catalogResult['ok'] ?? false) === true) {
                     portal_redirect('invoice', 'invoice_article_saved');
                 }
                 $catalogMessage = match ($catalogResult['code'] ?? '') {
                     'storage_error' => 'invoice_catalog_storage_error',
                     'catalog_full' => 'invoice_catalog_full',
+                    'admin_required' => 'invoice_admin_required',
+                    'fixed_duplicate' => 'invoice_fixed_duplicate',
+                    'alias_duplicate' => 'invoice_alias_duplicate',
+                    'invalid_alias' => 'invoice_alias_invalid',
+                    'history_error', 'history_full', 'history_actor' => 'invoice_fixed_history_error',
                     default => 'invoice_article_save_error',
                 };
                 portal_redirect('invoice', $catalogMessage);
             }
             $deleteArticleId = isset($_POST['article_id']) && is_string($_POST['article_id']) ? $_POST['article_id'] : '';
-            $deleteArticleResult = portal_invoice_catalog_delete($deleteArticleId);
+            $deleteArticleResult = portal_invoice_catalog_delete($deleteArticleId, ($catalogUser['role'] ?? '') === 'admin' && ($catalogUser['auth_source'] ?? '') !== 'central_admin', $catalogUser);
             if (($deleteArticleResult['ok'] ?? false) === true) {
                 portal_redirect('invoice', 'invoice_article_deleted');
             }
-            portal_redirect('invoice', ($deleteArticleResult['code'] ?? '') === 'storage_error' ? 'invoice_catalog_storage_error' : 'invoice_article_delete_error');
+            portal_redirect('invoice', match ($deleteArticleResult['code'] ?? '') { 'storage_error' => 'invoice_catalog_storage_error', 'admin_required' => 'invoice_admin_required', 'history_error', 'history_full', 'history_actor' => 'invoice_fixed_history_error', default => 'invoice_article_delete_error' });
         } elseif ($action === 'invoice_admin_create_user') {
             if ($activeTab !== 'invoice') {
                 portal_redirect('invoice');
@@ -3127,9 +3230,48 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 default => 'protocol_user_role_error',
             };
             portal_redirect('invoice', $roleMessage);
+        } elseif ($action === 'delete_archive_file') {
+            if ($activeTab !== 'files' || $portalIsScopedPwa || !$centralAdminCanAccess || $centralAdminNeedsPinChange) {
+                http_response_code(403);
+                $portalPostError = 'Endast central admin kan ta bort filer i arkivet.';
+            } else {
+                $archiveSub = isset($_POST['archive_sub']) && is_string($_POST['archive_sub']) && in_array($_POST['archive_sub'], ['all', 'templates', 'skade', 'overlatelse', 'service', 'invoice'], true) ? $_POST['archive_sub'] : 'all';
+                $deleted = ($_POST['confirm_delete'] ?? '') === '1'
+                    && portal_archive_delete_file(__DIR__ . '/pdf', $_POST['archive_file'] ?? null);
+                if ($deleted) {
+                    TadegaPrivacyLogger::event('file.deleted');
+                }
+                if (ob_get_level() > 0 && !headers_sent()) {
+                    ob_clean();
+                }
+                header('Location: ?tab=files&sub=' . rawurlencode($archiveSub) . '&msg=' . ($deleted ? 'delete_ok' : 'delete_error'), true, 303);
+                exit;
+            }
         } elseif (isset($localActions[$action])) {
             if ($activeTab !== $localActions[$action]) {
                 portal_redirect($localActions[$action], '');
+            }
+        } elseif ($action === 'save_company_settings') {
+            if ($activeTab !== 'admin' || !$centralAdminCanAccess || $centralAdminNeedsPinChange || $portalIsScopedPwa) {
+                http_response_code(403);
+                $portalPostError = 'Endast central admin kan ändra företagsinställningar.';
+            } else {
+                $companyName = portal_post_text($_POST, 'company_name', 100);
+                $skadeRecipient = portal_post_text($_POST, 'skade_recipient_email', 254);
+                $companyLogo = $_POST['company_logo'] ?? '';
+                if (!is_string($companyLogo) || ($companyLogo !== '' && (!preg_match('/\Alogo-[a-f0-9]{16}\.svg\z/D', $companyLogo) || is_link(__DIR__ . '/svg') || is_link(__DIR__ . '/svg/' . $companyLogo) || !is_file(__DIR__ . '/svg/' . $companyLogo)))) portal_redirect('admin', 'company_settings_invalid');
+                if ($companyName === null || str_contains($companyName, "\n") || $skadeRecipient === null || ($skadeRecipient !== '' && !filter_var($skadeRecipient, FILTER_VALIDATE_EMAIL))) {
+                    portal_redirect('admin', 'company_settings_invalid');
+                }
+                $settings = load_settings();
+                $settings['company_name'] = $companyName;
+                $settings['company_logo'] = $companyLogo;
+                $settings['skade_recipient_email'] = $skadeRecipient;
+                if (!save_data(SETTINGS_FILE, $settings)) {
+                    portal_redirect('admin', 'company_settings_error');
+                }
+                TadegaPrivacyLogger::event('settings.updated');
+                portal_redirect('admin', 'company_settings_saved');
             }
         } elseif ($action === 'save_settings') {
             $email = portal_post_text($_POST, 'notification_email', 254);
@@ -3216,6 +3358,16 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 portal_redirect('invoice', 'invoice_login_required');
             }
             if (!portal_save_invoice()) {
+                $fixedError = ($_SESSION['portal_invoice_fixed_error'] ?? false) === true;
+                unset($_SESSION['portal_invoice_fixed_error']);
+                if ($fixedError) {
+                    // Preserve the exact rejected submission, not an older autosave.
+                    $failedUser = portal_invoice_auth_current_user();
+                    $failedDraft = is_string($_POST['draft_id'] ?? null) ? $_POST['draft_id'] : '';
+                    $recovery = is_array($failedUser) ? portal_autosaved_drafts_save('invoice', (string)($failedUser['id'] ?? ''), $failedDraft, $_POST, ($failedUser['role'] ?? '') === 'admin') : ['ok'=>false];
+                    if (($recovery['ok'] ?? false) && !empty($recovery['draft_id'])) portal_redirect('invoice', 'invoice_fixed_save_error', ['draft_id'=>$failedDraft, 'edit_id'=>'', 'copy_id'=>'']);
+                    portal_redirect('invoice', 'invoice_fixed_save_no_draft');
+                }
                 portal_redirect('invoice', 'save_error');
             }
             $invoiceSavingUser = portal_invoice_auth_current_user();
@@ -3281,8 +3433,12 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
 }
 
 $noticeMessages = [
+    'company_settings_saved' => 'Företagsinställningarna har sparats.',
+    'company_settings_invalid' => 'Kontrollera företagsnamnet och mottagaradressen.',
+    'company_settings_error' => 'Företagsinställningarna kunde inte sparas.',
     'success' => 'Inställningarna har sparats.',
-    'release_install_success' => 'Den signerade GitHub-releasen installerades efter ditt godkännande. Endast ändrade tillåtna programfiler skrevs; storage/ lämnades orörd. Ta en ny webbhotellsbackup innan nästa release.',
+    'release_install_success' => 'GitHub-releasen installerades efter ditt godkännande utan separat signaturverifiering. Endast ändrade tillåtna programfiler installerades; kunddata och lokala inställningar skrevs inte över. Ta en ny webbhotellsbackup innan nästa release.',
+    'release_marker_error' => 'Releasekontrollen eller installationen slutfördes, men den installerade versionen kunde inte registreras. Kontrollera lagring och jämför filerna igen.',
     'release_already_current' => 'Den godkända GitHub-releasen matchade redan installerade filer. Ingen programfil skrevs.',
     'release_update_failed' => 'GitHub-uppdateringen stoppades. Läs felinformationen i Adminpanelen; ingen uppdatering bekräftades.',
     'release_changed_since_approval' => 'GitHub-releasen ändrades efter kontrollen. Ingen installation gjordes; kör kontrollen igen och granska den nya releasen.',
@@ -3353,13 +3509,13 @@ $noticeMessages = [
     'email_test_invoice_accepted' => 'E-posttransporten accepterade testutskicket till fakturaunderlagets konfigurerade mottagare. Det bekräftar inte leverans till inkorgen.',
     'email_test_invoice_failed' => 'E-posttransporten kunde inte acceptera testutskicket för fakturaunderlag. Kontrollera SMTP-konfigurationen eller webbhotellets mail()-fallback.',
     'email_test_invoice_not_configured' => 'Ingen giltig primär mottagaradress är konfigurerad. Inget utskick gjordes.',
-    'email_test_skade_accepted' => 'E-posttransporten accepterade testutskicket för skadeblanketter till rl@tadega.com. Det bekräftar inte leverans till inkorgen.',
-    'email_test_skade_failed' => 'E-posttransporten kunde inte acceptera testutskicket för skadeblanketter till rl@tadega.com. Kontrollera SMTP-konfigurationen eller webbhotellets mail()-fallback.',
-    'email_test_skade_accepted_not_marked' => 'SMTP-servern accepterade testutskicket till rl@tadega.com, men teststatusen kunde inte sparas. Kontrollera privat lagring innan du låser inställningarna. Leverans till inkorgen är inte bekräftad.',
-    'email_transport_saved' => 'SMTP-inställningarna har sparats i privat lagring. Lösenordet visas inte. Skicka ett testmejl till rl@tadega.com och kontrollera både status och inkorg innan du låser.',
+    'email_test_skade_accepted' => 'E-posttransporten accepterade testutskicket för skadeblanketter till den av admin valda mottagaren. Det bekräftar inte leverans till inkorgen.',
+    'email_test_skade_failed' => 'E-posttransporten kunde inte acceptera testutskicket för skadeblanketter till den av admin valda mottagaren. Kontrollera SMTP-konfigurationen eller webbhotellets mail()-fallback.',
+    'email_test_skade_accepted_not_marked' => 'SMTP-servern accepterade testutskicket till den av admin valda mottagaren, men teststatusen kunde inte sparas. Kontrollera privat lagring innan du låser inställningarna. Leverans till inkorgen är inte bekräftad.',
+    'email_transport_saved' => 'SMTP-inställningarna har sparats i privat lagring. Lösenordet visas inte. Skicka ett testmejl till den av admin valda mottagaren och kontrollera både status och inkorg innan du låser.',
     'email_transport_locked' => 'SMTP-inställningarna är låsta. Utskick kan fortsätta; ändring kräver adminens PIN.',
     'email_transport_unlocked' => 'SMTP-inställningarna är upplåsta med adminens PIN. Lås dem igen när ändring och kontroll är klar.',
-    'email_transport_test_required' => 'Skicka ett SMTP-test till rl@tadega.com och lås först efter att transporten accepterat testet. Det bekräftar inte leverans till inkorgen.',
+    'email_transport_test_required' => 'Skicka ett SMTP-test till den av admin valda mottagaren och lås först efter att transporten accepterat testet. Det bekräftar inte leverans till inkorgen.',
     'email_transport_validation_error' => 'SMTP-inställningarna är ogiltiga. Kontrollera servernamn, e-postadresser, lösenord och kombinationen 465/SSL eller 587/TLS.',
     'email_transport_storage_error' => 'SMTP-inställningarna kunde inte läsas eller sparas säkert. Kontrollera privat storage och filrättigheterna.',
     'email_transport_unlock_pin_error' => 'Admin-PIN kunde inte verifieras. Inställningarna förblir låsta.',
@@ -3374,12 +3530,22 @@ $noticeMessages = [
     'invoice_number_storage_error' => 'Fakturanumret kunde inte sparas säkert. Kontrollera privat lagring och filrättigheter.',
     'invoice_number_not_found' => 'Underlaget hittades inte. Ladda om listan och försök igen.',
     'invoice_number_already_set' => 'Underlaget har redan ett Fortnox-fakturanummer och finns inte längre under Under behandling.',
+    'invoice_shared_approved' => 'Alternativnamnet godkändes och lades till i katalogen. Kontrollera kommande röstförslag.',
+    'invoice_shared_error' => 'Förslaget kunde inte godkännas. Det kan ha ändrats, dragits tillbaka, krocka med ett befintligt namn eller sakna plats. Ladda om och granska igen.',
     'invoice_article_saved' => 'Artikeln har sparats i artikelkatalogen.',
     'invoice_article_deleted' => 'Artikeln har tagits bort från artikelkatalogen.',
+    'invoice_alias_duplicate' => 'Alternativa namn måste vara unika och får inte vara en annan artikels namn.',
+    'invoice_fixed_history_error' => 'Fastprishistoriken kunde inte lagras säkert eller har nått gränsen. Ingen ändring gjordes. Kontakta administratören.',
+    'invoice_alias_invalid' => 'Kontrollera de alternativa namnen. Högst 20 namn per artikel, ett per rad.',
+    'invoice_fixed_duplicate' => 'Fastprisartiklar måste ha en unik beskrivning i katalogen.',
+    'invoice_fixed_save_error' => 'Underlaget sparades inte. Den senaste inmatningen finns som utkast. Kontrollera fasta priser, enheter och artikelkatalogen; välj vid behov artikeln igen.',
+    'invoice_fixed_save_no_draft' => 'Underlaget sparades inte och utkastet kunde inte säkerhetskopieras. Kontrollera fasta priser, katalog och lagring innan du försöker igen.',
     'invoice_article_save_error' => 'Artikeln kunde inte sparas. Ange en beskrivning och ett giltigt pris mellan 0 och 10 000 000 kr.',
     'invoice_article_delete_error' => 'Artikeln kunde inte tas bort. Ladda om katalogen och försök igen.',
     'invoice_catalog_storage_error' => 'Artikelkatalogen kunde inte läsas eller sparas säkert. Kontrollera privat lagring och filrättigheter; inga ändringar har bekräftats.',
     'invoice_catalog_full' => 'Artikelkatalogen har nått gränsen på 500 artiklar.',
+    'calendar_saved' => $portalLanguage === 'en' ? 'Work saved.' : 'Arbetet har sparats.',
+    'calendar_deleted' => $portalLanguage === 'en' ? 'Work deleted.' : 'Arbetet har tagits bort.',
     'logo_ok' => 'Logotypen har laddats upp och sanerats.',
 
     'logo_error' => 'Logotypen kunde inte laddas upp. Kontrollera att det är en liten, giltig SVG-fil.',
@@ -3391,6 +3557,105 @@ $noticeMessages = [
     'skade_submit_error' => 'Skadeblanketten kunde inte visas. Öppna skadeblankettfliken igen. Om felet återkommer, ange flik och tidpunkt till administratören.',
     'skade_email_retry_error' => 'Mejlet kunde inte skickas om. Kontrollera att skadeblanketten finns kvar och att dess utskicksstatus inte är oklar.',
 ];
+if ($portalLanguage === 'en') {
+    // Translate fixed system messages by their code, never user or document text.
+    $noticeMessages = array_replace($noticeMessages, [
+        'company_settings_saved' => 'Company settings saved.',
+        'company_settings_invalid' => 'Check the company name, logo and recipient address.',
+        'company_settings_error' => 'Company settings could not be saved.',
+        'success' => 'Settings saved.',
+        'saved' => 'Invoice record saved.',
+        'saved_draft_cleanup_error' => 'The record was saved, but its autosaved draft could not be deleted. Remove it manually under Drafts.',
+        'protocol_signature_required' => 'The report content has changed. Draw a new technician signature before saving.',
+        'protocol_email_accepted' => 'The service report was saved. The email transport accepted the PDF message for the primary internal recipient; this does not confirm inbox delivery. No customer copy was sent.',
+        'protocol_email_failed' => 'The service report was saved, but the PDF email was not accepted. Check the primary recipient address and email transport. No customer copy was sent.',
+        'protocol_email_not_configured' => 'The service report was saved, but no valid primary internal recipient is configured. No email or customer copy was sent.',
+        'draft_deleted' => 'Draft deleted.',
+        'draft_delete_error' => 'Draft could not be deleted. Reload the page and try again.',
+        'saved_email_sent' => 'The record was saved and the email transport accepted the internal notification to the primary recipient. This does not confirm inbox delivery. No customer copy was sent.',
+        'saved_email_failed' => 'The record was saved, but the email transport did not accept the notification. Check the primary recipient and email function. No customer copy was sent.',
+        'invoice_email_status_storage_error' => 'The record was saved, but the notification status could not be saved. Check whether the email arrived before trying again to avoid a duplicate notification.',
+        'invoice_email_retry_accepted' => 'The email transport accepted a retry of the internal notification. This does not confirm inbox delivery. No customer copy was sent.',
+        'invoice_email_retry_failed' => 'The email transport did not accept the retry. Check the primary recipient address and email function. No customer copy was sent.',
+        'invoice_login_success' => 'You are signed in to invoice records.',
+        'invoice_login_remembered' => 'You are signed in. This device stays signed in until you sign out.',
+        'invoice_logout' => 'You are signed out of invoice records.',
+        'invoice_login_failed' => 'Incorrect username or PIN. Check your credentials and try again.',
+        'invoice_login_locked' => 'Too many failed attempts. Sign-in is temporarily locked; try again later.',
+        'invoice_setup_success' => 'The first administrator account was created. Sign in with your chosen username and PIN.',
+        'invoice_setup_error' => 'The administrator account could not be created. Check the username, display name and six-digit PIN.',
+        'invoice_setup_pin_mismatch' => 'The PINs did not match. Try again.',
+        'invoice_setup_closed' => 'The first administrator account already exists. Sign in with your account.',
+        'invoice_setup_storage_error' => 'The account could not be created because private storage could not be read or written. Check permissions or contact an administrator.',
+        'invoice_login_required' => 'Sign in with your personal PIN to use invoice records and the customer register.',
+        'protocol_login_success' => 'You are signed in to service reports.',
+        'protocol_logout' => 'You are signed out of service reports.',
+        'protocol_login_failed' => 'Incorrect service report username or PIN. Check your credentials and try again.',
+        'protocol_login_locked' => 'Too many failed attempts. Service report sign-in is temporarily locked; try again later.',
+        'protocol_login_required' => 'Sign in with your personal service report account before saving.',
+        'protocol_auth_storage_error' => 'Service report sign-in could not read private account storage. Contact an administrator.',
+        'protocol_user_created' => 'Service report account created.',
+        'protocol_user_create_error' => 'Service report account could not be created. Check the details and that the username is not already used.',
+        'protocol_user_pin_reset' => 'Service report PIN reset. The user\'s previous service report sessions were invalidated.',
+        'protocol_user_pin_reset_error' => 'The service report PIN could not be reset. Check that the account exists and the new PIN has six digits.',
+        'invoice_admin_required' => 'This action is available only to administrators.',
+        'central_admin_login_success' => 'You are signed in as central administrator. The administrator PIN works on staff pages; customer standalone apps remain separate.',
+        'central_admin_logout' => 'You are signed out of central administration.',
+        'central_admin_setup_success' => 'The central administrator PIN was created. It grants access to staff pages without changing the separate invoice and service report accounts.',
+        'central_admin_pin_changed' => 'The central administrator PIN was changed. Other active central administrator sessions were invalidated.',
+        'central_admin_pin_expired' => 'The central PIN must be updated before administrator access can continue. Confirm the current PIN and choose a new one as instructed.',
+        'central_admin_login_failed' => 'The central administrator PIN could not be verified. Check it and try again.',
+        'central_admin_login_locked' => 'Too many failed attempts. Central administrator sign-in is temporarily locked; try again later.',
+        'central_admin_storage_error' => 'Central administrator authentication could not read or save its private storage. Check storage permissions via SFTP.',
+        'central_admin_pin_mismatch' => 'The PINs did not match. Try again.',
+        'central_admin_current_pin_error' => 'The current central administrator PIN did not match. No PIN change was made.',
+        'central_admin_pin_same' => 'The new PIN must differ from the current PIN.',
+        'central_admin_session_expired' => 'The central administrator session is no longer valid. Sign in again.',
+        'email_test_invoice_accepted' => 'The email transport accepted the invoice record test message. This does not confirm inbox delivery.',
+        'email_test_invoice_failed' => 'The email transport did not accept the invoice record test message. Check the SMTP configuration or mail() fallback.',
+        'email_test_invoice_not_configured' => 'No valid primary recipient is configured. No message was sent.',
+        'email_test_skade_accepted' => 'The email transport accepted the damage form test message for the administrator-selected recipient. This does not confirm inbox delivery.',
+        'email_test_skade_failed' => 'The email transport did not accept the damage form test message. Check the SMTP configuration or mail() fallback.',
+        'email_transport_locked' => 'SMTP settings are locked. Sending can continue; changes require the administrator PIN.',
+        'email_transport_unlocked' => 'SMTP settings are unlocked with the administrator PIN. Lock them again after making and checking changes.',
+        'email_transport_validation_error' => 'SMTP settings are invalid. Check the server name, email addresses, password and 465/SSL or 587/TLS combination.',
+        'email_transport_storage_error' => 'SMTP settings could not be read or saved safely. Check private storage and permissions.',
+        'email_transport_unlock_pin_error' => 'The administrator PIN could not be verified. Settings remain locked.',
+        'invoice_user_created' => 'User account created.',
+        'invoice_user_create_error' => 'Account could not be created. Check the details and that the username is not already used.',
+        'invoice_pin_reset' => 'PIN reset. The user\'s previous sessions were invalidated.',
+        'invoice_pin_reset_error' => 'PIN could not be reset. Check that the account exists and the new PIN has six digits.',
+        'invoice_number_saved' => 'The Fortnox invoice number and date were saved. The record was moved to History.',
+        'invoice_number_error' => 'The invoice number could not be saved. Enter an allowed number of at most 80 characters.',
+        'invoice_number_date_error' => 'Enter a valid Fortnox invoice date.',
+        'invoice_number_storage_error' => 'The invoice number could not be saved safely. Check private storage and permissions.',
+        'invoice_number_not_found' => 'Record not found. Reload the list and try again.',
+        'invoice_number_already_set' => 'The record already has a Fortnox invoice number and is no longer in In progress.',
+        'invoice_shared_approved' => 'The alternative name was approved and added to the catalog. Review future voice suggestions.',
+        'invoice_shared_error' => 'The suggestion could not be approved. It may have changed, been withdrawn, conflict with an existing name or exceed the limit. Reload and review again.',
+        'invoice_article_saved' => 'Item saved to the catalog.',
+        'invoice_article_deleted' => 'Item removed from the catalog.',
+        'invoice_alias_duplicate' => 'Alternative names must be unique and must not be another item’s name.',
+        'invoice_fixed_history_error' => 'The fixed-price history could not be stored safely or has reached its limit. No change was made. Contact an administrator.',
+        'invoice_alias_invalid' => 'Check alternative names. Up to 20 names per item, one per line.',
+        'invoice_fixed_duplicate' => 'Fixed-price items must have a unique description in the catalog.',
+        'invoice_fixed_save_error' => 'The record was not saved. Your latest input is in a draft. Check fixed prices, units and catalog availability; select the item again if needed.',
+        'invoice_fixed_save_no_draft' => 'The record and recovery draft could not be saved. Check fixed prices, the catalog and storage before retrying.',
+        'invoice_article_save_error' => 'Item could not be saved. Enter a description and a valid price between 0 and 10,000,000 SEK.',
+        'invoice_article_delete_error' => 'Item could not be removed. Reload the catalog and try again.',
+        'invoice_catalog_storage_error' => 'The item catalog could not be read or saved safely. Check private storage and permissions; no changes were confirmed.',
+        'invoice_catalog_full' => 'The item catalog has reached its limit of 500 items.',
+        'logo_ok' => 'The logo was uploaded and sanitized.',
+        'logo_error' => 'The logo could not be uploaded. Check that it is a small, valid SVG file.',
+        'backup_ok' => 'A private backup was created.',
+        'backup_error' => 'The backup could not be created. Check private storage is writable and has free space, then try again.',
+        'email_error' => 'Enter a valid email address without spaces.',
+        'save_error' => 'The details could not be saved. Check fields marked with errors and try again. If the error recurs, give the administrator the tab and time.',
+        'submit_error' => 'The damage form could not be created. Check fields marked with errors and try again. If it recurs, give the administrator the tab and time.',
+        'skade_submit_error' => 'The damage form could not be displayed. Open the damage form tab again. If it recurs, give the administrator the tab and time.',
+        'skade_email_retry_error' => 'The email could not be resent. Check that the damage form still exists and that its delivery status is not uncertain.',
+    ]);
+}
 $msgKey = isset($_GET['msg']) && is_string($_GET['msg']) ? $_GET['msg'] : '';
 $notice = $noticeMessages[$msgKey] ?? '';
 if (str_starts_with($msgKey, 'release_') && ($activeTab !== 'admin' || !$centralAdminCanAccess)) {
@@ -3405,7 +3670,7 @@ if (in_array($msgKey, ['protocol_email_failed', 'protocol_email_not_configured',
     'protocol_login_failed', 'protocol_login_locked', 'protocol_login_required', 'protocol_auth_storage_error',
     'protocol_user_create_error', 'protocol_user_pin_reset_error',
     'invoice_admin_required', 'invoice_user_create_error', 'invoice_pin_reset_error',
-    'invoice_article_save_error', 'invoice_article_delete_error', 'invoice_catalog_storage_error', 'invoice_catalog_full', 'invoice_email_retry_not_found',
+    'release_marker_error', 'invoice_shared_error', 'invoice_article_save_error', 'invoice_fixed_duplicate', 'invoice_alias_duplicate', 'invoice_alias_invalid', 'invoice_fixed_history_error', 'invoice_fixed_save_error', 'invoice_fixed_save_no_draft', 'invoice_article_delete_error', 'invoice_catalog_storage_error', 'invoice_catalog_full', 'invoice_email_retry_not_found',
     'invoice_number_error', 'invoice_number_date_error', 'invoice_number_storage_error', 'invoice_number_not_found',
     'email_transport_validation_error', 'email_transport_storage_error', 'email_transport_unlock_pin_error', 'email_transport_unlock_rate_limited',
     'invoice_setup_error', 'invoice_setup_pin_mismatch', 'invoice_setup_storage_error',
@@ -3481,14 +3746,40 @@ $portalPwaNames = [
     'invoice' => 'Fakturaunderlag',
     'skadeblankett' => 'Skadeblankett',
 ];
-$portalPwaName = $portalIsScopedPwa ? ($portalPwaNames[$portalPwaApp] ?? 'Tadega Portal') : 'Tadega Portal';
+$companySettingsForDisplay = load_settings();
+$portalCompanyName = is_string($companySettingsForDisplay['company_name'] ?? null) ? trim($companySettingsForDisplay['company_name']) : '';
+$portalCompanyLogo = $companySettingsForDisplay['company_logo'] ?? '';
+if (!is_string($portalCompanyLogo) || !preg_match('/\Alogo-[a-f0-9]{16}\.svg\z/D', $portalCompanyLogo) || is_link(__DIR__ . '/svg') || is_link(__DIR__ . '/svg/' . $portalCompanyLogo) || !is_file(__DIR__ . '/svg/' . $portalCompanyLogo)) $portalCompanyLogo = '';
+$portalCompanyName = $portalCompanyName !== '' ? $portalCompanyName : 'Dokumentportalen';
+$portalPwaName = $portalIsScopedPwa ? ($portalPwaNames[$portalPwaApp] ?? 'Dokumentportalen') : 'Dokumentportalen';
 $portalManifestHref = $portalIsScopedPwa
     ? './' . $portalPwaManifest
     : ($isSkadeCustomerMode ? './manifest-skadeblankett.webmanifest' : './manifest.webmanifest');
 $portalAssetEntry = $portalIsScopedPwa ? './' . $portalPwaEntry : './index.php';
+$languageChangeWarning = $portalLanguage === 'en' ? 'Changing language reloads the page and may discard unsaved changes. Continue?' : 'Språkbyte laddar om sidan och kan kasta bort osparade ändringar. Fortsätta?';
+$languageLink = static function (string $language): string {
+    $params = $_GET;
+    unset($params['lang']);
+    $params['lang'] = $language;
+    return '?' . http_build_query($params, '', '&', PHP_QUERY_RFC3986);
+};
+?>
+<?php
+        $tabIcons = [
+            'protocol' => '<svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M7 3.5h7l4 4v13H7z"/><path d="M14 3.5v4h4M10 12h5M10 16h5"/></svg>',
+            'search' => '<svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 4.2 4.2"/></svg>',
+            'invoice' => '<svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 3.5h12v17l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6M9 16h3"/></svg>',
+            'skadeblankett' => '<svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3 5 6v5c0 4.6 2.8 7.7 7 10 4.2-2.3 7-5.4 7-10V6z"/><path d="M12 8v4M12 15h.01"/></svg>',
+            'files' => '<svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3.5 7.5h6l2 2h9v9h-17z"/><path d="M3.5 7.5v-2h6l2 2"/></svg>',
+            'archive' => '<svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3 2"/></svg>',
+            'customers' => '<svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="9" cy="8" r="3"/><path d="M3.5 20v-1.5a5.5 5.5 0 0 1 11 0V20M16 5.5a3 3 0 0 1 0 5.8M17 15.5a5 5 0 0 1 3.5 4.5"/></svg>',
+            'calendar' => '<svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M7.5 3v4M16.5 3v4M3.5 9h17M8 13h2M14 13h2M8 17h2"/></svg>',
+            'settings' => '<svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-1.8 3.1-.2-.1a1.7 1.7 0 0 0-1.9.1l-.2.1h-3.6l-.1-.2a1.7 1.7 0 0 0-1.7-1l-.2.1-3.1-1.8.1-.2a1.7 1.7 0 0 0-.1-1.9L7 15v-3.6l.2-.1a1.7 1.7 0 0 0 1-1.7l-.1-.2 1.8-3.1.2.1a1.7 1.7 0 0 0 1.9-.1l.2-.1h3.6l.1.2a1.7 1.7 0 0 0 1.7 1l.2-.1 3.1 1.8-.1.2a1.7 1.7 0 0 0 .1 1.9l.1.2V15z"/></svg>',
+            'admin' => '<svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3 5 6v5c0 4.6 2.8 7.7 7 10 4.2-2.3 7-5.4 7-10V6z"/><path d="m9.2 12.2 1.8 1.8 3.9-4"/></svg>',
+        ];
 ?>
 <!doctype html>
-<html lang="sv">
+<html lang="<?= h($portalLanguage) ?>">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -3499,11 +3790,14 @@ $portalAssetEntry = $portalIsScopedPwa ? './' . $portalPwaEntry : './index.php';
         var root = document.documentElement;
         var theme = 'system';
         var density = 'comfortable';
+        var width = 'standard';
         try {
             var savedTheme = window.localStorage.getItem('tadega.portal.theme');
             var savedDensity = window.localStorage.getItem('tadega.portal.density');
+            var savedWidth = window.localStorage.getItem('tadega.portal.width');
             if (savedTheme === 'light' || savedTheme === 'dark' || savedTheme === 'system') theme = savedTheme;
             if (savedDensity === 'compact' || savedDensity === 'comfortable') density = savedDensity;
+            if (savedWidth === 'standard' || savedWidth === 'wide') width = savedWidth;
         } catch (ignore) {}
         var systemPrefersDark = false;
         try {
@@ -3511,20 +3805,21 @@ $portalAssetEntry = $portalIsScopedPwa ? './' . $portalPwaEntry : './index.php';
         } catch (ignore) {}
         root.setAttribute('data-theme', theme === 'system' ? (systemPrefersDark ? 'dark' : 'light') : theme);
         root.setAttribute('data-density', density);
+        root.setAttribute('data-width', width);
         root.setAttribute('data-theme-preference', theme);
     })();
     </script>
-    <meta name="theme-color" content="#0b7a72">
-    <meta name="description" content="<?= h($isSkadeCustomerMode ? 'Kundformulär för skadeblankett.' : ($portalIsScopedPwa ? 'Tadega ' . $portalPwaName . ' — separat formulärvy.' : 'Tadega Portal – verkstadsdokument och administration.')) ?>">
-    <meta name="application-name" content="<?= h($isSkadeCustomerMode ? 'Tadega Skadeblankett' : ($portalIsScopedPwa ? 'Tadega ' . $portalPwaName : 'Tadega Dokumentportalen')) ?>">
+    <meta name="theme-color" content="#14343b">
+    <meta name="description" content="<?= h($isSkadeCustomerMode ? 'Kundformulär för skadeblankett.' : ($portalIsScopedPwa ? $portalPwaName . ' — separat formulärvy.' : 'Dokumentportalen – verkstadsdokument och administration.')) ?>">
+    <meta name="application-name" content="<?= h($isSkadeCustomerMode ? 'Skadeblankett' : ($portalIsScopedPwa ? $portalPwaName : 'Dokumentportalen')) ?>">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="<?= h($isSkadeCustomerMode ? 'Skadeblankett' : ($portalIsScopedPwa ? $portalPwaName : 'Tadega Dokumentportalen')) ?>">
+    <meta name="apple-mobile-web-app-title" content="<?= h($isSkadeCustomerMode ? 'Skadeblankett' : ($portalIsScopedPwa ? $portalPwaName : 'Dokumentportalen')) ?>">
     <meta name="msapplication-TileColor" content="#07172d">
     <meta name="msapplication-TileImage" content="<?= h($portalAssetEntry . '?view_file=assets/pwa-icon-192.png') ?>">
     <meta name="msapplication-config" content="./browserconfig.xml">
-    <title><?= h($isSkadeCustomerMode ? 'Skadeblankett · Tadega' : ($portalIsScopedPwa ? $portalPwaName . ' · Tadega' : $pageTitle . ' · Tadega Dokumentportalen')) ?></title>
+    <title><?= h($isSkadeCustomerMode ? 'Skadeblankett · Dokumentportalen' : ($portalIsScopedPwa ? $portalPwaName . ' · Dokumentportalen' : $pageTitle . ' · Dokumentportalen')) ?></title>
     <link rel="manifest" href="<?= h($portalManifestHref) ?>">
     <link rel="icon" type="image/x-icon" href="./favicon.ico?v=<?= (string) (@filemtime(__DIR__ . '/favicon.ico') ?: '1') ?>">
     <link rel="icon" type="image/png" sizes="192x192" href="<?= h($portalAssetEntry . '?view_file=assets/pwa-icon-192.png') ?>">
@@ -3594,65 +3889,63 @@ $portalAssetEntry = $portalIsScopedPwa ? './' . $portalPwaEntry : './index.php';
     </script>
 </head>
 <body<?= $isSkadeCustomerMode ? ' class="skade-kiosk-mode"' : '' ?>>
-<a class="skip-link" href="#main-content"><?= $isSkadeCustomerMode ? 'Hoppa till formuläret' : 'Hoppa till huvudinnehåll' ?></a>
+<a class="skip-link" href="#main-content"><?= $portalLanguage === 'en' ? ($isSkadeCustomerMode ? 'Skip to form' : 'Skip to main content') : ($isSkadeCustomerMode ? 'Hoppa till formuläret' : 'Hoppa till huvudinnehåll') ?></a>
+<?php if ($isSkadeCustomerMode): ?><nav aria-label="Language / Språk"><a href="<?= h($languageLink('sv')) ?>" onclick="return confirm(<?= h(json_encode($languageChangeWarning, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT)) ?>)" lang="sv">Svenska</a> · <a href="<?= h($languageLink('en')) ?>" onclick="return confirm(<?= h(json_encode($languageChangeWarning, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT)) ?>)" lang="en">English</a></nav><?php endif; ?>
 <?php if (!$isSkadeCustomerMode): ?>
 <header class="app-header">
     <div class="app-header-inner">
-        <a class="brand" href="?tab=<?= h($activeTab) ?>" aria-label="<?= h($portalIsScopedPwa ? 'Tadega ' . $portalPwaName . ' startsida' : 'Tadega Dokumentportalen startsida') ?>">
-            <img class="brand-icon" src="?view_file=assets/tadega-icon.svg&amp;v=<?= (string) (@filemtime(__DIR__ . '/assets/tadega-icon.svg') ?: '1') ?>" alt="" width="42" height="42">
-            <span><span class="brand-name">TADEGA</span><span class="brand-caption"><?= h($portalIsScopedPwa ? $portalPwaName : 'Dokumentportalen') ?></span></span>
+        <a class="brand" href="?tab=<?= h($activeTab) ?>" aria-label="<?= h($portalIsScopedPwa ? $portalPwaName . ' startsida' : 'Dokumentportalen startsida') ?>">
+            <?php if (!$portalIsScopedPwa && $portalCompanyLogo !== ''): ?><img class="brand-company-logo" src="?view_file=<?= rawurlencode('svg/' . $portalCompanyLogo) ?>" alt=""><?php else: ?><img class="brand-icon" src="<?= h($portalAssetEntry . '?view_file=assets/tadega-icon.svg') ?>" alt=""><?php endif; ?>
+            <span><span class="brand-name"><?= h($portalCompanyName) ?></span><span class="brand-caption"><?= h($portalIsScopedPwa ? $portalPwaName : 'Dokumentportalen') ?></span></span>
         </a>
         <div class="header-actions">
-            <button class="btn pwa-install-btn" id="pwa-install-button" type="button" hidden>Installera app</button>
+            <span class="header-language"><a href="<?= h($languageLink('sv')) ?>" onclick="return confirm(<?= h(json_encode($languageChangeWarning, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT)) ?>)" lang="sv" <?= $portalLanguage === 'sv' ? 'aria-current="true"' : '' ?>>Svenska</a> · <a href="<?= h($languageLink('en')) ?>" onclick="return confirm(<?= h(json_encode($languageChangeWarning, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT)) ?>)" lang="en" <?= $portalLanguage === 'en' ? 'aria-current="true"' : '' ?>>English</a></span>
+            <button class="btn pwa-install-btn" id="pwa-install-button" type="button" hidden><?= ($portalLanguage ?? 'sv') === 'en' ? 'Install app' : 'Installera app' ?></button>
             <p class="pwa-install-help" id="pwa-install-help" role="status" aria-live="polite" hidden></p>
             <details class="ui-preferences" id="portal-ui-preferences">
-                <summary class="btn ui-preferences-toggle" aria-label="Visningsinställningar" aria-controls="portal-ui-preferences-panel">
+                <summary class="btn ui-preferences-toggle" aria-label="<?= ($portalLanguage ?? 'sv') === 'en' ? 'Display settings' : 'Visningsinställningar' ?>" aria-controls="portal-ui-preferences-panel">
                     <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-1.8 3.1-.2-.1a1.7 1.7 0 0 0-1.9.1l-.2.1h-3.6l-.1-.2a1.7 1.7 0 0 0-1.7-1l-.2.1-3.1-1.8.1-.2a1.7 1.7 0 0 0-.1-1.9L7 15v-3.6l.2-.1a1.7 1.7 0 0 0 1-1.7l-.1-.2 1.8-3.1.2.1a1.7 1.7 0 0 0 1.9-.1l.2-.1h3.6l.1.2a1.7 1.7 0 0 0 1.7 1l.2-.1 3.1 1.8-.1.2a1.7 1.7 0 0 0 .1 1.9l.1.2V15z"/></svg>
-                    <span class="ui-preferences-label">Visning</span>
+                    <span class="ui-preferences-label"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Display' : 'Visning' ?></span>
                 </summary>
                 <div class="ui-preferences-panel" id="portal-ui-preferences-panel">
                     <div>
-                        <label for="portal-theme-select">Färgläge</label>
+                        <label for="portal-theme-select"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Color scheme' : 'Färgläge' ?></label>
                         <select id="portal-theme-select" name="portal-theme-select">
-                            <option value="system">Följ enhetens inställning</option>
-                            <option value="light">Ljust</option>
-                            <option value="dark">Mörkt</option>
+                            <option value="system"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Use device setting' : 'Följ enhetens inställning' ?></option>
+                            <option value="light"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Light' : 'Ljust' ?></option>
+                            <option value="dark"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Dark' : 'Mörkt' ?></option>
                         </select>
                     </div>
                     <div>
-                        <label for="portal-density-select">Visningstäthet</label>
+                        <label for="portal-density-select"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Display density' : 'Visningstäthet' ?></label>
                         <select id="portal-density-select" name="portal-density-select">
-                            <option value="comfortable">Luftig</option>
-                            <option value="compact">Kompakt</option>
+                            <option value="comfortable"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Comfortable' : 'Luftig' ?></option>
+                            <option value="compact"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Compact' : 'Kompakt' ?></option>
                         </select>
                     </div>
-                    <p class="ui-preferences-help">Valen sparas lokalt i den här webbläsaren. Inga formulär- eller kunduppgifter lagras här.</p>
+                    <div>
+                        <label for="portal-width-select"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Content width' : 'Innehållsbredd' ?></label>
+                        <select id="portal-width-select" name="portal-width-select">
+                            <option value="standard"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Standard' : 'Standard' ?></option>
+                            <option value="wide"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Wide on large screens' : 'Bred på stora skärmar' ?></option>
+                        </select>
+                    </div>
+                    <p class="ui-preferences-help"><?= ($portalLanguage ?? 'sv') === 'en' ? 'These preferences are saved locally in this browser. No form or customer data is stored here.' : 'Valen sparas lokalt i den här webbläsaren. Inga formulär- eller kunduppgifter lagras här.' ?></p>
                 </div>
             </details>
-            <div class="header-meta"><span class="header-pill">Tadega AB</span><span><?= h(date('Y-m-d')) ?></span></div>
+            <div class="header-meta"><span class="header-pill"><?= h($portalCompanyName) ?></span><span><?= h(date('Y-m-d')) ?></span></div>
         </div>
     </div>
 </header>
 <?php endif; ?>
 <?php if (($invoiceSetupState !== 'unconfigured' || $activeTab === 'admin' || $centralAdminCanAccess) && !$isSkadeCustomerMode && !$portalIsScopedPwa): ?>
-<nav class="tabs-wrap" aria-label="Huvudmeny">
-    <button class="btn portal-nav-toggle" id="portal-nav-toggle" type="button" aria-expanded="false" aria-controls="portal-main-menu" aria-label="Öppna huvudmenyn">
-        <span class="portal-nav-toggle-label"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16M4 12h16M4 17h16"/></svg><span>Huvudmeny</span></span>
+<nav class="tabs-wrap" aria-label="<?= ($portalLanguage ?? 'sv') === 'en' ? 'Main menu' : 'Huvudmeny' ?>">
+    <button class="btn portal-nav-toggle" id="portal-nav-toggle" type="button" aria-expanded="false" aria-controls="portal-main-menu" aria-label="<?= ($portalLanguage ?? 'sv') === 'en' ? 'Open main menu' : 'Öppna huvudmenyn' ?>">
+        <span class="portal-nav-toggle-label"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16M4 12h16M4 17h16"/></svg><span><?= ($portalLanguage ?? 'sv') === 'en' ? 'Main menu' : 'Huvudmeny' ?></span></span>
         <svg class="ui-icon portal-nav-toggle-chevron" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m6 9 6 6 6-6"/></svg>
     </button>
     <div class="tabs" id="portal-main-menu">
         <?php
-        $tabIcons = [
-            'protocol' => '<svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M7 3.5h7l4 4v13H7z"/><path d="M14 3.5v4h4M10 12h5M10 16h5"/></svg>',
-            'search' => '<svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 4.2 4.2"/></svg>',
-            'invoice' => '<svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 3.5h12v17l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6M9 16h3"/></svg>',
-            'skadeblankett' => '<svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3 5 6v5c0 4.6 2.8 7.7 7 10 4.2-2.3 7-5.4 7-10V6z"/><path d="M12 8v4M12 15h.01"/></svg>',
-            'files' => '<svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3.5 7.5h6l2 2h9v9h-17z"/><path d="M3.5 7.5v-2h6l2 2"/></svg>',
-            'archive' => '<svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3 2"/></svg>',
-            'customers' => '<svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="9" cy="8" r="3"/><path d="M3.5 20v-1.5a5.5 5.5 0 0 1 11 0V20M16 5.5a3 3 0 0 1 0 5.8M17 15.5a5 5 0 0 1 3.5 4.5"/></svg>',
-            'settings' => '<svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-1.8 3.1-.2-.1a1.7 1.7 0 0 0-1.9.1l-.2.1h-3.6l-.1-.2a1.7 1.7 0 0 0-1.7-1l-.2.1-3.1-1.8.1-.2a1.7 1.7 0 0 0-.1-1.9L7 15v-3.6l.2-.1a1.7 1.7 0 0 0 1-1.7l-.1-.2 1.8-3.1.2.1a1.7 1.7 0 0 0 1.9-.1l.2-.1h3.6l.1.2a1.7 1.7 0 0 0 1.7 1l.2-.1 3.1 1.8-.1.2a1.7 1.7 0 0 0 .1 1.9l.1.2V15z"/></svg>',
-            'admin' => '<svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3 5 6v5c0 4.6 2.8 7.7 7 10 4.2-2.3 7-5.4 7-10V6z"/><path d="m9.2 12.2 1.8 1.8 3.9-4"/></svg>',
-        ];
         foreach ($portalTabs as $key => $meta):
         ?>
             <a class="tab-btn <?= $activeTab === $key ? 'active' : '' ?>" href="?tab=<?= h($key) ?>" <?= $activeTab === $key ? 'aria-current="page"' : '' ?>>
@@ -3664,9 +3957,10 @@ $portalAssetEntry = $portalIsScopedPwa ? './' . $portalPwaEntry : './index.php';
 <?php endif; ?>
 <div class="portal-network-status is-checking" id="portal-network-status" role="status" aria-live="polite" aria-atomic="true">
     <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 9.5a11 11 0 0 1 14 0M8 12.5a6.5 6.5 0 0 1 8 0M10.7 15.5a2 2 0 0 1 2.6 0"/><circle cx="12" cy="19" r=".8"/></svg>
-    <div><strong id="portal-network-title">Anslutningsstatus</strong> <span id="portal-network-detail">Formulär skickas när du sparar; inga formulär eller dokument köas för synk.</span></div>
+    <div><strong id="portal-network-title"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Connection status' : 'Anslutningsstatus' ?></strong> <span id="portal-network-detail"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Forms are submitted when you save; forms and documents are not queued for synchronization.' : 'Formulär skickas när du sparar; inga formulär eller dokument köas för synk.' ?></span></div>
 </div>
 <main id="main-content" class="page-shell" tabindex="-1">
+    <?php if ($portalLanguage === 'en'): ?><p lang="en" role="note">English translation is in progress: some instructions, alerts, and voice commands remain in Swedish. Saved content and documents are not translated.</p><?php endif; ?>
     <?php if (in_array($activeTab, ['protocol', 'skadeblankett'], true)): ?>
         <script src="<?= h($portalAssetEntry . '?view_file=assets/signature_pad.js&v=' . (string) (@filemtime(__DIR__ . '/assets/signature_pad.js') ?: '1')) ?>"></script>
     <?php endif; ?>
@@ -3676,7 +3970,7 @@ $portalAssetEntry = $portalIsScopedPwa ? './' . $portalPwaEntry : './index.php';
             <div class="page-heading-main">
                 <span class="page-heading-icon" aria-hidden="true"><?= $tabIcons[$activeTab] ?? '' ?></span>
                 <div class="page-heading-copy">
-                    <p class="page-eyebrow"><?= h($portalIsScopedPwa ? 'Tadega ' . $portalPwaName : 'Tadega Portal') ?></p>
+                    <p class="page-eyebrow"><?= h($portalIsScopedPwa ? $portalPwaName : $portalCompanyName) ?></p>
                     <h1 class="page-title"><?= h($pageTitle) ?></h1>
                     <p class="page-subtitle"><?= h($pageSubtitle) ?></p>
                 </div>
@@ -3700,40 +3994,40 @@ $portalAssetEntry = $portalIsScopedPwa ? './' . $portalPwaEntry : './index.php';
                 <div class="invoice-auth-card-head">
                     <span class="invoice-auth-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3.5 20v-1.5a5.5 5.5 0 0 1 11 0V20M17 8h4M19 6v4"/></svg></span>
                     <div>
-                        <h2 id="invoice-first-admin-title">Skapa portalens första adminkonto</h2>
-                        <p>Gör detta en gång innan du börjar använda portalen.</p>
+                        <h2 id="invoice-first-admin-title"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Create the portal\'s first administrator account' : 'Skapa portalens första adminkonto' ?></h2>
+                        <p><?= ($portalLanguage ?? 'sv') === 'en' ? 'Do this once before using the portal.' : 'Gör detta en gång innan du börjar använda portalen.' ?></p>
                     </div>
                 </div>
                 <form class="invoice-auth-form" method="post" action="?tab=invoice" autocomplete="on">
                     <input type="hidden" name="action" value="invoice_first_admin_setup">
                     <?= csrf_field() ?>
                     <div>
-                        <label for="invoice-first-admin-username">Användarnamn</label>
+                        <label for="invoice-first-admin-username"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Username' : 'Användarnamn' ?></label>
                         <input id="invoice-first-admin-username" name="admin[username]" type="text" maxlength="120" autocomplete="username" autocapitalize="none" spellcheck="false" required>
                     </div>
                     <div>
-                        <label for="invoice-first-admin-name">Visningsnamn</label>
+                        <label for="invoice-first-admin-name"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Display name' : 'Visningsnamn' ?></label>
                         <input id="invoice-first-admin-name" name="admin[name]" type="text" maxlength="120" autocomplete="name" required>
                     </div>
                     <div>
-                        <label for="invoice-first-admin-pin">Välj sexsiffrig PIN</label>
+                        <label for="invoice-first-admin-pin"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Choose a six-digit PIN' : 'Välj sexsiffrig PIN' ?></label>
                         <input id="invoice-first-admin-pin" name="admin[pin]" type="password" inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6" autocomplete="new-password" required>
                     </div>
                     <div>
-                        <label for="invoice-first-admin-pin-confirm">Upprepa PIN</label>
+                        <label for="invoice-first-admin-pin-confirm"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Repeat PIN' : 'Upprepa PIN' ?></label>
                         <input id="invoice-first-admin-pin-confirm" name="admin[pin_confirm]" type="password" inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6" autocomplete="new-password" required>
                     </div>
-                    <button class="btn btn-main" type="submit" <?= !$csrfReady ? 'disabled' : '' ?>>Skapa första admin</button>
+                    <button class="btn btn-main" type="submit" <?= !$csrfReady ? 'disabled' : '' ?>><?= ($portalLanguage ?? 'sv') === 'en' ? 'Create first administrator' : 'Skapa första admin' ?></button>
                 </form>
-                <p class="invoice-auth-help">Det här engångssteget visas bara när kontolistan är tom. Skydda katalogen med Websupports lösenordsskydd innan portalen görs tillgänglig. Efter att kontot skapats loggar du in med ditt nya användarnamn och PIN.</p>
+                <p class="invoice-auth-help"><?= ($portalLanguage ?? 'sv') === 'en' ? 'This one-time step is shown only when the account list is empty. Protect the directory with Websupport password protection before making the portal available. Once the account is created, sign in with your new username and PIN.' : 'Det här engångssteget visas bara när kontolistan är tom. Skydda katalogen med Websupports lösenordsskydd innan portalen görs tillgänglig. Efter att kontot skapats loggar du in med ditt nya användarnamn och PIN.' ?></p>
             </section>
         <?php elseif ($activeTab === 'invoice' && $invoiceSetupState === 'error' && !is_array($invoiceAuthUser)): ?>
             <section class="invoice-auth-card" aria-labelledby="invoice-setup-error-title">
                 <div class="invoice-auth-card-head">
                     <span class="invoice-auth-mark" aria-hidden="true">!</span>
                     <div>
-                        <h2 id="invoice-setup-error-title">Kontoinställningen kunde inte läsas</h2>
-                        <p>Portalen kan inte avgöra om ett adminkonto redan finns.</p>
+                        <h2 id="invoice-setup-error-title"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Account settings could not be read' : 'Kontoinställningen kunde inte läsas' ?></h2>
+                        <p><?= ($portalLanguage ?? 'sv') === 'en' ? 'The portal cannot determine whether an administrator account already exists.' : 'Portalen kan inte avgöra om ett adminkonto redan finns.' ?></p>
                     </div>
                 </div>
                 <p class="invoice-auth-help">Av säkerhetsskäl är första-admin-formuläret stängt när den privata kontofilen saknas i läsbar form, är ogiltig eller är en länk. Kontrollera <code>storage/invoice_users.json</code> och katalogens filrättigheter på webbhotellet.</p>
@@ -3743,44 +4037,44 @@ $portalAssetEntry = $portalIsScopedPwa ? './' . $portalPwaEntry : './index.php';
                 <div class="invoice-auth-card-head">
                     <span class="invoice-auth-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3"/></svg></span>
                     <div>
-                        <h2 id="invoice-login-title">Logga in på fakturaunderlaget</h2>
-                        <p>Använd ditt personliga användarnamn och din sexsiffriga PIN.</p>
+                        <h2 id="invoice-login-title"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Sign in to invoice records' : 'Logga in på fakturaunderlaget' ?></h2>
+                        <p><?= ($portalLanguage ?? 'sv') === 'en' ? 'Use your personal username and six-digit PIN.' : 'Använd ditt personliga användarnamn och din sexsiffriga PIN.' ?></p>
                     </div>
                 </div>
                 <form class="invoice-auth-form" method="post" action="?tab=invoice" autocomplete="on">
                     <input type="hidden" name="action" value="invoice_pin_login">
                     <?= csrf_field() ?>
                     <div>
-                        <label for="invoice-login-username">Användarnamn</label>
+                        <label for="invoice-login-username"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Username' : 'Användarnamn' ?></label>
                         <input id="invoice-login-username" name="username" type="text" maxlength="120" autocomplete="username" autocapitalize="none" spellcheck="false" required>
                     </div>
                     <div>
-                        <label for="invoice-login-pin">Sexsiffrig PIN</label>
+                        <label for="invoice-login-pin"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Six-digit PIN' : 'Sexsiffrig PIN' ?></label>
                         <input id="invoice-login-pin" name="pin" type="password" inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6" autocomplete="current-password" aria-describedby="invoice-login-help" required>
                     </div>
                     <label class="invoice-remember" for="invoice-remember-me">
                         <input id="invoice-remember-me" name="remember_me" type="checkbox" value="1">
-                        <span><strong>Håll mig inloggad tills jag loggar ut</strong><small>Välj bara detta på en privat och betrodd enhet.</small></span>
+                        <span><strong><?= ($portalLanguage ?? 'sv') === 'en' ? 'Keep me signed in until I sign out' : 'Håll mig inloggad tills jag loggar ut' ?></strong><small><?= ($portalLanguage ?? 'sv') === 'en' ? 'Only select this on a private, trusted device.' : 'Välj bara detta på en privat och betrodd enhet.' ?></small></span>
                     </label>
-                    <button class="btn btn-main" type="submit" <?= !$csrfReady ? 'disabled' : '' ?>>Logga in</button>
+                    <button class="btn btn-main" type="submit" <?= !$csrfReady ? 'disabled' : '' ?>><?= ($portalLanguage ?? 'sv') === 'en' ? 'Sign in' : 'Logga in' ?></button>
                 </form>
-                <p class="invoice-auth-help" id="invoice-login-help">Den här sexsiffriga PIN-koden gäller fakturaunderlaget och Kundregistret. Central adminåtkomst till personalsidorna sköts separat via Adminpanelen, och webbhotellets/proxyns grundskydd ska vara kvar.</p>
+                <p class="invoice-auth-help" id="invoice-login-help"><?= ($portalLanguage ?? 'sv') === 'en' ? 'This six-digit PIN applies to invoice records and the customer register. Central administrator access to staff pages is managed separately in Administration. Keep the hosting provider\'s or proxy\'s access protection enabled.' : 'Den här sexsiffriga PIN-koden gäller fakturaunderlaget och Kundregistret. Central adminåtkomst till personalsidorna sköts separat via Adminpanelen, och webbhotellets/proxyns grundskydd ska vara kvar.' ?></p>
             </section>
         <?php else: ?>
             <?php if (in_array($activeTab, ['invoice', 'customers', 'search'], true) && is_array($invoiceAuthUser)): ?>
                 <div class="invoice-session-bar">
                     <div class="invoice-session-person">
-                        <span>Inloggad som</span>
+                        <span><?= ($portalLanguage ?? 'sv') === 'en' ? 'Signed in as' : 'Inloggad som' ?></span>
                         <strong><?= h($invoiceAuthUser['name'] ?? $invoiceAuthUser['username'] ?? 'Användare') ?></strong>
                         <?= portal_ui_badge(($invoiceAuthUser['role'] ?? '') === 'admin' ? 'Admin' : 'Personal', 'info') ?>
                     </div>
                     <?php if (($invoiceAuthUser['auth_source'] ?? '') === 'central_admin'): ?>
-                        <a class="btn btn-outline" href="?tab=admin">Hantera central adminsession</a>
+                        <a class="btn btn-outline" href="?tab=admin"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Manage central administrator session' : 'Hantera central adminsession' ?></a>
                     <?php else: ?>
                         <form class="invoice-session-form" method="post" action="?tab=invoice">
                             <input type="hidden" name="action" value="invoice_pin_logout">
                             <?= csrf_field() ?>
-                            <button class="btn btn-outline" type="submit">Logga ut från fakturakontot</button>
+                            <button class="btn btn-outline" type="submit"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Sign out of invoice account' : 'Logga ut från fakturakontot' ?></button>
                         </form>
                     <?php endif; ?>
                 </div>
@@ -3797,7 +4091,7 @@ $portalAssetEntry = $portalIsScopedPwa ? './' . $portalPwaEntry : './index.php';
         <?php endif; ?>
     </div>
     <?php if (!$isSkadeCustomerMode): ?>
-        <footer class="app-footer">Tadega Portal · Intern verkstadsadministration · © Rickard Längkvist / Tadega AB</footer>
+        <footer class="app-footer">Dokumentportalen · © Rickard Längkvist</footer>
     <?php endif; ?>
 </main>
 <script>
@@ -3870,8 +4164,10 @@ $portalAssetEntry = $portalIsScopedPwa ? './' . $portalPwaEntry : './index.php';
     var preferences = document.getElementById('portal-ui-preferences');
     var themeSelect = document.getElementById('portal-theme-select');
     var densitySelect = document.getElementById('portal-density-select');
+    var widthSelect = document.getElementById('portal-width-select');
     var themeKey = 'tadega.portal.theme';
     var densityKey = 'tadega.portal.density';
+    var widthKey = 'tadega.portal.width';
     var themeQuery = null;
 
     function storedChoice(key, allowed, fallback) {
@@ -3901,7 +4197,7 @@ $portalAssetEntry = $portalIsScopedPwa ? './' . $portalPwaEntry : './index.php';
         root.setAttribute('data-theme', dark ? 'dark' : 'light');
         root.setAttribute('data-theme-preference', preference);
         var themeColor = document.querySelector('meta[name="theme-color"]');
-        if (themeColor) themeColor.setAttribute('content', dark ? '#101b1d' : '#0b7a72');
+        if (themeColor) themeColor.setAttribute('content', dark ? '#101b1d' : '#14343b');
     }
 
     function applyDensity(density) {
@@ -3910,6 +4206,7 @@ $portalAssetEntry = $portalIsScopedPwa ? './' . $portalPwaEntry : './index.php';
 
     var selectedTheme = storedChoice(themeKey, ['system', 'light', 'dark'], 'system');
     var selectedDensity = storedChoice(densityKey, ['comfortable', 'compact'], 'comfortable');
+    var selectedWidth = storedChoice(widthKey, ['standard', 'wide'], 'standard');
     if (themeSelect) {
         themeSelect.value = selectedTheme;
         themeSelect.addEventListener('change', function () {
@@ -3926,8 +4223,17 @@ $portalAssetEntry = $portalIsScopedPwa ? './' . $portalPwaEntry : './index.php';
             saveChoice(densityKey, selectedDensity);
         });
     }
+    if (widthSelect) {
+        widthSelect.value = selectedWidth;
+        widthSelect.addEventListener('change', function () {
+            selectedWidth = widthSelect.value === 'wide' ? 'wide' : 'standard';
+            root.setAttribute('data-width', selectedWidth);
+            saveChoice(widthKey, selectedWidth);
+        });
+    }
     applyTheme(selectedTheme);
     applyDensity(selectedDensity);
+    root.setAttribute('data-width', selectedWidth);
     if (themeQuery) {
         var onSystemThemeChange = function () {
             if (selectedTheme === 'system') applyTheme('system');
@@ -3983,7 +4289,7 @@ $portalAssetEntry = $portalIsScopedPwa ? './' . $portalPwaEntry : './index.php';
         nav.classList.toggle('is-open', !!open && isNarrowNav());
         var expanded = !!open && isNarrowNav();
         navToggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
-        navToggle.setAttribute('aria-label', expanded ? 'Stäng huvudmenyn' : 'Öppna huvudmenyn');
+        navToggle.setAttribute('aria-label', document.documentElement.lang === 'en' ? (expanded ? 'Close main menu' : 'Open main menu') : (expanded ? 'Stäng huvudmenyn' : 'Öppna huvudmenyn'));
     }
     function syncNavMode() {
         if (!isNarrowNav()) setNavOpen(false);

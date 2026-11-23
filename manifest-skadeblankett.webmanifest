@@ -1,6 +1,6 @@
 {
   "id": "./skadeblankett-kund.php",
-  "name": "Tadega – Skadeblankett",
+  "name": "Skadeblankett",
   "short_name": "Skadeblankett",
   "description": "Kundformulär för skadeblanketten på mobil och surfplatta.",
   "lang": "sv-SE",
@@ -8,8 +8,8 @@
   "scope": "./skadeblankett-kund.php",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#f3f7f5",
-  "theme_color": "#07172d",
+  "background_color": "#f3f7f6",
+  "theme_color": "#14343b",
   "categories": ["business", "productivity"],
   "icons": [
     {

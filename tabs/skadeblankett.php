@@ -379,19 +379,19 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
     <section class="skade-hero" aria-labelledby="skade-title">
         <div>
             <?php if ($skadeCustomerMode): ?>
-                <p class="skade-hero-kicker"><span aria-hidden="true">◈</span> Bilglas · kundformulär</p>
-                <h2 id="skade-title">Fyll i skadeblanketten</h2>
-                <p>Fält märkta med * är obligatoriska. Övriga fält är frivilliga. I sista steget ritar du din signatur.</p>
+                <p class="skade-hero-kicker"><span aria-hidden="true">◈</span> <?= ($portalLanguage ?? 'sv') === 'en' ? 'Auto glass · customer form' : 'Bilglas · kundformulär' ?></p>
+                <h2 id="skade-title"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Complete the damage form' : 'Fyll i skadeblanketten' ?></h2>
+                <p><?= ($portalLanguage ?? 'sv') === 'en' ? 'Fields marked * are required. Other fields are optional. In the final step, draw your signature.' : 'Fält märkta med * är obligatoriska. Övriga fält är frivilliga. I sista steget ritar du din signatur.' ?></p>
             <?php else: ?>
-                <p class="skade-hero-kicker"><span aria-hidden="true">◈</span> Bilglas · kundunderlag</p>
+                <p class="skade-hero-kicker"><span aria-hidden="true">◈</span> <?= ($portalLanguage ?? 'sv') === 'en' ? 'Auto glass · customer record' : 'Bilglas · kundunderlag' ?></p>
                 <?php if ($skadeEditMode): ?>
-                    <h2 id="skade-title">Redigera skadeblankett</h2>
+                    <h2 id="skade-title"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Edit damage form' : 'Redigera skadeblankett' ?></h2>
                     <p>Uppgifterna har hämtats från Historik. När du sparar skapas en ny PDF-version och den tidigare PDF:en behålls. Den sparade signaturen visas; bekräfta den igen eller rensa och rita om.</p>
                 <?php elseif ($skadeEditError !== ''): ?>
-                    <h2 id="skade-title">Skadeblanketten kan inte redigeras</h2>
+                    <h2 id="skade-title"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Damage form cannot be edited' : 'Skadeblanketten kan inte redigeras' ?></h2>
                     <p><?= h($skadeEditError) ?></p>
                 <?php else: ?>
-                    <h2 id="skade-title">Skapa kundunderlag för skadeblanketten</h2>
+                    <h2 id="skade-title"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Create customer record for damage form' : 'Skapa kundunderlag för skadeblanketten' ?></h2>
                     <p>Fyll i kund- och fordonsuppgifterna och låt kunden rita sin signatur på skärmen. Vi placerar dem på Bilrutans originalblankett. Skadedetaljer, tillägg, betalning och verkstadsdatum lämnas tomma så att ni kan komplettera dem.</p>
                     <small class="skade-device-instructions">Kundläget är responsivt för moderna telefoner och surfplattor. iPhone/iPad: Safari → Dela → Lägg till på hemskärmen; Android: Chrome → ⋮ → Installera app eller Lägg till på startskärmen. Starta från ikonen för fristående vy. Kiosklås: iOS/iPadOS har Guidad åtkomst; Android har skärmfästning eller enhetens kioskläge. Menyer och stöd varierar mellan webbläsare; annars kan sidan användas direkt i webbläsaren.</small>
                 <?php endif; ?>
@@ -399,14 +399,14 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
         </div>
         <?php if (!$skadeCustomerMode): ?>
             <div class="skade-hero-actions">
-                <?php if ($skadeEditAttempted): ?><a class="btn btn-outline" href="?tab=archive">Tillbaka till Historik</a><?php endif; ?>
+                <?php if ($skadeEditAttempted): ?><a class="btn btn-outline" href="?tab=archive"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Back to History' : 'Tillbaka till Historik' ?></a><?php endif; ?>
                 <a class="btn btn-main" href="./skadeblankett-kund.php" target="_blank" rel="noopener">Öppna kundläge på mobil eller surfplatta ↗</a>
                 <?php if ($skadePreviewAvailable): ?>
-                    <button class="btn btn-outline skade-preview-toggle" type="button" id="skade-preview-toggle" aria-controls="skade-preview-details" aria-expanded="true" hidden>Visa PDF-förhandsvisning</button>
+                    <button class="btn btn-outline skade-preview-toggle" type="button" id="skade-preview-toggle" aria-controls="skade-preview-details" aria-expanded="true" hidden><?= ($portalLanguage ?? 'sv') === 'en' ? 'View PDF preview' : 'Visa PDF-förhandsvisning' ?></button>
                 <?php endif; ?>
                 <?php if ($skadeTemplateExists): ?>
-                    <a class="btn btn-outline" href="<?= h($skadeViewOriginal) ?>" target="_blank" rel="noopener">Öppna ifyllbar PDF ↗</a>
-                    <a class="btn btn-outline" href="<?= h($skadeDownloadOriginal) ?>">Ladda ned original</a>
+                    <a class="btn btn-outline" href="<?= h($skadeViewOriginal) ?>" target="_blank" rel="noopener"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Open fillable PDF ↗' : 'Öppna ifyllbar PDF ↗' ?></a>
+                    <a class="btn btn-outline" href="<?= h($skadeDownloadOriginal) ?>"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Download original' : 'Ladda ned original' ?></a>
                 <?php endif; ?>
             </div>
         <?php endif; ?>
@@ -418,14 +418,14 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
 
     <?php if ($skadeCustomerMode && $skadeCustomerDone): ?>
         <div class="skade-kiosk-notice<?= ($skadeMailStatus === 'failed' || $skadePdfTextFitWarning) ? ' is-warning' : '' ?>" id="skade-kiosk-notice" role="status" aria-live="polite">
-            <strong>Blanketten är inskickad</strong>
+            <strong><?= ($portalLanguage ?? 'sv') === 'en' ? 'The form has been submitted' : 'Blanketten är inskickad' ?></strong>
             <?php if ($skadePdfTextFitWarning): ?>
                 <p>En eller flera textrutor i PDF:en använder text mindre än 5 pt. Be personalen kontrollera att den går att läsa innan den används.</p>
             <?php endif; ?>
             <?php if ($skadeMailStatus === 'failed'): ?>
                 <p>Uppgifterna och PDF:en är sparade, men e-postaviseringen kunde inte skickas. Meddela personalen så att de kan kontrollera e-poststatusen och vid behov försöka igen. Nästa kund kan fylla i den tomma blanketten nedan.</p>
             <?php else: ?>
-                <p>Nästa kund kan fylla i sin blankett nedan.</p>
+                <p><?= ($portalLanguage ?? 'sv') === 'en' ? 'The next customer can complete their form below.' : 'Nästa kund kan fylla i sin blankett nedan.' ?></p>
             <?php endif; ?>
         </div>
     <?php elseif (!$skadeCustomerMode && !$skadeEditMode && $skadePdfValid): ?>
@@ -450,14 +450,14 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
                     <p>Kund- och fordonsuppgifterna finns på en kopia av originalblanketten. Kontrollera PDF:en och komplettera verkstadsuppgifterna innan den används.</p>
                 <?php endif; ?>
                 <div class="skade-success-actions">
-                    <a class="btn btn-main" href="?view_file=<?= rawurlencode($skadePdf) ?>" target="_blank" rel="noopener">Visa ifylld PDF</a>
-                    <a class="btn btn-outline" href="?download_file=<?= rawurlencode($skadePdf) ?>">Ladda ned PDF</a>
+                    <a class="btn btn-main" href="?view_file=<?= rawurlencode($skadePdf) ?>" target="_blank" rel="noopener"><?= ($portalLanguage ?? 'sv') === 'en' ? 'View completed PDF' : 'Visa ifylld PDF' ?></a>
+                    <a class="btn btn-outline" href="?download_file=<?= rawurlencode($skadePdf) ?>"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Download PDF' : 'Ladda ned PDF' ?></a>
                 </div>
                 <?php if ($skadeMailStatus === 'sent'): ?>
                     <?php if ($skadeEmailRetryResult === 'sent'): ?>
-                        <p style="margin-top:9px">E-posttransporten accepterade omförsöket till rl@tadega.com. Det bekräftar inte vidarebefordran eller leverans till inkorgen.</p>
+                        <p style="margin-top:9px">E-posttransporten accepterade omförsöket till den av admin valda mottagaren. Det bekräftar inte vidarebefordran eller leverans till inkorgen.</p>
                     <?php else: ?>
-                        <p style="margin-top:9px">E-posttransporten accepterade utskicket till rl@tadega.com. Det bekräftar inte vidarebefordran eller leverans till inkorgen.</p>
+                        <p style="margin-top:9px">E-posttransporten accepterade utskicket till den av admin valda mottagaren. Det bekräftar inte vidarebefordran eller leverans till inkorgen.</p>
                     <?php endif; ?>
                 <?php elseif ($skadeMailStatus === 'failed'): ?>
                     <p class="skade-mail-note"><?php if ($skadeEmailRetryResult === 'failed'): ?>Omförsöket kunde inte skickas.<?php else: ?>PDF:en är sparad, men e-postaviseringen kunde inte skickas.<?php endif; ?> Kontrollera E-poststatus för transport och teknisk felkod. En ny knapptryckning gör ett nytt försök med samma PDF.</p>
@@ -467,8 +467,8 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
                             <input type="hidden" name="action" value="retry_skade_email">
                             <input type="hidden" name="record_id" value="<?= h($skadeEmailRecordId) ?>">
                             <input type="hidden" name="retry_token" value="<?= h($skadeEmailRetryToken) ?>">
-                            <p>Skicka om den redan skapade PDF:en. Mottagaren är alltid rl@tadega.com; ingen kundkopia skickas. Varje sidvisning ger en engångsåtgärd, så dubbeltryck på samma knapp ger inte två nya försök.</p>
-                            <button class="btn btn-main" type="submit" <?= empty($csrfReady) || $skadeEmailRetryToken === '' ? 'disabled' : '' ?>>Försök skicka igen till rl@tadega.com</button>
+                            <p>Skicka om den redan skapade PDF:en. Mottagaren är vald av admin; ingen kundkopia skickas. Varje sidvisning ger en engångsåtgärd, så dubbeltryck på samma knapp ger inte två nya försök.</p>
+                            <button class="btn btn-main" type="submit" <?= empty($csrfReady) || $skadeEmailRetryToken === '' ? 'disabled' : '' ?>>Försök skicka igen till den av admin valda mottagaren</button>
                         </form>
                     <?php endif; ?>
                 <?php elseif ($skadeMailStatus === 'pending'): ?>
@@ -482,12 +482,12 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
         <div class="skade-main">
             <?php if ($skadeTextFitConfirmationRequired): ?>
                 <div class="skade-text-fit-warning" role="alert" aria-live="assertive">
-                    <strong>Bekräfta innan PDF skapas eller skickas</strong>
+                    <strong><?= ($portalLanguage ?? 'sv') === 'en' ? 'Confirm before creating or sending the PDF' : 'Bekräfta innan PDF skapas eller skickas' ?></strong>
                     <p><?= h(is_string($portalSkadeTextFitMessage ?? null) && $portalSkadeTextFitMessage !== '' ? $portalSkadeTextFitMessage : 'PDF-förhandskontrollen visar att text behöver vara mindre än 5 pt. Ingen PDF har sparats eller skickats.') ?> Uppgifterna är kvar i formuläret. Du kan ändra dem nu eller uttryckligen fortsätta med knappen nedan.</p>
                 </div>
             <?php endif; ?>
             <div class="skade-progress" aria-live="polite">
-                <div class="skade-progress-row"><span>Obligatoriska uppgifter</span><span id="skade-progress-text">0 av 0</span></div>
+                <div class="skade-progress-row"><span><?= ($portalLanguage ?? 'sv') === 'en' ? 'Required information' : 'Obligatoriska uppgifter' ?></span><span id="skade-progress-text">0 av 0</span></div>
                 <div class="skade-progress-track"><div class="skade-progress-bar" id="skade-progress-bar"></div></div>
             </div>
 
@@ -505,51 +505,51 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
                 <?php endif; ?>
 
                 <section class="skade-card" aria-labelledby="skade-kund-heading">
-                    <div class="skade-card-head"><span class="skade-step">1</span><div><h3 id="skade-kund-heading">Kunduppgifter</h3><p>Ange uppgifterna precis som de ska stå på blanketten.</p></div></div>
+                    <div class="skade-card-head"><span class="skade-step">1</span><div><h3 id="skade-kund-heading"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Customer details' : 'Kunduppgifter' ?></h3><p><?= ($portalLanguage ?? 'sv') === 'en' ? 'Enter the details exactly as they should appear on the form.' : 'Ange uppgifterna precis som de ska stå på blanketten.' ?></p></div></div>
                     <div class="skade-grid">
                         <div class="skade-field" style="display:flex;align-items:end;padding-bottom:3px">
-                            <label class="skade-choice skade-company-choice" style="width:100%"><input id="sk-foretag" type="checkbox" name="s[foretag]" value="1" <?= $skadeChecked('foretag') ? 'checked' : '' ?>><span><strong>Företagskund</strong><br><small>Markera om kunden är ett företag.</small></span></label>
+                            <label class="skade-choice skade-company-choice" style="width:100%"><input id="sk-foretag" type="checkbox" name="s[foretag]" value="1" <?= $skadeChecked('foretag') ? 'checked' : '' ?>><span><strong><?= ($portalLanguage ?? 'sv') === 'en' ? 'Business customer' : 'Företagskund' ?></strong><br><small><?= ($portalLanguage ?? 'sv') === 'en' ? 'Select if the customer is a business.' : 'Markera om kunden är ett företag.' ?></small></span></label>
                         </div>
                         <div class="skade-field skade-field-wide">
-                            <label class="skade-label" for="sk-namn">Namn, adress, postnummer och ort <span class="skade-required">*</span></label>
+                            <label class="skade-label" for="sk-namn"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Name, address, postal code and city' : 'Namn, adress, postnummer och ort' ?> <span class="skade-required">*</span></label>
                             <textarea id="sk-namn" name="s[namn_adress]" maxlength="250" autocomplete="<?= $skadeCustomerMode ? 'off' : 'street-address' ?>" required><?= $skadeText('namn_adress') ?></textarea>
                         </div>
                         <div class="skade-field">
-                            <label class="skade-label" for="sk-personnr">Personnummer / organisationsnummer <span class="skade-required">*</span></label>
+                            <label class="skade-label" for="sk-personnr"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Personal / company identification number' : 'Personnummer / organisationsnummer' ?> <span class="skade-required">*</span></label>
                             <input id="sk-personnr" name="s[person_orgnr]" maxlength="40" autocomplete="off" required value="<?= $skadeText('person_orgnr') ?>">
-                            <small class="skade-help">Ange kundens personnummer eller företagets organisationsnummer.</small>
+                            <small class="skade-help"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Enter the customer\'s personal identification number or the company\'s registration number.' : 'Ange kundens personnummer eller företagets organisationsnummer.' ?></small>
                         </div>
                         <div class="skade-field">
-                            <label class="skade-label" for="sk-telefon">Telefonnummer <?php if ($skadeCustomerMode): ?><span class="skade-required">*</span><?php else: ?><small>(frivilligt)</small><?php endif; ?></label>
+                            <label class="skade-label" for="sk-telefon">Telefonnummer <?php if ($skadeCustomerMode): ?><span class="skade-required">*</span><?php else: ?><small><?= ($portalLanguage ?? 'sv') === 'en' ? '(optional)' : '(frivilligt)' ?></small><?php endif; ?></label>
                             <input id="sk-telefon" name="s[telefon]" type="tel" inputmode="numeric" maxlength="40" autocomplete="<?= $skadeCustomerMode ? 'off' : 'tel' ?>" <?= $skadeCustomerMode ? 'required' : '' ?> value="<?= $skadeText('telefon') ?>">
                         </div>
                         <div class="skade-field skade-field-wide">
-                            <label class="skade-label" for="sk-epost">E-postadress <small>(frivillig)</small></label>
+                            <label class="skade-label" for="sk-epost"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Email address' : 'E-postadress' ?> <small><?= ($portalLanguage ?? 'sv') === 'en' ? '(optional)' : '(frivillig)' ?></small></label>
                             <input id="sk-epost" name="s[epost]" type="email" maxlength="254" autocomplete="<?= $skadeCustomerMode ? 'off' : 'email' ?>" value="<?= $skadeText('epost') ?>">
                             <?php if ($skadeCustomerMode): ?>
-                                <small class="skade-help">Om du anger e-postadress skrivs den i blanketten.</small>
+                                <small class="skade-help"><?= ($portalLanguage ?? 'sv') === 'en' ? 'If you enter an email address, it is included on the form.' : 'Om du anger e-postadress skrivs den i blanketten.' ?></small>
                             <?php else: ?>
-                                <small class="skade-help">Om den anges skrivs adressen i blanketten. Den färdiga PDF:en mejlas automatiskt endast till rl@tadega.com.</small>
+                                <small class="skade-help"><?= ($portalLanguage ?? 'sv') === 'en' ? 'If provided, the address is included on the form. If an administrator has configured a recipient, the PDF is sent only to that recipient. No email is sent without a recipient.' : 'Om den anges skrivs adressen i blanketten. Om admin har angett en mottagare skickas PDF:en endast dit. Utan mottagare skickas inget mejl.' ?></small>
                             <?php endif; ?>
                         </div>
                     </div>
                 </section>
 
                 <section class="skade-card" aria-labelledby="skade-fordon-heading">
-                    <div class="skade-card-head"><span class="skade-step">2</span><div><h3 id="skade-fordon-heading">Fordon och försäkring</h3><p>Uppgifterna förs över till fordonets fält på Bilrutan-blanketten.</p></div></div>
+                    <div class="skade-card-head"><span class="skade-step">2</span><div><h3 id="skade-fordon-heading"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Vehicle and insurance' : 'Fordon och försäkring' ?></h3><p><?= ($portalLanguage ?? 'sv') === 'en' ? 'The details are copied to the vehicle fields on the Bilrutan form.' : 'Uppgifterna förs över till fordonets fält på Bilrutan-blanketten.' ?></p></div></div>
                     <div class="skade-grid">
                         <div class="skade-field">
-                            <label class="skade-label" for="sk-regnr">Registreringsnummer <span class="skade-required">*</span></label>
+                            <label class="skade-label" for="sk-regnr"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Registration number' : 'Registreringsnummer' ?> <span class="skade-required">*</span></label>
                             <input id="sk-regnr" name="s[regnr]" type="text" maxlength="12" pattern="[A-Za-z0-9 -]{2,12}" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" aria-describedby="sk-regnr-help" required value="<?= $skadeText('regnr') ?>">
-                            <small class="skade-help" id="sk-regnr-help">Exempel: ABC123. Bokstäver blir versaler och mellanslag tas bort automatiskt.</small>
+                            <small class="skade-help" id="sk-regnr-help"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Example: ABC123. Letters are capitalized and spaces are removed automatically.' : 'Exempel: ABC123. Bokstäver blir versaler och mellanslag tas bort automatiskt.' ?></small>
                         </div>
                         <div class="skade-field">
-                            <label class="skade-label" for="sk-modell">Fabrikat och modell <span class="skade-required">*</span></label>
+                            <label class="skade-label" for="sk-modell"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Make and model' : 'Fabrikat och modell' ?> <span class="skade-required">*</span></label>
                             <input id="sk-modell" name="s[modell]" maxlength="70" required value="<?= $skadeText('modell') ?>">
-                            <small class="skade-help">Ange bilens märke och modell.</small>
+                            <small class="skade-help"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Enter the vehicle\'s make and model.' : 'Ange bilens märke och modell.' ?></small>
                         </div>
-                        <div class="skade-field"><label class="skade-label" for="sk-matarstallning">Aktuell mätarställning i kilometer <small>(valfritt)</small></label><input id="sk-matarstallning" name="s[matarstallning]" type="number" min="0" max="99999999" step="1" value="<?= $skadeText('matarstallning') ?>"></div>
-                        <div class="skade-field"><label class="skade-label" for="sk-forsakring">Försäkringsbolag <span class="skade-required">*</span></label><input id="sk-forsakring" name="s[forsakringsbolag]" maxlength="70" required value="<?= $skadeText('forsakringsbolag') ?>"></div>
+                        <div class="skade-field"><label class="skade-label" for="sk-matarstallning"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Current odometer reading in kilometers' : 'Aktuell mätarställning i kilometer' ?> <small><?= ($portalLanguage ?? 'sv') === 'en' ? '(optional)' : '(valfritt)' ?></small></label><input id="sk-matarstallning" name="s[matarstallning]" type="number" min="0" max="99999999" step="1" value="<?= $skadeText('matarstallning') ?>"></div>
+                        <div class="skade-field"><label class="skade-label" for="sk-forsakring"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Insurance company' : 'Försäkringsbolag' ?> <span class="skade-required">*</span></label><input id="sk-forsakring" name="s[forsakringsbolag]" maxlength="70" required value="<?= $skadeText('forsakringsbolag') ?>"></div>
                         <div class="skade-field">
                             <label class="skade-label" for="sk-datum">Skadedatum <?php if ($skadeAdminCanOmitAccidentDate): ?><small>(frivilligt för admin)</small><?php else: ?><span class="skade-required">*</span><?php endif; ?></label>
                             <div class="skade-date-control">
@@ -561,39 +561,39 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
                             </div>
                             <small class="skade-help" id="sk-datum-help"><?php if ($skadeAdminCanOmitAccidentDate): ?>Skriv t.ex. 2026-03-21 eller 21.03.2026. Admin kan lämna fältet tomt när skadedatum saknas; PDF:en sparas och skickas som vanligt. Om datum anges måste det vara giltigt.<?php else: ?>Skriv t.ex. 2026-03-21 eller 21.03.2026. Sex siffror tolkas som ÅÅMMDD: 260321 blir 2026-03-21 (00–49 = 2000–2049, 50–99 = 1950–1999). Du kan även välja datum i kalendern.<?php endif; ?></small>
                         </div>
-                        <div class="skade-field"><label class="skade-label" for="sk-plats">Skadeplats <small>(frivillig)</small></label><input id="sk-plats" name="s[skadeplats]" maxlength="80" value="<?= $skadeText('skadeplats') ?>"></div>
-                        <div class="skade-field"><label class="skade-label" for="sk-skadenr">Försäkrings- / skadenummer <small>(valfritt)</small></label><input id="sk-skadenr" name="s[skadenummer]" maxlength="80" value="<?= $skadeText('skadenummer') ?>"></div>
-                        <div class="skade-field" style="display:flex;align-items:end;padding-bottom:3px"><label class="skade-choice" style="width:100%"><input type="checkbox" name="s[nya_torkarblad_bestalls]" value="1" <?= $skadeChecked('nya_torkarblad_bestalls') ? 'checked' : '' ?>><span><strong>Beställ nya torkarblad</strong><br><small>Kostnad tillkommer om rutan markeras.</small></span></label></div>
+                        <div class="skade-field"><label class="skade-label" for="sk-plats"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Place of damage' : 'Skadeplats' ?> <small><?= ($portalLanguage ?? 'sv') === 'en' ? '(optional)' : '(frivillig)' ?></small></label><input id="sk-plats" name="s[skadeplats]" maxlength="80" value="<?= $skadeText('skadeplats') ?>"></div>
+                        <div class="skade-field"><label class="skade-label" for="sk-skadenr"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Insurance / claim number' : 'Försäkrings- / skadenummer' ?> <small><?= ($portalLanguage ?? 'sv') === 'en' ? '(optional)' : '(valfritt)' ?></small></label><input id="sk-skadenr" name="s[skadenummer]" maxlength="80" value="<?= $skadeText('skadenummer') ?>"></div>
+                        <div class="skade-field" style="display:flex;align-items:end;padding-bottom:3px"><label class="skade-choice" style="width:100%"><input type="checkbox" name="s[nya_torkarblad_bestalls]" value="1" <?= $skadeChecked('nya_torkarblad_bestalls') ? 'checked' : '' ?>><span><strong><?= ($portalLanguage ?? 'sv') === 'en' ? 'Order new wiper blades' : 'Beställ nya torkarblad' ?></strong><br><small><?= ($portalLanguage ?? 'sv') === 'en' ? 'An additional charge applies if selected.' : 'Kostnad tillkommer om rutan markeras.' ?></small></span></label></div>
                     </div>
                 </section>
 
                 <section class="skade-card" aria-label="<?= h($skadeCustomerMode ? 'Bekräfta uppgifter' : 'Skapa kundunderlag') ?>">
                     <div class="skade-card-head"><span class="skade-step" aria-hidden="true">✓</span><div><h3><?= $skadeCustomerMode ? 'Bekräfta uppgifterna' : 'Skapa kundunderlaget' ?></h3><p><?= $skadeCustomerMode ? 'Kontrollera att uppgifterna är riktiga. Rita din signatur och bekräfta innan du skickar.' : 'Skadedetaljer, åtgärd, utrustning, tilläggstjänster, betalning och datum lämnas utanför kundinmatningen och kompletteras av er.' ?></p></div></div>
                     <div class="skade-signature" aria-labelledby="skade-signature-title">
-                        <p class="skade-signature-title" id="skade-signature-title"><?= $skadeCustomerMode ? 'Din digitala signatur' : 'Kundens digitala signatur' ?> <?php if ($skadeCustomerMode): ?><span class="skade-required">*</span><?php else: ?><small>(frivillig)</small><?php endif; ?></p>
+                        <p class="skade-signature-title" id="skade-signature-title"><?= $skadeCustomerMode ? 'Din digitala signatur' : 'Kundens digitala signatur' ?> <?php if ($skadeCustomerMode): ?><span class="skade-required">*</span><?php else: ?><small><?= ($portalLanguage ?? 'sv') === 'en' ? '(optional)' : '(frivillig)' ?></small><?php endif; ?></p>
                         <p class="skade-signature-copy" id="skade-signature-help"><?= $skadeCustomerMode ? 'Skriv din namnteckning i ett lugnt, sammanhängande drag med finger eller penna. Ritytan jämnar ut små ryck och ger strecket naturlig avsmalning och diskret breddvariation; i PDF:en kan signaturen gå högst 1 cm utanför originalrutan. Rensa och försök igen om du vill börja om.' : 'Låt kunden skriva sin signatur i ett lugnt, sammanhängande drag med finger eller penna. Ritytan jämnar ut små ryck och ger strecket naturlig avsmalning och diskret breddvariation; i PDF:en kan signaturen gå högst 1 cm utanför originalrutan. Lämna rutan tom för utskrift och handskriven underskrift.' ?></p>
                         <canvas id="skade-signature-pad" class="skade-signature-canvas" width="1600" height="360" role="img" aria-label="<?= h($skadeCustomerMode ? 'Rita din signatur här' : 'Rita kundens signatur här') ?>" aria-describedby="skade-signature-help skade-signature-status" tabindex="0"></canvas>
                         <noscript><small class="skade-help"><?= $skadeCustomerMode ? 'Digital signering kräver JavaScript. Be personalen om hjälp.' : 'Ritning kräver JavaScript. Ni kan ändå skapa PDF:en utan digital signatur och låta kunden skriva under utskriften för hand.' ?></small></noscript>
                         <input type="hidden" name="s[signature_png]" id="skade-signature-png" value="<?= $skadeText('signature_png') ?>">
                         <div class="skade-signature-tools">
-                            <button class="btn btn-outline" type="button" id="skade-signature-clear">Rensa signatur</button>
-                            <span class="skade-signature-status" id="skade-signature-status" aria-live="polite">Ingen signatur ännu</span>
+                            <button class="btn btn-outline" type="button" id="skade-signature-clear"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Clear signature' : 'Rensa signatur' ?></button>
+                            <span class="skade-signature-status" id="skade-signature-status" aria-live="polite"><?= ($portalLanguage ?? 'sv') === 'en' ? 'No signature yet' : 'Ingen signatur ännu' ?></span>
                         </div>
                         <!-- Web-only copy of the declaration and payment terms; the original PDF remains unchanged. -->
-                        <div class="skade-customer-declaration" role="note" aria-label="Intygande och betalningsvillkor">
-                            <h4>Intygande och betalningsvillkor</h4>
+                        <div class="skade-customer-declaration" role="note" aria-label="<?= ($portalLanguage ?? 'sv') === 'en' ? 'Declaration and payment terms' : 'Intygande och betalningsvillkor' ?>">
+                            <h4><?= ($portalLanguage ?? 'sv') === 'en' ? 'Declaration and payment terms' : 'Intygande och betalningsvillkor' ?></h4>
                             <div class="skade-declaration-content">
-                                <p>Jag intygar härmed på heder och samvete att ovanstående uppgifter är med sanningen överensstämmande och att försäkringen gällde vid skadetillfället samt omfattar det valda skademomentet.</p>
-                                <p class="skade-declaration-warning"><strong>OBS:</strong> Godtar försäkringsbolaget inte skadan, är fordonsägaren alltid betalningsskyldig.</p>
-                                <p><strong>Datum och underskrift:</strong> Datum sätts automatiskt i PDF:en när den skickas. Bilägarens/förarens underskrift görs i signaturrutan ovan.</p>
-                                <p class="skade-declaration-payment">Gällande betalningsvillkor är <strong>betalning vid hämtning.</strong></p>
+                                <p><?= ($portalLanguage ?? 'sv') === 'en' ? 'I solemnly declare that the information above is truthful and that the insurance was valid at the time of damage and covers the selected damage.' : 'Jag intygar härmed på heder och samvete att ovanstående uppgifter är med sanningen överensstämmande och att försäkringen gällde vid skadetillfället samt omfattar det valda skademomentet.' ?></p>
+                                <p class="skade-declaration-warning"><strong><?= ($portalLanguage ?? 'sv') === 'en' ? 'NOTE:' : 'OBS:' ?></strong> <?= ($portalLanguage ?? 'sv') === 'en' ? 'If the insurer does not accept the claim, the vehicle owner remains responsible for payment.' : 'Godtar försäkringsbolaget inte skadan, är fordonsägaren alltid betalningsskyldig.' ?></p>
+                                <p><strong><?= ($portalLanguage ?? 'sv') === 'en' ? 'Date and signature:' : 'Datum och underskrift:' ?></strong> <?= ($portalLanguage ?? 'sv') === 'en' ? 'The date is inserted automatically in the PDF when it is sent. The vehicle owner or driver signs in the signature area above.' : 'Datum sätts automatiskt i PDF:en när den skickas. Bilägarens/förarens underskrift görs i signaturrutan ovan.' ?></p>
+                                <p class="skade-declaration-payment">Gällande betalningsvillkor är <strong><?= ($portalLanguage ?? 'sv') === 'en' ? 'payment on collection.' : 'betalning vid hämtning.' ?></strong></p>
                             </div>
                         </div>
                         <label class="skade-choice skade-signature-confirm" for="skade-signature-confirmed">
                             <input type="checkbox" name="s[signature_confirmed]" id="skade-signature-confirmed" value="1" <?= $skadeCustomerMode ? 'required' : '' ?> <?= $skadeChecked('signature_confirmed') ? 'checked' : '' ?>>
                             <span><?= $skadeCustomerMode ? 'Jag bekräftar att uppgifterna jag lämnar stämmer och att den ritade signaturen är min.' : ($skadeEditMode ? 'Jag bekräftar att den sparade signaturen tillhör kunden och att de ändrade uppgifterna är kontrollerade.' : 'Om du har ritat kundens signatur: bekräfta att uppgifterna stämmer och att signaturen är kundens.') ?> <?php if ($skadeCustomerMode): ?><span class="skade-required" aria-hidden="true">*</span><?php endif; ?></span>
                         </label>
-                        <small class="skade-signature-disclaimer"><?= $skadeCustomerMode ? 'Formuläruppgifterna och signaturen sparas i portalens privata lagring så personalen kan redigera skadeblanketten. Gallringen körs vid en portalöppning (högst en kontroll per 24 timmar) när ett år har gått sedan senaste ändring, annars sedan skapandet; den körs inte när portalen är stängd. PDF-versionerna behålls. Säkerhetskopior på servern gallras också; nedladdade ZIP-kopior och redan skickade mejl/bilagor utanför portalen påverkas inte. Signaturen bäddas in i PDF:en och skickas endast till rl@tadega.com. En ritad signatur verifierar inte identiteten via BankID.' : 'Formuläruppgifterna och eventuell signatur sparas i portalens privata lagring för redigering. Gallringen körs vid en portalöppning (högst en kontroll per 24 timmar) när ett år har gått sedan senaste ändring, annars sedan skapandet; den körs inte när portalen är stängd. PDF-versionerna behålls. Säkerhetskopior på servern gallras också; nedladdade ZIP-kopior och redan skickade mejl/bilagor utanför portalen påverkas inte. PDF:en skickas endast till rl@tadega.com. Lämnas rutan tom kan PDF:en skrivas ut för handskriven underskrift. En ritad signatur verifierar inte kundens identitet via BankID.' ?></small>
+                        <small class="skade-signature-disclaimer"><?= $skadeCustomerMode ? 'Formuläruppgifterna och signaturen sparas i portalens privata lagring så personalen kan redigera skadeblanketten. Gallringen körs vid en portalöppning (högst en kontroll per 24 timmar) när ett år har gått sedan senaste ändring, annars sedan skapandet; den körs inte när portalen är stängd. PDF-versionerna behålls. Säkerhetskopior på servern gallras också; nedladdade ZIP-kopior och redan skickade mejl/bilagor utanför portalen påverkas inte. Signaturen bäddas in i PDF:en; mejl skickas endast om admin har valt en mottagare. En ritad signatur verifierar inte identiteten via BankID.' : 'Formuläruppgifterna och eventuell signatur sparas i portalens privata lagring för redigering. Gallringen körs vid en portalöppning (högst en kontroll per 24 timmar) när ett år har gått sedan senaste ändring, annars sedan skapandet; den körs inte när portalen är stängd. PDF-versionerna behålls. Säkerhetskopior på servern gallras också; nedladdade ZIP-kopior och redan skickade mejl/bilagor utanför portalen påverkas inte. PDF:en skickas endast om admin har valt en mottagare. Lämnas rutan tom kan PDF:en skrivas ut för handskriven underskrift. En ritad signatur verifierar inte kundens identitet via BankID.' ?></small>
                     </div>
                     <?php if (!$skadeCustomerMode): ?>
                         <div class="skade-original-note"><span class="skade-mini-icon" aria-hidden="true">ⓘ</span><span>En ritad signatur placeras i originalets underskriftsruta. Lämna den tom om ni vill skriva ut blanketten utan underskrift; datumfältet och verkstadsuppgifterna kan kompletteras efteråt.</span></div>
@@ -622,7 +622,7 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
                             <a class="btn btn-main" href="<?= h($skadePreviewUrl) ?>" target="_blank" rel="noopener"><?= $skadePdfValid ? 'Öppna skapad PDF ↗' : 'Öppna original ↗' ?></a>
                             <a class="btn btn-outline" href="<?= h($skadePreviewDownloadUrl) ?>"><?= $skadePdfValid ? 'Ladda ned PDF' : 'Ladda ned original' ?></a>
                             <?php if ($skadePdfValid && $skadeTemplateExists): ?>
-                                <a class="btn btn-outline" href="<?= h($skadeViewOriginal) ?>" target="_blank" rel="noopener">Visa originalblankett</a>
+                                <a class="btn btn-outline" href="<?= h($skadeViewOriginal) ?>" target="_blank" rel="noopener"><?= ($portalLanguage ?? 'sv') === 'en' ? 'View original form' : 'Visa originalblankett' ?></a>
                             <?php endif; ?>
                         </div>
                         <iframe class="skade-pdf-frame" title="<?= h($skadePdfValid ? 'Förhandsvisning av skapad skadeblankett' : 'Förhandsvisning av Bilrutans ifyllbara originalblankett') ?>" src="<?= h($skadePreviewUrl) ?>#toolbar=0&navpanes=0&view=FitH" loading="lazy"></iframe>
@@ -631,14 +631,14 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
                             <span>
                                 <?php if ($skadePdfValid): ?>
                                     Detta är den skapade kundkopian. Kontrollera uppgifterna och komplettera verkstadsfälten innan den används.
-                                    <?php if ($skadeTemplateExists): ?><a href="<?= h($skadeViewOriginal) ?>" target="_blank" rel="noopener">Öppna originalblanketten.</a><?php endif; ?>
+                                    <?php if ($skadeTemplateExists): ?><a href="<?= h($skadeViewOriginal) ?>" target="_blank" rel="noopener"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Open the original form.' : 'Öppna originalblanketten.' ?></a><?php endif; ?>
                                 <?php else: ?>
                                     Originalblanketten visas före skapandet. Den skapade PDF:en visas här automatiskt när den har skapats.
                                 <?php endif; ?>
                             </span>
                         </div>
                     <?php else: ?>
-                        <div class="skade-preview-empty">Original-PDF:en hittades inte i den konfigurerade mallmappen.</div>
+                        <div class="skade-preview-empty"><?= ($portalLanguage ?? 'sv') === 'en' ? 'The original PDF was not found in the configured template folder.' : 'Original-PDF:en hittades inte i den konfigurerade mallmappen.' ?></div>
                     <?php endif; ?>
                 </div>
             </details>
@@ -812,14 +812,14 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
     function validateField(field) {
         if (field === canvas) {
             if (signatureInput && signatureInput.value !== '') {
-                setSignatureStatus('Signaturen är klar för PDF:en.');
+                setSignatureStatus(<?= json_encode(($portalLanguage ?? 'sv') === 'en' ? "The signature is ready for the PDF." : "Signaturen är klar för PDF:en.", JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>);
                 return true;
             }
             if (!signatureRequired) {
-                setSignatureStatus('Ingen ritad signatur. PDF:en kan skrivas ut för handskriven underskrift.');
+                setSignatureStatus(<?= json_encode(($portalLanguage ?? 'sv') === 'en' ? "No drawn signature. The PDF can be printed for a handwritten signature." : "Ingen ritad signatur. PDF:en kan skrivas ut för handskriven underskrift.", JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>);
                 return true;
             }
-            setSignatureStatus('Rita signaturen innan du skickar.', 'error');
+            setSignatureStatus(<?= json_encode(($portalLanguage ?? 'sv') === 'en' ? "Draw the signature before submitting." : "Rita signaturen innan du skickar.", JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>, 'error');
             return false;
         }
         var message = getValidationMessage(field);
@@ -922,7 +922,7 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
         if (compactLayout && !generatedPdf) preview.open = false;
         function syncPreviewToggle() {
             previewToggle.hidden = false;
-            previewToggle.textContent = preview.open ? 'Dölj PDF-förhandsvisning' : 'Visa PDF-förhandsvisning';
+            previewToggle.textContent = preview.open ? <?= json_encode(($portalLanguage ?? 'sv') === 'en' ? "Hide PDF preview" : "Dölj PDF-förhandsvisning", JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?> : <?= json_encode(($portalLanguage ?? 'sv') === 'en' ? "Show PDF preview" : "Visa PDF-förhandsvisning", JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
             previewToggle.setAttribute('aria-expanded', preview.open ? 'true' : 'false');
         }
         preview.addEventListener('toggle', syncPreviewToggle);
@@ -959,7 +959,7 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
             if (signatureInput.value !== '') complete++;
         }
         if (bar) bar.style.width = (total ? Math.round(complete / total * 100) : 0) + '%';
-        if (text) text.textContent = complete + ' av ' + total;
+        if (text) text.textContent = complete + <?= json_encode(($portalLanguage ?? 'sv') === 'en' ? " of " : " av ", JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?> + total;
     }
     function setSignatureStatus(message, state) {
         if (signatureStatus) {
@@ -994,7 +994,7 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
                 color: '#18385f',
                 background: null,
                 onStart: function () {
-                    setSignatureStatus('Skriv signaturen i ett lugnt, sammanhängande drag.');
+                    setSignatureStatus(<?= json_encode(($portalLanguage ?? 'sv') === 'en' ? "Draw the signature in a calm, continuous stroke." : "Skriv signaturen i ett lugnt, sammanhängande drag.", JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>);
                 },
                 onEnd: function () {
                     exportSignature();
@@ -1007,14 +1007,14 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
                 var savedSignatureImage = new Image();
                 savedSignatureImage.onload = function () {
                     signaturePad.setBaseImage(savedSignatureImage);
-                    setSignatureStatus('Sparad signatur visas. Bekräfta att den fortfarande tillhör kunden, eller rensa och rita om.');
+                    setSignatureStatus(<?= json_encode(($portalLanguage ?? 'sv') === 'en' ? "The saved signature is displayed. Confirm it still belongs to the customer, or clear it and draw again." : "Sparad signatur visas. Bekräfta att den fortfarande tillhör kunden, eller rensa och rita om.", JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>);
                     syncSignatureConfirmationRequirement();
                     updateProgress();
                 };
                 savedSignatureImage.onerror = function () {
                     signaturePad.clear();
                     signatureInput.value = '';
-                    setSignatureStatus('Den sparade signaturen kunde inte visas. Rita om den eller be personalen kontrollera posten.', 'error');
+                    setSignatureStatus(<?= json_encode(($portalLanguage ?? 'sv') === 'en' ? "The saved signature could not be displayed. Draw it again or ask staff to check the record." : "Den sparade signaturen kunde inte visas. Rita om den eller be personalen kontrollera posten.", JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>, 'error');
                     syncSignatureConfirmationRequirement();
                     updateProgress();
                 };
@@ -1028,7 +1028,7 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
                 } catch (error) {
                     signatureInput.value = '';
                     syncSignatureConfirmationRequirement();
-                    setSignatureStatus('Signaturen kunde inte läsas. Rensa rutan och försök igen.', 'error');
+                    setSignatureStatus(<?= json_encode(($portalLanguage ?? 'sv') === 'en' ? "The signature could not be read. Clear the area and try again." : "Signaturen kunde inte läsas. Rensa rutan och försök igen.", JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>, 'error');
                     updateProgress();
                     return;
                 }
@@ -1050,7 +1050,7 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
                 if (maxX < minX || maxY < minY) {
                     signatureInput.value = '';
                     syncSignatureConfirmationRequirement();
-                    setSignatureStatus('Ingen signatur ännu');
+                    setSignatureStatus(<?= json_encode(($portalLanguage ?? 'sv') === 'en' ? "No signature yet" : "Ingen signatur ännu", JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>);
                     updateProgress();
                     return;
                 }
@@ -1072,13 +1072,13 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
                 if (png.length > 550000) {
                     signatureInput.value = '';
                     syncSignatureConfirmationRequirement();
-                    setSignatureStatus('Signaturen blev för stor. Rensa rutan och skriv en enklare signatur.', 'error');
+                    setSignatureStatus(<?= json_encode(($portalLanguage ?? 'sv') === 'en' ? "The signature is too large. Clear the area and draw a simpler signature." : "Signaturen blev för stor. Rensa rutan och skriv en enklare signatur.", JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>, 'error');
                     updateProgress();
                     return;
                 }
                 signatureInput.value = png;
                 syncSignatureConfirmationRequirement();
-                setSignatureStatus('Signaturen är klar för PDF:en.');
+                setSignatureStatus(<?= json_encode(($portalLanguage ?? 'sv') === 'en' ? "The signature is ready for the PDF." : "Signaturen är klar för PDF:en.", JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>);
                 updateProgress();
             }
 
@@ -1087,14 +1087,14 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
                     signaturePad.clear();
                     signatureInput.value = '';
                     syncSignatureConfirmationRequirement();
-                    setSignatureStatus('Signaturen har rensats.');
+                    setSignatureStatus(<?= json_encode(($portalLanguage ?? 'sv') === 'en' ? "The signature was cleared." : "Signaturen har rensats.", JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>);
                     if (validationAttempted) validateField(canvas);
                     updateProgress();
                     canvas.focus();
                 });
             }
         } else {
-            setSignatureStatus('Digital signering kunde inte starta. Ladda om sidan eller lämna rutan tom för utskrift.', 'error');
+            setSignatureStatus(<?= json_encode(($portalLanguage ?? 'sv') === 'en' ? "Digital signing could not start. Reload the page or leave the area empty for printing." : "Digital signering kunde inte starta. Ladda om sidan eller lämna rutan tom för utskrift.", JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>, 'error');
         }
     }
 

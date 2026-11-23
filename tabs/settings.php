@@ -62,7 +62,7 @@ $csrfAvailable = csrf_token() !== '';
     .settings-hero-icon { flex:0 0 54px; width:54px; height:54px; padding:5px; border:1px solid rgba(255,255,255,.2); border-radius:16px; background:#fff; object-fit:contain; }
     .settings-eyebrow { margin:0 0 6px; color:#9fe1eb; font-size:.68rem; font-weight:850; letter-spacing:.15em; text-transform:uppercase; }
     .settings-hero p:not(.settings-eyebrow) { max-width:650px; margin:8px 0 0; color:#d3e4ec; font-size:.86rem; }
-    .settings-runtime { display:flex; flex:0 0 auto; align-items:center; gap:10px; padding:10px 13px; border:1px solid rgba(255,255,255,.2); border-radius:13px; background:rgba(255,255,255,.08); backdrop-filter:blur(8px); }
+    .settings-runtime { display:flex; flex:0 0 auto; align-items:center; gap:10px; padding:10px 13px; border:1px solid rgba(255,255,255,.2); border-radius:13px; background:rgba(255,255,255,.08); }
     .settings-runtime-dot { width:9px; height:9px; border-radius:50%; background:#67dfab; box-shadow:0 0 0 4px rgba(103,223,171,.15); }
     .settings-runtime-dot.is-warning { background:#ffc66d; box-shadow:0 0 0 4px rgba(255,198,109,.15); }
     .settings-runtime strong { display:block; color:#fff; font-size:.8rem; }
@@ -125,10 +125,10 @@ $csrfAvailable = csrf_token() !== '';
 <section class="settings-page" aria-label="Inställningar och systemstatus">
     <header class="settings-hero">
         <div class="settings-hero-main">
-            <img class="settings-hero-icon" src="?view_file=assets/tadega-icon.svg&amp;v=<?= (string) (@filemtime(__DIR__ . '/../assets/tadega-icon.svg') ?: '1') ?>" alt="" width="54" height="54">
+
             <div>
-                <p class="settings-eyebrow">Portalstatus</p>
-                <p>Hantera e-post, logotyper och säkerhetskopior från en samlad vy.</p>
+                <p class="settings-eyebrow"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Portal status' : 'Portalstatus' ?></p>
+                <p><?= ($portalLanguage ?? 'sv') === 'en' ? 'Manage email, logos and backups in one place.' : 'Hantera e-post, logotyper och säkerhetskopior från en samlad vy.' ?></p>
             </div>
         </div>
         <div class="settings-runtime" aria-label="PHP-version <?= h(PHP_VERSION) ?>">
@@ -145,39 +145,39 @@ $csrfAvailable = csrf_token() !== '';
     <?php endif; ?>
 
     <div class="settings-stats" aria-label="Inställningsöversikt">
-        <div class="settings-stat"><span class="settings-stat-icon" aria-hidden="true">✉</span><div><span class="settings-stat-label">Primär avisering</span><strong><?= h($notificationEmail !== '' ? $notificationEmail : 'Inte angiven') ?></strong></div></div>
-        <div class="settings-stat"><span class="settings-stat-icon" aria-hidden="true">◇</span><div><span class="settings-stat-label">Sanerade SVG-logotyper</span><strong><?= count($svgFiles) ?> tillgängliga</strong></div></div>
-        <div class="settings-stat"><span class="settings-stat-icon" aria-hidden="true">▣</span><div><span class="settings-stat-label">Privata säkerhetskopior</span><strong><?= count($backupFiles) ?> sparade</strong></div></div>
+        <div class="settings-stat"><span class="settings-stat-icon" aria-hidden="true">✉</span><div><span class="settings-stat-label"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Primary notification' : 'Primär avisering' ?></span><strong><?= h($notificationEmail !== '' ? $notificationEmail : 'Inte angiven') ?></strong></div></div>
+        <div class="settings-stat"><span class="settings-stat-icon" aria-hidden="true">◇</span><div><span class="settings-stat-label"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Sanitized SVG logos' : 'Sanerade SVG-logotyper' ?></span><strong><?= count($svgFiles) ?> tillgängliga</strong></div></div>
+        <div class="settings-stat"><span class="settings-stat-icon" aria-hidden="true">▣</span><div><span class="settings-stat-label"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Private backups' : 'Privata säkerhetskopior' ?></span><strong><?= count($backupFiles) ?> sparade</strong></div></div>
     </div>
 
     <div class="settings-grid">
         <div class="settings-column">
             <section class="settings-card" aria-labelledby="settings-email-title">
-                <div class="settings-card-head"><span class="settings-card-icon" aria-hidden="true">✉</span><div><h2 id="settings-email-title">E-postaviseringar</h2><p>Välj primär mottagare för portalens allmänna aviseringar.</p></div></div>
+                <div class="settings-card-head"><span class="settings-card-icon" aria-hidden="true">✉</span><div><h2 id="settings-email-title"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Email notifications' : 'E-postaviseringar' ?></h2><p><?= ($portalLanguage ?? 'sv') === 'en' ? 'Choose the primary recipient for general portal notifications.' : 'Välj primär mottagare för portalens allmänna aviseringar.' ?></p></div></div>
                 <form method="post" action="?tab=settings" autocomplete="on">
                     <input type="hidden" name="action" value="save_settings">
                     <?= csrf_field() ?>
-                    <label class="settings-label" for="notification-email">Primär mottagaradress</label>
+                    <label class="settings-label" for="notification-email"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Primary recipient address' : 'Primär mottagaradress' ?></label>
                     <input class="settings-input" id="notification-email" type="email" name="notification_email" maxlength="254" autocomplete="email" required value="<?= h($notificationEmail) ?>" aria-describedby="notification-email-help">
                     <small class="settings-help" id="notification-email-help">Använd en fungerande adress som ni har åtkomst till. Webbhotellets e-posttransport måste vara aktiverad.</small>
-                    <div class="settings-recipient"><span>Skadeblanketter skickas separat och alltid endast till</span><strong>rl@tadega.com</strong></div>
-                    <p class="settings-help"><strong>SMTP och avsändaradress</strong> ändras av admin under Fakturaunderlag → E-poststatus. Det är en annan inställning än mottagaradressen ovan. Om E-poststatus inte visas behöver du logga in som admin; en låst SMTP-konfiguration kräver admin-PIN för upplåsning. <a href="?tab=invoice&amp;invoice_view=email">Öppna SMTP-inställningarna</a>.</p>
-                    <div class="settings-form-actions"><button class="btn btn-main" type="submit">Spara e-postinställning</button></div>
+                    <div class="settings-recipient"><span>Skadeblanketter skickas separat och alltid endast till</span><strong>vald av admin</strong></div>
+                    <p class="settings-help"><strong>SMTP och avsändaradress</strong> ändras av admin under Fakturaunderlag → E-poststatus. Det är en annan inställning än mottagaradressen ovan. Om E-poststatus inte visas behöver du logga in som admin; en låst SMTP-konfiguration kräver admin-PIN för upplåsning. <a href="?tab=invoice&amp;invoice_view=email"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Open SMTP settings' : 'Öppna SMTP-inställningarna' ?></a>.</p>
+                    <div class="settings-form-actions"><button class="btn btn-main" type="submit"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Save email settings' : 'Spara e-postinställning' ?></button></div>
                 </form>
             </section>
 
             <section class="settings-card" aria-labelledby="settings-logo-title">
-                <div class="settings-card-head"><span class="settings-card-icon" aria-hidden="true">◇</span><div><h2 id="settings-logo-title">Varumärke och logotyper</h2><p>Ladda upp en SVG-logotyp. Filen saneras före lagring och kan därefter förhandsvisas här.</p></div></div>
+                <div class="settings-card-head"><span class="settings-card-icon" aria-hidden="true">◇</span><div><h2 id="settings-logo-title"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Branding and logos' : 'Varumärke och logotyper' ?></h2><p><?= ($portalLanguage ?? 'sv') === 'en' ? 'Upload an SVG logo. The file is sanitized before storage and can then be previewed here.' : 'Ladda upp en SVG-logotyp. Filen saneras före lagring och kan därefter förhandsvisas här.' ?></p></div></div>
                 <form method="post" action="?tab=settings" enctype="multipart/form-data">
                     <input type="hidden" name="action" value="upload_logo">
                     <?= csrf_field() ?>
-                    <label class="settings-label" for="logo-file">Välj SVG-fil <span class="settings-label-note">(max 512 KB)</span></label>
+                    <label class="settings-label" for="logo-file"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Choose SVG file' : 'Välj SVG-fil' ?> <span class="settings-label-note">(max 512 KB)</span></label>
                     <input class="settings-input" id="logo-file" type="file" name="logo_file" accept=".svg,image/svg+xml" required aria-describedby="logo-file-help">
-                    <small class="settings-help" id="logo-file-help">Script, externa länkar och aktiva SVG-element tas bort. Den valda portalikonen används fortsatt konsekvent i gränssnittet.</small>
-                    <div class="settings-form-actions"><button class="btn btn-main" type="submit">Ladda upp och granska</button></div>
+                    <small class="settings-help" id="logo-file-help"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Scripts, external links and active SVG elements are removed. Select the active logo in Administration to display it in the portal header.' : 'Script, externa länkar och aktiva SVG-element tas bort. Välj aktiv logotyp i Adminpanelen för att visa den i portalens sidhuvud.' ?></small>
+                    <div class="settings-form-actions"><button class="btn btn-main" type="submit"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Upload and review' : 'Ladda upp och granska' ?></button></div>
                 </form>
                 <div class="settings-divider"></div>
-                <h3 class="settings-subheading">Tillgängliga uppladdningar</h3>
+                <h3 class="settings-subheading"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Available uploads' : 'Tillgängliga uppladdningar' ?></h3>
                 <?php if ($svgFiles !== []): ?>
                     <div class="settings-logo-grid">
                         <?php foreach ($svgFiles as $svgPath): $fileName = basename($svgPath); ?>
@@ -188,18 +188,18 @@ $csrfAvailable = csrf_token() !== '';
                         <?php endforeach; ?>
                     </div>
                 <?php else: ?>
-                    <div class="settings-empty settings-empty-spaced">Inga uppladdade SVG-logotyper ännu.</div>
+                    <div class="settings-empty settings-empty-spaced"><?= ($portalLanguage ?? 'sv') === 'en' ? 'No SVG logos uploaded yet.' : 'Inga uppladdade SVG-logotyper ännu.' ?></div>
                 <?php endif; ?>
             </section>
         </div>
 
         <div class="settings-column">
             <section class="settings-card" aria-labelledby="settings-backup-title">
-                <div class="settings-card-head"><span class="settings-card-icon" aria-hidden="true">▣</span><div><h2 id="settings-backup-title">Säkerhetskopior</h2><p>Skapa en skyddad ZIP-kopia av applikationens lagrade data och dokument.</p></div></div>
+                <div class="settings-card-head"><span class="settings-card-icon" aria-hidden="true">▣</span><div><h2 id="settings-backup-title"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Backups' : 'Säkerhetskopior' ?></h2><p><?= ($portalLanguage ?? 'sv') === 'en' ? 'Create a protected ZIP copy of the application\'s stored data and documents.' : 'Skapa en skyddad ZIP-kopia av applikationens lagrade data och dokument.' ?></p></div></div>
                 <form method="post" action="?tab=settings">
                     <input type="hidden" name="action" value="trigger_backup">
                     <?= csrf_field() ?>
-                    <button class="btn btn-main" type="submit">Skapa säkerhetskopia nu</button>
+                    <button class="btn btn-main" type="submit"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Create backup now' : 'Skapa säkerhetskopia nu' ?></button>
                 </form>
                 <small class="settings-help">Kopior lagras privat på servern och kan hämtas via portalen. Ettårsgallringen gäller endast skadeblanketternas sparade formuläruppgifter och signaturbild, även i serverlagrade ZIP-kopior. Den påverkar inte kundregistret, fakturaunderlag, serviceprotokoll eller några PDF-filer. Nedladdade ZIP-kopior och mejl/bilagor som redan skickats utanför portalen kan inte raderas automatiskt. Kontrollera webbhotellets separata backupfunktion inför driftsättning.</small>
                 <?php if ($backupFiles !== []): ?>
@@ -207,22 +207,22 @@ $csrfAvailable = csrf_token() !== '';
                         <?php foreach (array_slice($backupFiles, 0, 5) as $backup): ?>
                             <div class="settings-backup-row">
                                 <div class="settings-backup-meta"><strong><?= h($backup['name']) ?></strong><small><?= h(date('Y-m-d H:i', $backup['modified'])) ?> · <?= h(number_format($backup['size'] / 1024, 1, ',', ' ')) ?> KB</small></div>
-                                <a class="btn btn-outline" href="?download_backup=<?= rawurlencode($backup['name']) ?>">Ladda ned</a>
+                                <a class="btn btn-outline" href="?download_backup=<?= rawurlencode($backup['name']) ?>"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Download' : 'Ladda ned' ?></a>
                             </div>
                         <?php endforeach; ?>
                     </div>
                 <?php else: ?>
-                    <div class="settings-empty settings-empty-spaced-lg">Ingen privat säkerhetskopia har skapats ännu.</div>
+                    <div class="settings-empty settings-empty-spaced-lg"><?= ($portalLanguage ?? 'sv') === 'en' ? 'No private backup has been created yet.' : 'Ingen privat säkerhetskopia har skapats ännu.' ?></div>
                 <?php endif; ?>
             </section>
 
             <section class="settings-card" aria-labelledby="settings-health-title">
-                <div class="settings-card-head"><span class="settings-card-icon" aria-hidden="true">✓</span><div><h2 id="settings-health-title">Drift och integritet</h2><p>Tekniska förutsättningar för den här arbetskopian.</p></div></div>
+                <div class="settings-card-head"><span class="settings-card-icon" aria-hidden="true">✓</span><div><h2 id="settings-health-title"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Operations and privacy' : 'Drift och integritet' ?></h2><p><?= ($portalLanguage ?? 'sv') === 'en' ? 'Technical requirements for this working copy.' : 'Tekniska förutsättningar för den här arbetskopian.' ?></p></div></div>
                 <ul class="settings-check-list">
                     <li class="settings-check"><span class="settings-check-mark" aria-hidden="true"><?= $csrfAvailable ? '✓' : '!' ?></span><div><strong><?= $csrfAvailable ? 'Säker formulärsession' : 'Session saknas' ?></strong><small>POST-formulär skyddas med CSRF-token och säkra sessionscookies.</small></div></li>
                     <li class="settings-check"><span class="settings-check-mark" aria-hidden="true"><?= $zipSupported ? '✓' : '!' ?></span><div><strong><?= $zipSupported ? 'ZIP-stöd tillgängligt' : 'ZIP-stöd saknas' ?></strong><small><?= $zipSupported ? 'Säkerhetskopior kan skapas av portalen.' : 'Aktivera PHP-tillägget ZipArchive på webbhotellet.' ?></small></div></li>
-                    <li class="settings-check"><span class="settings-check-mark" aria-hidden="true">✓</span><div><strong>Loggning utan kundfält</strong><small>Auditloggen lagrar fasta händelsenamn, UTC-tid och slumpmässigt request-ID — inte kunduppgifter eller IP-adresser.</small></div></li>
-                    <li class="settings-check"><span class="settings-check-mark" aria-hidden="true">i</span><div><strong>Åtkomstskydd hanteras uppströms</strong><small>Webbhotellets/proxyns skydd ska täcka hela /dokument, även privata filrutter och direkta URL:er. Detta måste verifieras i staging.</small></div></li>
+                    <li class="settings-check"><span class="settings-check-mark" aria-hidden="true">✓</span><div><strong><?= ($portalLanguage ?? 'sv') === 'en' ? 'Logging without customer fields' : 'Loggning utan kundfält' ?></strong><small>Auditloggen lagrar fasta händelsenamn, UTC-tid och slumpmässigt request-ID — inte kunduppgifter eller IP-adresser.</small></div></li>
+                    <li class="settings-check"><span class="settings-check-mark" aria-hidden="true">i</span><div><strong><?= ($portalLanguage ?? 'sv') === 'en' ? 'Access protection is managed upstream' : 'Åtkomstskydd hanteras uppströms' ?></strong><small>Webbhotellets/proxyns skydd ska täcka hela /dokument, även privata filrutter och direkta URL:er. Detta måste verifieras i staging.</small></div></li>
                 </ul>
             </section>
         </div>

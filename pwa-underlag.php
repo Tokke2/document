@@ -5,7 +5,7 @@ declare(strict_types=1);
 // invoice work area; other portal controllers cannot be reached through it.
 $allowedQueryKeys = [
     'invoice_view', 'draft_id', 'edit_id', 'copy_id', 'customer_id',
-    'customer_ref', 'edit_article', 'msg', 'view_file', 'download_file',
+    'customer_ref', 'edit_article', 'history_page', 'shared_page', 'shared_stats_page', 'msg', 'view_file', 'download_file',
 ];
 $forwardedQuery = [];
 foreach ($allowedQueryKeys as $key) {

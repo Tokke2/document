@@ -1,0 +1,42 @@
+'use strict';
+const assert = require('node:assert/strict');
+const voice = require('../assets/invoice_voice.js');
+for (const utterance of [
+    'Byte av vindruta, två timmar, åttahundrafemtio kronor i timmen',
+    'Byte av vindruta två timmar åttahundrafemtio kronor i timmen',
+]) assert.deepEqual(voice.parseRow(utterance), { name: 'Byte av vindruta', qty: '2', unit: 'tim', price: '850' });
+assert.deepEqual(voice.parseRow('2st Glasreparationer 750 kr st'), { name: 'Glasreparationer', qty: '2', unit: 'st', price: '750' });
+assert.deepEqual(voice.parseRow('2 st Glasreparationer 750 kr/st'), { name: 'Glasreparationer', qty: '2', unit: 'st', price: '750' });
+assert.deepEqual(voice.parseRow('två stycken glasreparationer 750 kronor styck'), { name: 'glasreparationer', qty: '2', unit: 'st', price: '750' });
+assert.deepEqual(voice.parseRow('1,5 timmar arbete 850 kronor per timme'), { name: 'arbete', qty: '1.5', unit: 'tim', price: '850' });
+assert.equal(voice.parseRow('2st Glasreparationer 1500 kr totalt').price, '', 'A total is never interpreted as unit price');
+assert.equal(voice.parseRow('2st Glasreparationer 750 kr per timme').price, '', 'Conflicting price units are not guessed');
+assert.equal(voice.parseRow('2st Glasreparationer 750 kr st 900 kr st').price, '', 'Multiple prices are ambiguous');
+assert.deepEqual(voice.parseRow('Reservdel, 2,5 stycken, 120 kr'), { name: 'Reservdel', qty: '2.5', unit: 'st', price: '120' });
+assert.deepEqual(voice.parseRow('Service 2,5 liter olja, en och en halv timme, ettusenfemhundra kronor'), { name: 'Service 2,5 liter olja', qty: '1.5', unit: 'tim', price: '1500' });
+assert.deepEqual(voice.parseRow('Byte av ruta 2,5 timmar à 1 500 kronor per timme'), { name: 'Byte av ruta', qty: '2.5', unit: 'tim', price: '1500' });
+assert.deepEqual(voice.parseRow('Filter, ett styck, 120 kronor'), { name: 'Filter', qty: '1', unit: 'st', price: '120' });
+assert.deepEqual(voice.parseRow('Resa, 12 kilometer, 25 kronor per kilometer'), { name: 'Resa', qty: '12', unit: 'km', price: '25' });
+assert.equal(voice.number('nonsense'), null);
+assert.equal(voice.number('ett tusen femhundra'), 1500);
+assert.equal(voice.number('ettusenfemhundra'), 1500);
+assert.equal(voice.number('en halv'), 0.5);
+assert.equal(voice.number('två och en halv'), 2.5);
+assert.equal(voice.number('två komma fem'), 2.5);
+assert.equal(voice.number('två komma femtio'), 2.5);
+assert.equal(voice.number('tvåhundra och femtio'), 250);
+assert.equal(voice.number('två komma noll fem'), 2.05);
+assert.equal(voice.number('2,55'), 2.55);
+assert.equal(voice.number('1 500'), 1500);
+assert.equal(voice.number('2,555'), null);
+assert.equal(voice.number('två komma okänt fem'), null);
+assert.equal(voice.parseRow('Arbete, många timmar, okänt pris').price, '');
+assert.equal(voice.parseRow('två timmar 850 kronor').name, '', 'Missing description must stay blank');
+assert.equal(voice.parseRow('Arbete, två timmar, 2000 kronor totalt').price, '', 'A total must not be treated as a unit price');
+assert.equal(voice.parseRow('Arbete, två timmar, 850 kronor per styck').price, '', 'Mismatched price units must not be guessed');
+assert.equal(voice.parseRow('Arbete, två timmar, 850 kronor och 25 öre').price, '', 'An unsupported price suffix must not be truncated');
+assert.equal(voice.parseRow('Arbete, två timmar, 850 kronor, 900 kronor').price, '', 'Multiple prices are ambiguous');
+assert.equal(voice.parseRow('Arbete, två timmar och tre dagar, 850 kronor').qty, '', 'Multiple units are ambiguous');
+assert.equal(voice.parseRow('Arbete, två paket, 850 kronor').unit, '', 'Unknown units must not silently become pieces');
+assert.equal(voice.parseRow('Arbete, 2.555 timmar, 850 kronor').qty, '', 'Unsupported precision must not be rounded');
+console.log('PASS: invoice voice parsing checks.');

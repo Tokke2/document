@@ -17,8 +17,12 @@ $centralAdminPinPolicyUpdateRequired = $centralAdminIsAuthenticated
     && ($centralAdminUser['pin_policy_update_required'] ?? false) === true;
 $releaseUpdateConfiguration = ['ok' => false, 'code' => 'configuration_missing'];
 $releaseUpdateResult = null;
-if ($centralAdminIsAuthenticated && !$centralAdminMustChangePin && function_exists('portal_release_configuration')) {
-    $releaseUpdateConfiguration = portal_release_configuration();
+$releaseAutoStatus = null;
+$releaseInstalledMarker = null;
+if ($centralAdminIsAuthenticated && !$centralAdminMustChangePin && !$centralAdminPinPolicyUpdateRequired && function_exists('portal_github_release_check_latest')) {
+    $releaseUpdateConfiguration = ['ok'=>true,'code'=>'ready'];
+    if (($_SERVER['REQUEST_METHOD'] ?? '') === 'GET' && function_exists('portal_github_release_auto_status')) $releaseAutoStatus = portal_github_release_auto_status(dirname(__DIR__));
+    if (function_exists('portal_github_release_install_marker')) $releaseInstalledMarker = portal_github_release_install_marker(dirname(__DIR__));
     $releaseCandidate = is_array($portalReleaseResult ?? null) ? $portalReleaseResult : null;
     if (is_array($releaseCandidate)) {
         $candidateAction = is_string($releaseCandidate['action'] ?? null) ? $releaseCandidate['action'] : '';
@@ -247,12 +251,12 @@ if (is_array($releaseUpdateResult)) {
         $releaseChangedFiles = is_array($releaseUpdateResult['changed'] ?? null) ? $releaseUpdateResult['changed'] : [];
         $releaseResultTone = $releaseChangedFiles === [] ? 'success' : 'warning';
         $releaseResultMessage = $releaseChangedFiles === []
-            ? 'Den signerade releasen är verifierad. Inga tillåtna programfiler skiljer sig från den installerade versionen.'
-            : 'En signerad release är verifierad. Ingen fil har ändrats; installation kräver ett separat godkännande nedan.';
+            ? 'Senaste GitHub-releasen har jämförts. Inga tillåtna programfiler skiljer sig från de installerade filerna.'
+            : 'GitHub-releasen har jämförts utan separat signatur. Ingen fil har ändrats; installation kräver ett separat godkännande nedan.';
     } elseif ($releaseSucceeded && $releaseResultAction === 'install' && $releaseResultCode === 'installed') {
         $releaseChangedFiles = is_array($releaseUpdateResult['changed'] ?? null) ? $releaseUpdateResult['changed'] : [];
         $releaseResultTone = 'success';
-        $releaseResultMessage = 'Uppdateringen installerades. Endast de listade, signerade filer som skiljde sig skrevs.';
+        $releaseResultMessage = 'Uppdateringen installerades. Endast de listade filer som skiljde sig skrevs.';
     } elseif ($releaseSucceeded && $releaseResultAction === 'install' && $releaseResultCode === 'already_current') {
         $releaseResultTone = 'success';
         $releaseResultMessage = 'Den godkända releasen matchar redan de installerade filerna. Inga filer skrevs.';
@@ -271,7 +275,7 @@ if (is_array($releaseUpdateResult)) {
             'signature_invalid' => 'Releasemanifestets signatur är ogiltig. Inga filer ändrades.',
             'public_key_invalid', 'public_key_weak_or_unsupported' => 'Den lokala publika verifieringsnyckeln är ogiltig eller för svag.',
             'manifest_invalid', 'manifest_duplicate_path', 'manifest_too_large', 'zip_path_forbidden', 'zip_directory_forbidden', 'zip_manifest_mismatch', 'zip_special_file_forbidden' => 'Releasepaketets manifest eller sökvägar är ogiltiga. Inga filer ändrades.',
-            'zip_file_hash_mismatch' => 'Minst en ZIP-fil stämmer inte med det signerade SHA-256-manifestet. Inga filer ändrades.',
+            'zip_file_hash_mismatch' => 'Minst en ZIP-fil stämmer inte med jämförelsens SHA-256. Inga filer ändrades.',
             'temporary_storage_unavailable' => 'Servern saknar en säker tillfällig arbetsyta utanför portalens program- och datakataloger.',
             'target_directory_not_writable', 'target_file_not_writable' => 'Servern saknar skrivbehörighet för minst en ändrad programfil. Inga filer installerades.',
             'target_parent_missing' => 'En målmapp saknas. Uppdateraren skapar inte nya mappar automatiskt.',
@@ -279,7 +283,7 @@ if (is_array($releaseUpdateResult)) {
             'target_changed_since_check' => 'En fil ändrades efter kontrollen. Kör releasekontrollen igen innan du godkänner.',
             'update_lock_unavailable' => 'En annan uppdatering pågår eller portalens låsfil kan inte läsas. Försök igen när den är klar.',
             'approval_required' => 'Installationen kräver en uttrycklig kryssrute-bekräftelse från admin.',
-            'approval_invalid', 'approval_mismatch' => 'Godkännandet stämmer inte med den signerade releaseversionen. Kontrollera releasen igen.',
+            'approval_invalid', 'approval_mismatch' => 'Godkännandet har gått ut eller stämmer inte med den granskade releasen eller filerna. Kontrollera releasen igen.',
             'release_changed_since_approval' => 'GitHub har ändrat senaste releasen sedan kontrollen. Kör kontrollen igen och granska den nya versionen.',
             'install_failed_no_changes' => 'Installationen stoppades innan någon programfil ändrades. Kontrollera serverns filrättigheter och försök igen efter manuell backup.',
             'install_failed_rolled_back' => 'Installationen misslyckades. Uppdateraren återställde och verifierade de filer den hunnit ersätta.',
@@ -395,17 +399,36 @@ $releaseApprovalDataValid = preg_match('/\\A[A-Za-z0-9][A-Za-z0-9.+_-]{0,119}\\z
     <?php if ($centralAdminIsAuthenticated && !$centralAdminMustChangePin): ?>
         <header class="central-admin-hero">
             <div>
-                <h2>Central adminåtkomst är aktiv</h2>
-                <p>Du är inloggad som central administratör. Samma PIN ger adminbehörighet över personalsidorna. Kundernas fristående PWA:er hålls utanför och befintliga faktura- och protokollkonton finns kvar.</p>
+                <h2><?= ($portalLanguage ?? 'sv') === 'en' ? 'Central administrator access is active' : 'Central adminåtkomst är aktiv' ?></h2>
+                <p><?= ($portalLanguage ?? 'sv') === 'en' ? 'You are signed in as central administrator. The same PIN grants administrator access to staff pages. Customer standalone apps are excluded, and existing invoice and service report accounts remain unchanged.' : 'Du är inloggad som central administratör. Samma PIN ger adminbehörighet över personalsidorna. Kundernas fristående PWA:er hålls utanför och befintliga faktura- och protokollkonton finns kvar.' ?></p>
             </div>
-            <span class="central-admin-status">Admin aktiv</span>
+            <span class="central-admin-status"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Admin active' : 'Admin aktiv' ?></span>
         </header>
+
+        <?php $companySettings = function_exists('load_settings') ? load_settings() : []; ?>
+        <section class="central-admin-card" aria-labelledby="company-settings-title">
+            <h2 id="company-settings-title"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Company and damage forms' : 'Företag och skadeblanketter' ?></h2>
+            <p><?= ($portalLanguage ?? 'sv') === 'en' ? 'The company name appears in the portal header and invoice and service report views. The logo appears in the portal header, not in PDFs or standalone apps. Upload an SVG under Settings before selecting it here. No damage form email is sent without a recipient.' : 'Företagsnamnet visas i portalens sidhuvud och faktura- och protokollvyer. Logotypen visas i portalens sidhuvud, inte i PDF eller fristående appar. Ladda upp en SVG under Inställningar innan du väljer den här. Utan mottagare skickas inget skadeblankettmejl.' ?></p>
+            <form method="post" action="?tab=admin" class="central-admin-form central-admin-form-grid">
+                <input type="hidden" name="action" value="save_company_settings">
+                <?= csrf_field() ?>
+                <label><?= ($portalLanguage ?? 'sv') === 'en' ? 'Company name' : 'Företagsnamn' ?> <input class="settings-input" name="company_name" maxlength="100" value="<?= h($companySettings['company_name'] ?? '') ?>"></label>
+                <label><?= ($portalLanguage ?? 'sv') === 'en' ? 'Logo' : 'Logotyp' ?> <select class="settings-input" name="company_logo" id="company-logo-select"><option value=""><?= ($portalLanguage ?? 'sv') === 'en' ? 'No logo' : 'Ingen logotyp' ?></option><?php
+                    $logoFiles = is_link(__DIR__ . '/../svg') ? [] : (glob(__DIR__ . '/../svg/logo-*.svg') ?: []);
+                    foreach ($logoFiles as $logoPath): $logoName = basename($logoPath); if (is_link($logoPath) || !is_file($logoPath) || !preg_match('/\Alogo-[a-f0-9]{16}\.svg\z/D', $logoName)) continue;
+                ?><option value="<?= h($logoName) ?>" <?= ($companySettings['company_logo'] ?? '') === $logoName ? 'selected' : '' ?>><?= h($logoName) ?></option><?php endforeach; ?></select></label>
+                <img id="company-logo-preview" alt="Förhandsvisning av vald logotyp" style="max-width:180px;max-height:80px;object-fit:contain" <?= !empty($companySettings['company_logo']) && is_string($companySettings['company_logo']) && preg_match('/\Alogo-[a-f0-9]{16}\.svg\z/D', $companySettings['company_logo']) ? 'src="?view_file=' . rawurlencode('svg/' . $companySettings['company_logo']) . '"' : 'hidden' ?>>
+                <script>document.getElementById('company-logo-select').addEventListener('change',function(){var img=document.getElementById('company-logo-preview');img.hidden=!this.value;if(this.value)img.src='?view_file='+encodeURIComponent('svg/'+this.value);else img.removeAttribute('src')});</script>
+                <label><?= ($portalLanguage ?? 'sv') === 'en' ? 'Damage form recipient' : 'Mottagare för skadeblanketter' ?> <input class="settings-input" type="email" name="skade_recipient_email" maxlength="254" value="<?= h($companySettings['skade_recipient_email'] ?? '') ?>"></label>
+                <button class="btn btn-main" type="submit" <?= empty($csrfReady) ? 'disabled' : '' ?>><?= ($portalLanguage ?? 'sv') === 'en' ? 'Save company settings' : 'Spara företagsinställningar' ?></button>
+            </form>
+        </section>
 
         <section class="central-admin-card central-admin-health-card" aria-labelledby="central-admin-health-title">
             <div class="central-admin-health-heading">
                 <div>
-                    <h2 id="central-admin-health-title">Driftshälsa</h2>
-                    <p>Kontroller av PDF-mappar, privat lagring och e-postkonfiguration. Resultaten är en ögonblicksbild och visar endast teknisk status.</p>
+                    <h2 id="central-admin-health-title"><?= ($portalLanguage ?? 'sv') === 'en' ? 'System health' : 'Driftshälsa' ?></h2>
+                    <p><?= ($portalLanguage ?? 'sv') === 'en' ? 'Checks of PDF folders, private storage and email configuration. Results are a snapshot of technical status only.' : 'Kontroller av PDF-mappar, privat lagring och e-postkonfiguration. Resultaten är en ögonblicksbild och visar endast teknisk status.' ?></p>
                 </div>
                 <span class="central-admin-status <?= ($adminHealthHasError || $adminHealthHasWarning) ? 'central-admin-status-warning' : '' ?>"><?= h($adminHealthSummary) ?></span>
             </div>
@@ -432,7 +455,7 @@ $releaseApprovalDataValid = preg_match('/\\A[A-Za-z0-9][A-Za-z0-9.+_-]{0,119}\\z
                 <?php endforeach; ?>
             </ul>
             <div class="central-admin-health-footer">
-                <p>Kontrollen visar inte servernamn, e-postadresser, användarnamn eller hemligheter. Ett accepterat e-posttest bekräftar inte leverans till inkorgen.</p>
+                <p><?= ($portalLanguage ?? 'sv') === 'en' ? 'The check does not show server names, email addresses, usernames or secrets. An accepted email test does not confirm inbox delivery.' : 'Kontrollen visar inte servernamn, e-postadresser, användarnamn eller hemligheter. Ett accepterat e-posttest bekräftar inte leverans till inkorgen.' ?></p>
                 <a class="btn btn-outline" href="?tab=invoice&amp;invoice_view=email">Öppna E-poststatus</a>
             </div>
         </section>
@@ -440,38 +463,40 @@ $releaseApprovalDataValid = preg_match('/\\A[A-Za-z0-9][A-Za-z0-9.+_-]{0,119}\\z
         <section class="central-admin-card central-admin-release" aria-labelledby="central-admin-release-title">
             <div class="central-admin-health-heading">
                 <div>
-                    <span class="central-admin-release-kicker">Endast central admin · manuell process</span>
-                    <h2 id="central-admin-release-title">GitHub-releasekontroll</h2>
-                    <p>Kontrollera releasen först, granska hela ändringslistan och installera separat. Ingen automatisk uppdatering körs.</p>
+                    <span class="central-admin-release-kicker">Endast central admin · manuell installation</span>
+                    <h2 id="central-admin-release-title"><?= ($portalLanguage ?? 'sv') === 'en' ? 'GitHub release check' : 'GitHub-releasekontroll' ?></h2>
+                    <p><?= ($portalLanguage ?? 'sv') === 'en' ? 'Check the release first, review the entire change list and install separately. Updates do not run automatically.' : 'Kontrollera releasen först, granska hela ändringslistan och installera separat. Ingen automatisk uppdatering körs.' ?></p>
                 </div>
                 <span class="central-admin-status <?= ($releaseUpdateConfiguration['ok'] ?? false) === true ? '' : 'central-admin-status-warning' ?>">
-                    <?= ($releaseUpdateConfiguration['ok'] ?? false) === true ? 'Konfigurerad' : 'Avstängd' ?>
+                    <?= ($releaseUpdateConfiguration['ok'] ?? false) === true ? 'Aktiv' : 'Avstängd' ?>
                 </span>
             </div>
 
             <ol class="central-admin-release-steps" aria-label="Så fungerar releaseuppdateringen">
-                <li><span class="central-admin-release-step-number" aria-hidden="true">1</span><span class="central-admin-release-step-copy"><strong>Kontrollera</strong><small>Hämtar senaste stabila releasen och verifierar signatur och filhashar. Inga portalprogramfiler skrivs.</small></span></li>
-                <li><span class="central-admin-release-step-number" aria-hidden="true">2</span><span class="central-admin-release-step-copy"><strong>Granska</strong><small>Visar versionen och den fullständiga listan över nya eller ändrade filer.</small></span></li>
-                <li><span class="central-admin-release-step-number" aria-hidden="true">3</span><span class="central-admin-release-step-copy"><strong>Godkänn och installera</strong><small>Kräver separat bekräftelse och en ny kontroll av samma release och manifest.</small></span></li>
+                <li><span class="central-admin-release-step-number" aria-hidden="true">1</span><span class="central-admin-release-step-copy"><strong><?= ($portalLanguage ?? 'sv') === 'en' ? 'Check' : 'Kontrollera' ?></strong><small><?= ($portalLanguage ?? 'sv') === 'en' ? 'Checks the latest stable release at an admin visit at most every six hours. No program files are written.' : 'Kontrollerar senaste stabila releasen automatiskt vid adminbesök högst var sjätte timme. Inga programfiler skrivs.' ?></small></span></li>
+                <li><span class="central-admin-release-step-number" aria-hidden="true">2</span><span class="central-admin-release-step-copy"><strong><?= ($portalLanguage ?? 'sv') === 'en' ? 'Review' : 'Granska' ?></strong><small><?= ($portalLanguage ?? 'sv') === 'en' ? 'Shows the version and the complete list of new or changed files.' : 'Visar versionen och den fullständiga listan över nya eller ändrade filer.' ?></small></span></li>
+                <li><span class="central-admin-release-step-number" aria-hidden="true">3</span><span class="central-admin-release-step-copy"><strong><?= ($portalLanguage ?? 'sv') === 'en' ? 'Approve and install' : 'Godkänn och installera' ?></strong><small><?= ($portalLanguage ?? 'sv') === 'en' ? 'Requires separate confirmation and comparison of the same release and file contents.' : 'Kräver separat bekräftelse och jämförelse av samma release och filinnehåll.' ?></small></span></li>
             </ol>
 
             <?php if (($releaseUpdateConfiguration['ok'] ?? false) !== true): ?>
                 <div class="central-admin-release-note" role="status">
                     <span class="central-admin-release-note-mark" aria-hidden="true">!</span>
-                    <div class="central-admin-release-note-copy">
-                        <strong>Avstängd: konfiguration saknas</strong>
-                        <p>Repo-URL, exakt namn på release-ZIP-filen och betrodd publik signeringsnyckel saknas. Därför görs ingen GitHub-begäran och ingen installation kan köras. Lägg in värdena lokalt i <code>includes/release_config.php</code>; lägg aldrig den privata signeringsnyckeln där.</p>
-                    </div>
+                    <div class="central-admin-release-note-copy"><strong><?= ($portalLanguage ?? 'sv') === 'en' ? 'Updater unavailable' : 'Uppdateraren är inte tillgänglig' ?></strong><p><?= ($portalLanguage ?? 'sv') === 'en' ? 'The update module is missing. No installation is possible.' : 'Uppdateringsmodulen saknas. Ingen installation är möjlig.' ?></p></div>
                 </div>
             <?php else: ?>
                 
+                <p class="central-admin-release-note"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Source: Tokke2/document. No separate cryptographic signature is checked; only trust releases published by the authorized GitHub account. Hashes compare files and do not authenticate the publisher.' : 'Källa: Tokke2/document. Ingen separat signatur kontrolleras; lita endast på releaser från det behöriga GitHub-kontot. Hashar jämför filer men bevisar inte vem som publicerat dem.' ?></p>
+                <?php if (is_array($releaseAutoStatus)): ?>
+                    <p role="status"><?php if (($releaseAutoStatus['ok'] ?? false) === true && is_string($releaseAutoStatus['tag'] ?? null)): ?><?= ($portalLanguage ?? 'sv') === 'en' ? 'Latest release:' : 'Senaste release:' ?> <strong><?= h($releaseAutoStatus['tag']) ?></strong> · <?= ($portalLanguage ?? 'sv') === 'en' ? 'Check files to compare with this installation.' : 'Kontrollera filerna för att jämföra med installationen.' ?><?php elseif (($releaseAutoStatus['code'] ?? '') === 'no_published_release'): ?><?= ($portalLanguage ?? 'sv') === 'en' ? 'No stable release has been published yet.' : 'Ingen stabil release har publicerats ännu.' ?><?php else: ?><?= ($portalLanguage ?? 'sv') === 'en' ? 'Automatic check unavailable. Try a manual check.' : 'Automatisk kontroll kunde inte slutföras. Prova manuell kontroll.' ?><?php endif; ?></p>
+                <?php endif; ?>
+                <?php if (is_array($releaseInstalledMarker)): ?><p><?= ($portalLanguage ?? 'sv') === 'en' ? 'Last installed or matched through this panel:' : 'Senast installerad eller matchad via panelen:' ?> <strong><?= h($releaseInstalledMarker['tag']) ?></strong><?php if (is_string($releaseInstalledMarker['commit'] ?? null)): ?> · <code><?= h(substr($releaseInstalledMarker['commit'],0,12)) ?></code><?php endif; ?><?php if (is_array($releaseAutoStatus) && portal_github_release_marker_differs($releaseAutoStatus,$releaseInstalledMarker)): ?> · <?= ($portalLanguage ?? 'sv') === 'en' ? 'A different release commit is available, even if the version number is unchanged. Check its files before installing.' : 'En annan releasecommit finns, även om versionsnumret är oförändrat. Kontrollera filerna före installation.' ?><?php elseif (!is_string($releaseInstalledMarker['commit'] ?? null)): ?> · <?= ($portalLanguage ?? 'sv') === 'en' ? 'Run a file check to identify the installed commit.' : 'Kontrollera filerna för att identifiera installerad commit.' ?><?php endif; ?></p><?php endif; ?>
                 <?php if ($releaseCriticalFailure): ?>
-                    <div class="central-admin-release-result is-error" role="alert">Releasefunktionen är spärrad efter ett återställningsfel. Återställ först från webbhotellets kända säkerhetskopia och verifiera appen manuellt.</div>
+                    <div class="central-admin-release-result is-error" role="alert">Återställningen misslyckades. Använd inte uppdateraren igen förrän du har återställt från webbhotellets kända säkerhetskopia och verifierat appen manuellt.</div>
                 <?php else: ?>
                     <form class="central-admin-actions" method="post" action="?tab=admin">
                         <input type="hidden" name="action" value="portal_release_check">
                         <?= csrf_field() ?>
-                        <button class="btn btn-outline" type="submit" <?= !$csrfReady ? 'disabled' : '' ?>>Kontrollera senaste release</button>
+                        <button class="btn btn-outline" type="submit" <?= !$csrfReady ? 'disabled' : '' ?>><?= ($portalLanguage ?? 'sv') === 'en' ? 'Check latest release' : 'Kontrollera senaste release' ?></button>
                     </form>
                 <?php endif; ?>
             <?php endif; ?>
@@ -481,12 +506,13 @@ $releaseApprovalDataValid = preg_match('/\\A[A-Za-z0-9][A-Za-z0-9.+_-]{0,119}\\z
                     <p><strong><?= h($releaseResultMessage) ?></strong></p>
                     <?php if (($releaseUpdateResult['ok'] ?? false) === true): ?>
                         <dl class="central-admin-release-meta">
-                            <div><dt>Releaseversion</dt><dd><?= h($releaseApprovedVersion) ?></dd></div>
-                            <div><dt>GitHub-tagg</dt><dd><code><?= h($releaseApprovedTag) ?></code></dd></div>
+                            <div><dt><?= ($portalLanguage ?? 'sv') === 'en' ? 'Release version' : 'Releaseversion' ?></dt><dd><?= h($releaseApprovedVersion) ?></dd></div>
+                            <div><dt><?= ($portalLanguage ?? 'sv') === 'en' ? 'GitHub tag' : 'GitHub-tagg' ?></dt><dd><code><?= h($releaseApprovedTag) ?></code></dd></div>
+                            <?php if (is_string($releaseUpdateResult['commit'] ?? null)): ?><div><dt>Commit</dt><dd><code><?= h($releaseUpdateResult['commit']) ?></code></dd></div><?php endif; ?>
                         </dl>
                         <?php if ($releaseResultAction === 'check' && $releaseApprovalDataValid): ?>
                             <details class="central-admin-release-digest">
-                                <summary>Visa manifestets godkännandedigest (SHA-256)</summary>
+                                <summary>Visa jämförelsens innehållsdigest (SHA-256, inte en signatur)</summary>
                                 <code><?= h($releaseApprovedManifestSha256) ?></code>
                             </details>
                         <?php endif; ?>
@@ -500,16 +526,13 @@ $releaseApprovalDataValid = preg_match('/\\A[A-Za-z0-9][A-Za-z0-9.+_-]{0,119}\\z
                             <?php if (($releaseUpdateConfiguration['ok'] ?? false) === true && $releaseApprovalDataValid && !$releaseCriticalFailure): ?>
                                 <form class="central-admin-release-approval" method="post" action="?tab=admin">
                                     <input type="hidden" name="action" value="portal_release_install">
-                                    <input type="hidden" name="approved_tag" value="<?= h($releaseApprovedTag) ?>">
-                                    <input type="hidden" name="approved_version" value="<?= h($releaseApprovedVersion) ?>">
-                                    <input type="hidden" name="approved_manifest_sha256" value="<?= h($releaseApprovedManifestSha256) ?>">
                                     <?= csrf_field() ?>
                                     <div class="central-admin-release-backup-note">
-                                        <strong>Ta en manuell backup före installationen</strong>
-                                        <p>Uppdateraren tar också en tillfällig återställningskopia och försöker rulla tillbaka vid fel. Webbhotellets backup behövs om processen avbryts eller återställningen misslyckas.</p>
+                                        <strong><?= ($portalLanguage ?? 'sv') === 'en' ? 'Create a manual backup before installation' : 'Ta en manuell backup före installationen' ?></strong>
+                                        <p><?= ($portalLanguage ?? 'sv') === 'en' ? 'The updater also creates a temporary recovery copy and attempts rollback on error. A hosting backup is needed if the process is interrupted or recovery fails.' : 'Uppdateraren tar också en tillfällig återställningskopia och försöker rulla tillbaka vid fel. Webbhotellets backup behövs om processen avbryts eller återställningen misslyckas.' ?></p>
                                     </div>
-                                    <label><input type="checkbox" name="confirm_install" value="1" required> Jag har granskat versionen och hela listan, tagit en manuell backup och godkänner installation av de <?= h((string) $releaseChangedFileTotal) ?> avvikande programfilerna. <code>storage/</code> lämnas orörd.</label>
-                                    <button class="btn btn-main" type="submit" <?= !$csrfReady ? 'disabled' : '' ?>>Godkänn och installera</button>
+                                    <label><input type="checkbox" name="confirm_install" value="1" required> Jag har granskat versionen och hela listan, tagit en manuell backup och godkänner installation av de <?= h((string) $releaseChangedFileTotal) ?> avvikande programfilerna. Inga kunddata eller lokala inställningar skrivs över.</label>
+                                    <button class="btn btn-main" type="submit" <?= !$csrfReady ? 'disabled' : '' ?>><?= ($portalLanguage ?? 'sv') === 'en' ? 'Approve and install' : 'Godkänn och installera' ?></button>
                                 </form>
                             <?php endif; ?>
                         <?php elseif ($releaseResultAction === 'install' && $releaseResultCode === 'installed'): ?>
@@ -527,7 +550,7 @@ $releaseApprovalDataValid = preg_match('/\\A[A-Za-z0-9][A-Za-z0-9.+_-]{0,119}\\z
 
         <div class="central-admin-layout">
             <section class="central-admin-card" aria-labelledby="central-admin-pages-title">
-                <h2 id="central-admin-pages-title">Portalens personalsidor</h2>
+                <h2 id="central-admin-pages-title"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Portal staff pages' : 'Portalens personalsidor' ?></h2>
                 <p>Öppna ett område. Adminrollen följer med mellan sidorna medan den centrala PIN-sessionen är aktiv.</p>
                 <div class="central-admin-pages">
                     <?php foreach ($adminPages as $page): ?>
@@ -546,34 +569,34 @@ $releaseApprovalDataValid = preg_match('/\\A[A-Za-z0-9][A-Za-z0-9.+_-]{0,119}\\z
 
             <div class="central-admin-page">
                 <section class="central-admin-card" aria-labelledby="central-admin-session-title">
-                    <h2 id="central-admin-session-title">Admin-PIN och session</h2>
-                    <p>Den centrala PIN:en måste bytas senast var 20:e dag. Du kan byta den när som helst här.</p>
+                    <h2 id="central-admin-session-title"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Administrator PIN and session' : 'Admin-PIN och session' ?></h2>
+                    <p><?= ($portalLanguage ?? 'sv') === 'en' ? 'The central PIN must be changed at least every 20 days. You can change it here at any time.' : 'Den centrala PIN:en måste bytas senast var 20:e dag. Du kan byta den när som helst här.' ?></p>
                     <div class="central-admin-meta">
-                        <div class="central-admin-meta-row"><span>Senast bytt</span><strong><?= h(date('Y-m-d', (int) ($centralAdminUser['pin_changed_at'] ?? time()))) ?></strong></div>
-                        <div class="central-admin-meta-row"><span>Nästa byte senast</span><strong><?= h(date('Y-m-d', (int) ($centralAdminUser['pin_changed_at'] ?? time()) + 20 * 86400)) ?></strong></div>
+                        <div class="central-admin-meta-row"><span><?= ($portalLanguage ?? 'sv') === 'en' ? 'Last changed' : 'Senast bytt' ?></span><strong><?= h(date('Y-m-d', (int) ($centralAdminUser['pin_changed_at'] ?? time()))) ?></strong></div>
+                        <div class="central-admin-meta-row"><span><?= ($portalLanguage ?? 'sv') === 'en' ? 'Next change due' : 'Nästa byte senast' ?></span><strong><?= h(date('Y-m-d', (int) ($centralAdminUser['pin_changed_at'] ?? time()) + 20 * 86400)) ?></strong></div>
                     </div>
                     <form class="central-admin-form" method="post" action="?tab=admin" autocomplete="off">
                         <input type="hidden" name="action" value="central_admin_change_pin">
                         <?= csrf_field() ?>
-                        <div><label for="central-admin-current-pin">Nuvarande central PIN-kod</label><input id="central-admin-current-pin" name="current_pin" type="password" maxlength="128" inputmode="text" autocomplete="off" required></div>
+                        <div><label for="central-admin-current-pin"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Current central PIN' : 'Nuvarande central PIN-kod' ?></label><input id="central-admin-current-pin" name="current_pin" type="password" maxlength="128" inputmode="text" autocomplete="off" required></div>
                         <div class="central-admin-form-grid">
-                            <div><label for="central-admin-new-pin">Ny central PIN-kod</label><input id="central-admin-new-pin" name="new_pin" type="password" minlength="6" maxlength="12" pattern="[0-9!@#$%&amp;*+=_\-]{6,12}" inputmode="text" autocomplete="off" spellcheck="false" placeholder="6–10 siffror · upp till 2 symboler" required></div>
-                            <div><label for="central-admin-confirm-pin">Upprepa ny PIN-kod</label><input id="central-admin-confirm-pin" name="pin_confirm" type="password" minlength="6" maxlength="12" pattern="[0-9!@#$%&amp;*+=_\-]{6,12}" inputmode="text" autocomplete="off" spellcheck="false" placeholder="Upprepa PIN-koden" required></div>
+                            <div><label for="central-admin-new-pin"><?= ($portalLanguage ?? 'sv') === 'en' ? 'New central PIN' : 'Ny central PIN-kod' ?></label><input id="central-admin-new-pin" name="new_pin" type="password" minlength="6" maxlength="12" pattern="[0-9!@#$%&amp;*+=_\-]{6,12}" inputmode="text" autocomplete="off" spellcheck="false" placeholder="6–10 siffror · upp till 2 symboler" required></div>
+                            <div><label for="central-admin-confirm-pin"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Repeat new PIN' : 'Upprepa ny PIN-kod' ?></label><input id="central-admin-confirm-pin" name="pin_confirm" type="password" minlength="6" maxlength="12" pattern="[0-9!@#$%&amp;*+=_\-]{6,12}" inputmode="text" autocomplete="off" spellcheck="false" placeholder="<?= ($portalLanguage ?? 'sv') === 'en' ? 'Repeat PIN' : 'Upprepa PIN-koden' ?>" required></div>
                         </div>
-                        <button class="btn btn-main" type="submit" <?= !$csrfReady ? 'disabled' : '' ?>>Byt central PIN-kod</button>
+                        <button class="btn btn-main" type="submit" <?= !$csrfReady ? 'disabled' : '' ?>><?= ($portalLanguage ?? 'sv') === 'en' ? 'Change central PIN' : 'Byt central PIN-kod' ?></button>
                     </form>
                     <p class="central-admin-help">PIN-koden ska innehålla 6–10 siffror och får ha högst 2 valfria specialtecken ur <code>!@#$%&amp;*+-_=</code>. Inga bokstäver eller mellanslag. För bäst skydd: använd 10 siffror och 2 symboler. PIN-koden lagras som envägshash och visas aldrig i gränssnittet eller loggen.</p>
                     <div class="central-admin-actions">
                         <form method="post" action="?tab=admin">
                             <input type="hidden" name="action" value="central_admin_logout">
                             <?= csrf_field() ?>
-                            <button class="btn btn-outline" type="submit">Logga ut från central admin</button>
+                            <button class="btn btn-outline" type="submit"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Sign out of central administration' : 'Logga ut från central admin' ?></button>
                         </form>
                     </div>
                 </section>
 
                 <section class="central-admin-card central-admin-sftp" aria-labelledby="central-admin-sftp-title">
-                    <h2 id="central-admin-sftp-title">Glömd PIN? Återställ via SFTP</h2>
+                    <h2 id="central-admin-sftp-title"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Forgotten PIN? Reset via SFTP' : 'Glömd PIN? Återställ via SFTP' ?></h2>
                     <ol>
                         <li>Ta en säkerhetskopia och radera <code>storage/central_admin.json</code> via SFTP. Om inloggningen är spärrad eller försöksfilen är skadad, radera även <code>storage/central_admin_login_attempts.json</code>.</li>
                         <li>Logga in med ett befintligt Fakturaunderlag-adminkonto och öppna Adminpanelen.</li>
@@ -587,56 +610,56 @@ $releaseApprovalDataValid = preg_match('/\\A[A-Za-z0-9][A-Za-z0-9.+_-]{0,119}\\z
     <?php elseif ($centralAdminIsAuthenticated && $centralAdminMustChangePin): ?>
         <header class="central-admin-hero">
             <div>
-                <h2>Byte av central PIN-kod krävs</h2>
+                <h2><?= ($portalLanguage ?? 'sv') === 'en' ? 'Central PIN change required' : 'Byte av central PIN-kod krävs' ?></h2>
                 <p><?= $centralAdminPinPolicyUpdateRequired ? 'Din centrala PIN-kod följer ett äldre format. Bekräfta den nuvarande koden och välj en ny enligt kraven nedan.' : 'Det har gått 20 dagar sedan senaste bytet. Bekräfta din nuvarande PIN-kod och välj en ny innan adminåtkomsten kan användas igen.' ?></p>
             </div>
-            <span class="central-admin-status central-admin-status-warning">PIN-byte krävs</span>
+            <span class="central-admin-status central-admin-status-warning"><?= ($portalLanguage ?? 'sv') === 'en' ? 'PIN change required' : 'PIN-byte krävs' ?></span>
         </header>
         <section class="central-admin-card" aria-labelledby="central-admin-expired-title">
-            <h2 id="central-admin-expired-title">Välj en ny PIN-kod för att fortsätta</h2>
+            <h2 id="central-admin-expired-title"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Choose a new PIN to continue' : 'Välj en ny PIN-kod för att fortsätta' ?></h2>
             <form class="central-admin-form" method="post" action="?tab=admin" autocomplete="off">
                 <input type="hidden" name="action" value="central_admin_change_pin">
                 <?= csrf_field() ?>
-                <div><label for="central-admin-expired-current-pin">Nuvarande central PIN-kod</label><input id="central-admin-expired-current-pin" name="current_pin" type="password" maxlength="128" inputmode="text" autocomplete="off" required></div>
+                <div><label for="central-admin-expired-current-pin"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Current central PIN' : 'Nuvarande central PIN-kod' ?></label><input id="central-admin-expired-current-pin" name="current_pin" type="password" maxlength="128" inputmode="text" autocomplete="off" required></div>
                 <div class="central-admin-form-grid">
-                    <div><label for="central-admin-expired-new-pin">Ny central PIN-kod</label><input id="central-admin-expired-new-pin" name="new_pin" type="password" minlength="6" maxlength="12" pattern="[0-9!@#$%&amp;*+=_\-]{6,12}" inputmode="text" autocomplete="off" spellcheck="false" placeholder="6–10 siffror · upp till 2 symboler" required></div>
-                    <div><label for="central-admin-expired-confirm-pin">Upprepa ny PIN-kod</label><input id="central-admin-expired-confirm-pin" name="pin_confirm" type="password" minlength="6" maxlength="12" pattern="[0-9!@#$%&amp;*+=_\-]{6,12}" inputmode="text" autocomplete="off" spellcheck="false" placeholder="Upprepa PIN-koden" required></div>
+                    <div><label for="central-admin-expired-new-pin"><?= ($portalLanguage ?? 'sv') === 'en' ? 'New central PIN' : 'Ny central PIN-kod' ?></label><input id="central-admin-expired-new-pin" name="new_pin" type="password" minlength="6" maxlength="12" pattern="[0-9!@#$%&amp;*+=_\-]{6,12}" inputmode="text" autocomplete="off" spellcheck="false" placeholder="6–10 siffror · upp till 2 symboler" required></div>
+                    <div><label for="central-admin-expired-confirm-pin"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Repeat new PIN' : 'Upprepa ny PIN-kod' ?></label><input id="central-admin-expired-confirm-pin" name="pin_confirm" type="password" minlength="6" maxlength="12" pattern="[0-9!@#$%&amp;*+=_\-]{6,12}" inputmode="text" autocomplete="off" spellcheck="false" placeholder="<?= ($portalLanguage ?? 'sv') === 'en' ? 'Repeat PIN' : 'Upprepa PIN-koden' ?>" required></div>
                 </div>
-                <button class="btn btn-main" type="submit" <?= !$csrfReady ? 'disabled' : '' ?>>Byt PIN-kod och fortsätt</button>
+                <button class="btn btn-main" type="submit" <?= !$csrfReady ? 'disabled' : '' ?>><?= ($portalLanguage ?? 'sv') === 'en' ? 'Change PIN and continue' : 'Byt PIN-kod och fortsätt' ?></button>
             </form>
             <p class="central-admin-help">6–10 siffror och högst 2 valfria specialtecken ur <code>!@#$%&amp;*+-_=</code>; inga bokstäver eller mellanslag. För bäst skydd: använd 10 siffror och 2 symboler.</p>
             <div class="central-admin-actions">
-                <form method="post" action="?tab=admin"><input type="hidden" name="action" value="central_admin_logout"><?= csrf_field() ?><button class="btn btn-outline" type="submit">Logga ut</button></form>
+                <form method="post" action="?tab=admin"><input type="hidden" name="action" value="central_admin_logout"><?= csrf_field() ?><button class="btn btn-outline" type="submit"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Sign out' : 'Logga ut' ?></button></form>
             </div>
         </section>
 
     <?php elseif ($centralAdminSetupState === 'error'): ?>
         <header class="central-admin-hero">
-            <div><h2>Central admininställning behöver kontrolleras</h2><p>Portalen kan inte verifiera den centrala adminfilen. Åtkomst till centrala adminfunktioner är stängd tills den privata filen kontrollerats.</p></div>
+            <div><h2><?= ($portalLanguage ?? 'sv') === 'en' ? 'Central administrator settings need checking' : 'Central admininställning behöver kontrolleras' ?></h2><p>Portalen kan inte verifiera den centrala adminfilen. Åtkomst till centrala adminfunktioner är stängd tills den privata filen kontrollerats.</p></div>
         </header>
         <section class="central-admin-card central-admin-warning" aria-labelledby="central-admin-storage-error-title">
-            <h2 id="central-admin-storage-error-title">Kontrollera privat lagring via SFTP</h2>
-            <p>Kontrollera <code>storage/central_admin.json</code>, eventuell <code>storage/central_admin_login_attempts.json</code>, katalogen <code>storage</code> och filrättigheterna. Vid PIN-återställning, säkerhetskopiera och radera den centrala adminfilen; ta bort försöksfilen endast om den är skadad eller inloggningen är spärrad. Ändra inte <code>invoice_users.json</code> eller protokollkontonas fil.</p>
+            <h2 id="central-admin-storage-error-title"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Check private storage using SFTP' : 'Kontrollera privat lagring via SFTP' ?></h2>
+            <p><?= ($portalLanguage ?? 'sv') === 'en' ? 'Check' : 'Kontrollera' ?> <code>storage/central_admin.json</code>, eventuell <code>storage/central_admin_login_attempts.json</code>, katalogen <code>storage</code> och filrättigheterna. Vid PIN-återställning, säkerhetskopiera och radera den centrala adminfilen; ta bort försöksfilen endast om den är skadad eller inloggningen är spärrad. Ändra inte <code>invoice_users.json</code> eller protokollkontonas fil.</p>
         </section>
 
     <?php elseif ($centralAdminSetupState === 'unconfigured' && $canEnrollCentralAdmin): ?>
         <header class="central-admin-hero">
             <div>
-                <h2>Välj central admin-PIN</h2>
+                <h2><?= ($portalLanguage ?? 'sv') === 'en' ? 'Choose central administrator PIN' : 'Välj central admin-PIN' ?></h2>
                 <p>Du är inloggad med det befintliga Fakturaunderlag-adminet. Välj nu en separat PIN som ger adminåtkomst till personalsidorna utan att ersätta faktura- eller protokollkontona.</p>
             </div>
-            <span class="central-admin-status">Förstagångsinställning</span>
+            <span class="central-admin-status"><?= ($portalLanguage ?? 'sv') === 'en' ? 'First-time setup' : 'Förstagångsinställning' ?></span>
         </header>
         <section class="central-admin-card" aria-labelledby="central-admin-enroll-title">
-            <h2 id="central-admin-enroll-title">Skapa central adminåtkomst</h2>
+            <h2 id="central-admin-enroll-title"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Create central administrator access' : 'Skapa central adminåtkomst' ?></h2>
             <form class="central-admin-form" method="post" action="?tab=admin" autocomplete="off">
                 <input type="hidden" name="action" value="central_admin_enroll">
                 <?= csrf_field() ?>
                 <div class="central-admin-form-grid">
-                    <div><label for="central-admin-enroll-pin">Välj central PIN-kod</label><input id="central-admin-enroll-pin" name="new_pin" type="password" minlength="6" maxlength="12" pattern="[0-9!@#$%&amp;*+=_\-]{6,12}" inputmode="text" autocomplete="off" spellcheck="false" placeholder="6–10 siffror · upp till 2 symboler" required></div>
-                    <div><label for="central-admin-enroll-confirm">Upprepa PIN-koden</label><input id="central-admin-enroll-confirm" name="pin_confirm" type="password" minlength="6" maxlength="12" pattern="[0-9!@#$%&amp;*+=_\-]{6,12}" inputmode="text" autocomplete="off" spellcheck="false" placeholder="Upprepa PIN-koden" required></div>
+                    <div><label for="central-admin-enroll-pin"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Choose central PIN' : 'Välj central PIN-kod' ?></label><input id="central-admin-enroll-pin" name="new_pin" type="password" minlength="6" maxlength="12" pattern="[0-9!@#$%&amp;*+=_\-]{6,12}" inputmode="text" autocomplete="off" spellcheck="false" placeholder="6–10 siffror · upp till 2 symboler" required></div>
+                    <div><label for="central-admin-enroll-confirm"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Repeat PIN' : 'Upprepa PIN-koden' ?></label><input id="central-admin-enroll-confirm" name="pin_confirm" type="password" minlength="6" maxlength="12" pattern="[0-9!@#$%&amp;*+=_\-]{6,12}" inputmode="text" autocomplete="off" spellcheck="false" placeholder="<?= ($portalLanguage ?? 'sv') === 'en' ? 'Repeat PIN' : 'Upprepa PIN-koden' ?>" required></div>
                 </div>
-                <button class="btn btn-main" type="submit" <?= !$csrfReady ? 'disabled' : '' ?>>Skapa central admin-PIN</button>
+                <button class="btn btn-main" type="submit" <?= !$csrfReady ? 'disabled' : '' ?>><?= ($portalLanguage ?? 'sv') === 'en' ? 'Create central administrator PIN' : 'Skapa central admin-PIN' ?></button>
             </form>
             <p class="central-admin-help">Krav: 6–10 siffror och högst 2 valfria specialtecken ur <code>!@#$%&amp;*+-_=</code>; inga bokstäver eller mellanslag. För bäst skydd: använd 10 siffror och 2 symboler. Den första PIN-koden väljs av ett befintligt Fakturaunderlag-admin och måste bytas var 20:e dag.</p>
         </section>
@@ -658,7 +681,7 @@ $releaseApprovalDataValid = preg_match('/\\A[A-Za-z0-9][A-Za-z0-9.+_-]{0,119}\\z
         <?php elseif ($centralAdminSetupState === 'unconfigured' && $invoiceSetupState === 'error'): ?>
             <section class="central-admin-card central-admin-warning" aria-labelledby="central-admin-invoice-error-title">
                 <h2 id="central-admin-invoice-error-title">Befintligt faktura-admin kunde inte verifieras</h2>
-                <p>Kontrollera <code>storage/invoice_users.json</code> via SFTP. Central admin-PIN kan inte sättas utan ett fungerande Fakturaunderlag-admin.</p>
+                <p><?= ($portalLanguage ?? 'sv') === 'en' ? 'Check' : 'Kontrollera' ?> <code>storage/invoice_users.json</code> via SFTP. Central admin-PIN kan inte sättas utan ett fungerande Fakturaunderlag-admin.</p>
             </section>
         <?php elseif ($centralAdminSetupState === 'unconfigured'): ?>
             <section class="central-admin-card" aria-labelledby="central-admin-enrollment-required-title">
@@ -671,19 +694,19 @@ $releaseApprovalDataValid = preg_match('/\\A[A-Za-z0-9][A-Za-z0-9.+_-]{0,119}\\z
             </section>
         <?php else: ?>
             <section class="central-admin-card" aria-labelledby="central-admin-login-title">
-                <h2 id="central-admin-login-title">Logga in som central admin</h2>
+                <h2 id="central-admin-login-title"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Sign in as central administrator' : 'Logga in som central admin' ?></h2>
                 <form class="central-admin-form" method="post" action="?tab=admin" autocomplete="off">
                     <input type="hidden" name="action" value="central_admin_login">
                     <?= csrf_field() ?>
-                    <div><label for="central-admin-login-pin">Central admin-PIN-kod</label><input id="central-admin-login-pin" name="central_pin" type="password" maxlength="128" inputmode="text" autocomplete="off" required></div>
-                    <button class="btn btn-main" type="submit" <?= !$csrfReady ? 'disabled' : '' ?>>Logga in</button>
+                    <div><label for="central-admin-login-pin"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Central administrator PIN' : 'Central admin-PIN-kod' ?></label><input id="central-admin-login-pin" name="central_pin" type="password" maxlength="128" inputmode="text" autocomplete="off" required></div>
+                    <button class="btn btn-main" type="submit" <?= !$csrfReady ? 'disabled' : '' ?>><?= ($portalLanguage ?? 'sv') === 'en' ? 'Sign in' : 'Logga in' ?></button>
                 </form>
                 <p class="central-admin-help">Nya PIN-koder innehåller 6–10 siffror och högst 2 valfria symboler ur <code>!@#$%&amp;*+-_=</code>; inga bokstäver eller mellanslag. Om du redan har en äldre PIN-kod kan du logga in med den en gång och blir då ombedd att välja en ny. Om PIN-koden har glömts bort: återställ via SFTP enligt instruktionen nedan. Faktura- och protokollkontonas PIN-koder ändras inte.</p>
             </section>
         <?php endif; ?>
 
         <section class="central-admin-card central-admin-sftp" aria-labelledby="central-admin-sftp-login-title">
-            <h2 id="central-admin-sftp-login-title">SFTP-återställning</h2>
+            <h2 id="central-admin-sftp-login-title"><?= ($portalLanguage ?? 'sv') === 'en' ? 'SFTP reset' : 'SFTP-återställning' ?></h2>
             <ol>
                 <li>Via SFTP, säkerhetskopiera och radera <code>storage/central_admin.json</code>. Om inloggningen är spärrad eller försöksfilen är skadad, ta även bort <code>storage/central_admin_login_attempts.json</code>.</li>
                 <li>Logga in med ett befintligt Fakturaunderlag-admin och öppna Adminpanelen.</li>

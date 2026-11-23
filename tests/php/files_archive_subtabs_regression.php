@@ -28,7 +28,7 @@ function get_archive_files(): array
     return $GLOBALS['archiveFixtureFiles'];
 }
 
-function render_archive_subtab(string $sub): string
+function render_archive_subtab(string $sub, bool $centralAdminCanAccess = false): string
 {
     $_GET = ['sub' => $sub];
     $_POST = [];
@@ -80,6 +80,13 @@ $assert(strpos($allHtml, 'id="file-category-filter"') !== false, 'Alla filer-vyn
 $assert(strpos($allHtml, 'data-category="skade" data-date="2026-10-06" data-regnr="ABC123"') !== false, 'Filrader innehåller sanerade filtermetadata för kategori, datum och registreringsnummer');
 $assert(strpos($allHtml, 'Rensa filter') !== false && strpos($allHtml, 'file-filter-results') !== false, 'Filterpanelen har en återställningsknapp och tillgänglig träffräknare');
 $assert(strpos($allHtml, 'Resultaten ändrar inte eller flyttar några filer.') !== false, 'Sökningen förklarar att filerna inte ändras eller flyttas');
+$adminHtml = render_archive_subtab('all', true);
+$assert(strpos($allHtml, 'name="action" value="delete_archive_file"') === false, 'Personal utan central admin ser inte raderingsknappar');
+$assert(strpos($adminHtml, 'name="action" value="delete_archive_file"') !== false, 'Central admin ser raderingsknappar');
+$assert(strpos($adminHtml, 'name="confirm_delete"') !== false, 'Radering kräver bekräftelse');
+$templateAdminHtml = render_archive_subtab('templates', true);
+$assert(strpos($templateAdminHtml, 'name="action" value="delete_archive_file"') === false, 'Originalmallen kan inte raderas från gränssnittet');
+
 $categoryHtml = render_archive_subtab('service');
 $assert(strpos($categoryHtml, 'id="file-category-filter"') === false && strpos($categoryHtml, 'Filtrera Service') !== false, 'En aktiv dokumenttypflik begränsar sökningen utan att visa ett missvisande tvärkategorifilter');
 
