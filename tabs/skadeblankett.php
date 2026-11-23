@@ -651,7 +651,7 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
                     <?php if ($skadeCustomerMode): ?><button class="btn btn-outline" type="button" id="skade-sign-back" hidden><?= ($portalLanguage ?? 'sv') === 'en' ? 'Back to review' : 'Tillbaka till granskning' ?></button><?php endif; ?>
                     <div class="skade-signature" aria-labelledby="skade-signature-title">
                         <p class="skade-signature-title" id="skade-signature-title"><?= $skadeCustomerMode ? 'Din digitala signatur' : 'Kundens digitala signatur' ?> <?php if ($skadeCustomerMode): ?><span class="skade-required">*</span><?php else: ?><small><?= ($portalLanguage ?? 'sv') === 'en' ? '(optional)' : '(frivillig)' ?></small><?php endif; ?></p>
-                        <p class="skade-signature-copy" id="skade-signature-help"><?= $skadeCustomerMode ? 'Skriv din namnteckning i rutan med finger eller Apple Pencil. Tryck på Rensa signatur om du vill börja om.' : 'Låt kunden skriva sin signatur i ett lugnt, sammanhängande drag med finger eller penna. Ritytan jämnar ut små ryck och ger blått bläck med diskret breddvariation; signaturen anpassas till originalrutans storlek i PDF:en. Lämna rutan tom för utskrift och handskriven underskrift.' ?></p>
+                        <p class="skade-signature-copy" id="skade-signature-help"><?= $skadeCustomerMode ? 'Skriv din namnteckning med finger eller Apple Pencil och lämna lite luft till rutans kanter. Tryck på Rensa signatur om du vill börja om.' : 'Låt kunden skriva sin signatur med finger eller penna och lämna lite luft till rutans kanter. Ritytan jämnar ut små ryck och ger blått bläck med diskret breddvariation; signaturen anpassas till originalrutans storlek i PDF:en. Lämna rutan tom för utskrift och handskriven underskrift.' ?></p>
                         <canvas id="skade-signature-pad" class="skade-signature-canvas" width="1600" height="360" role="img" aria-label="<?= h($skadeCustomerMode ? 'Rita din signatur här' : 'Rita kundens signatur här') ?>" aria-describedby="skade-signature-help skade-signature-status" tabindex="0"></canvas>
                         <noscript><small class="skade-help"><?= $skadeCustomerMode ? 'Digital signering kräver JavaScript. Be personalen om hjälp.' : 'Ritning kräver JavaScript. Ni kan ändå skapa PDF:en utan digital signatur och låta kunden skriva under utskriften för hand.' ?></small></noscript>
                         <input type="hidden" name="s[signature_png]" id="skade-signature-png" value="<?= $skadeText('signature_png') ?>">
@@ -807,6 +807,8 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
     var canvas = document.getElementById('skade-signature-pad');
     var signatureInput = document.getElementById('skade-signature-png');
     var signatureStatus = document.getElementById('skade-signature-status');
+    var signatureClipped = false;
+    var clippedSignatureMessage = <?= json_encode(($portalLanguage ?? 'sv') === 'en' ? 'The signature reached the edge and may be cut off. Clear it and sign again with space around it.' : 'Signaturen nådde kanten och kan vara avhuggen. Rensa och skriv igen med luft runtom.', JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
     var clearButton = document.getElementById('skade-signature-clear');
     var preview = document.getElementById('skade-preview-details');
     var previewToggle = document.getElementById('skade-preview-toggle');
@@ -953,6 +955,7 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
     }
     function validateField(field) {
         if (field === canvas) {
+            if (signatureClipped) { setSignatureStatus(clippedSignatureMessage, 'error'); return false; }
             if (signatureInput && signatureInput.value !== '') {
                 setSignatureStatus(<?= json_encode(($portalLanguage ?? 'sv') === 'en' ? "The signature is ready for the PDF." : "Signaturen är klar för PDF:en.", JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>);
                 return true;
@@ -1336,7 +1339,7 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
                 for (var y = 0; y < canvas.height; y++) {
                     for (var x = 0; x < canvas.width; x++) {
                         var offset = (y * canvas.width + x) * 4;
-                        if (pixels[offset + 3] > 8 && (pixels[offset] < 245 || pixels[offset + 1] < 245 || pixels[offset + 2] < 245)) {
+                        if (pixels[offset + 3] > 0 && (pixels[offset] < 245 || pixels[offset + 1] < 245 || pixels[offset + 2] < 245)) {
                             if (x < minX) minX = x;
                             if (x > maxX) maxX = x;
                             if (y < minY) minY = y;
@@ -1345,27 +1348,40 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
                     }
                 }
                 if (maxX < minX || maxY < minY) {
+                    signatureClipped = false;
                     signatureInput.value = '';
                     syncSignatureConfirmationRequirement();
                     setSignatureStatus(<?= json_encode(($portalLanguage ?? 'sv') === 'en' ? "No signature yet" : "Ingen signatur ännu", JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>);
                     updateProgress();
                     return;
                 }
+                // Pixels on the canvas boundary are already clipped: adding a margin
+                // cannot reconstruct them. Keep the drawing visible and ask to redraw.
+                signatureClipped = minX === 0 || minY === 0 || maxX === canvas.width - 1 || maxY === canvas.height - 1;
+                if (signatureClipped) {
+                    signatureInput.value = '';
+                    syncSignatureConfirmationRequirement();
+                    setSignatureStatus(clippedSignatureMessage, 'error');
+                    updateProgress();
+                    return;
+                }
                 var rect = canvas.getBoundingClientRect();
                 var padding = Math.max(13, Math.round(6 * Math.sqrt((canvas.width / Math.max(1, rect.width)) * (canvas.height / Math.max(1, rect.height)))));
-                var left = Math.max(0, minX - padding);
-                var top = Math.max(0, minY - padding);
-                var right = Math.min(canvas.width - 1, maxX + padding);
-                var bottom = Math.min(canvas.height - 1, maxY + padding);
-                var cropWidth = right - left + 1;
-                var cropHeight = bottom - top + 1;
+                var inkWidth = maxX - minX + 1;
+                var inkHeight = maxY - minY + 1;
+                var paddedWidth = inkWidth + 2 * padding;
+                var paddedHeight = inkHeight + 2 * padding;
+                // Stay within the server's PNG dimension/pixel limits on high-DPI tablets.
+                var factor = Math.min(1, 1600 / paddedWidth, 800 / paddedHeight, Math.sqrt(1200000 / (paddedWidth * paddedHeight)));
                 var output = document.createElement('canvas');
-                output.width = cropWidth;
-                output.height = cropHeight;
+                output.width = Math.max(1, Math.floor(paddedWidth * factor));
+                output.height = Math.max(1, Math.floor(paddedHeight * factor));
                 var outputContext = output.getContext('2d');
                 outputContext.imageSmoothingEnabled = true;
                 if ('imageSmoothingQuality' in outputContext) outputContext.imageSmoothingQuality = 'high';
-                outputContext.drawImage(canvas, left, top, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
+                outputContext.drawImage(canvas, minX, minY, inkWidth, inkHeight,
+                    padding * output.width / paddedWidth, padding * output.height / paddedHeight,
+                    inkWidth * output.width / paddedWidth, inkHeight * output.height / paddedHeight);
                 var png = output.toDataURL('image/png');
                 if (png.length > 550000) {
                     signatureInput.value = '';
@@ -1383,6 +1399,7 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
             if (clearButton) {
                 clearButton.addEventListener('click', function () {
                     signaturePad.clear();
+                    signatureClipped = false;
                     signatureInput.value = '';
                     syncSignatureConfirmationRequirement();
                     setSignatureStatus(<?= json_encode(($portalLanguage ?? 'sv') === 'en' ? "The signature was cleared." : "Signaturen har rensats.", JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>);

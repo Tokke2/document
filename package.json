@@ -6,7 +6,7 @@
     "test:pdf": "php tests/php/skadeblankett_pdf_regression.php",
     "test:voice": "node tests/invoice_voice_test.js && node tests/invoice_voice_dom_test.js && node tests/invoice_voice_learning_dom_test.js && node tests/invoice_voice_numeric_dom_test.js && node tests/invoice_fixed_price_dom_test.js && node tests/invoice_voice_catalog_dom_test.js && node tests/invoice_voice_features_dom_test.js",
     "test:ui": "node tests/portal_ui_preferences_test.js",
-    "test:skade-customer": "node tests/skade_customer_dom_test.js && node tests/skade_customer_review_dom_test.js && node tests/skade_standalone_gesture_test.js && node tests/signature_ink_test.js"
+    "test:skade-customer": "node tests/skade_customer_dom_test.js && node tests/skade_customer_review_dom_test.js && node tests/skade_standalone_gesture_test.js && node tests/signature_ink_test.js && node tests/skade_signature_crop_dom_test.js"
   },
   "devDependencies": {
     "@playwright/test": "^1.55.0",

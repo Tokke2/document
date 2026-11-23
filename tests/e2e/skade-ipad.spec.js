@@ -101,6 +101,26 @@ test.describe('touchgester på kundsidan', () => {
         expect(ink).not.toBeNull();
         expect(ink[2]).toBeGreaterThan(ink[0]);
         expect(ink[2]).toBeGreaterThan(ink[1]);
+        const margins=await page.evaluate(async () => {
+            const image=new Image(); image.src=document.querySelector('#skade-signature-png').value;
+            await image.decode();
+            const out=document.createElement('canvas'); out.width=image.width; out.height=image.height;
+            const ctx=out.getContext('2d'); ctx.drawImage(image,0,0);
+            const data=ctx.getImageData(0,0,out.width,out.height).data;
+            let minX=out.width,minY=out.height,maxX=-1,maxY=-1;
+            for(let y=0;y<out.height;y++) for(let x=0;x<out.width;x++) if(data[(y*out.width+x)*4+3]>8) {
+                minX=Math.min(minX,x);minY=Math.min(minY,y);maxX=Math.max(maxX,x);maxY=Math.max(maxY,y);
+            }
+            return {minX,minY,right:out.width-1-maxX,bottom:out.height-1-maxY};
+        });
+        expect(Math.min(...Object.values(margins))).toBeGreaterThan(0);
+        await page.locator('#skade-signature-clear').click();
+        await drag(rect.x+40,rect.y+35,rect.x+40,rect.y);
+        await expect(page.locator('#skade-signature-status')).toContainText('nådde kanten');
+        await expect(page.locator('#skade-signature-png')).toHaveValue('');
+        await page.locator('#skade-signature-clear').click();
+        await drag(rect.x+30,rect.y+45,rect.x+150,rect.y+70);
+        await expect(page.locator('#skade-signature-png')).toHaveValue(/^data:image\/png;base64,/);
         await cdp.detach();
     });
 });

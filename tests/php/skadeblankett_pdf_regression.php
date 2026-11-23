@@ -59,7 +59,10 @@ $check(is_array($signaturePlacement), 'A valid cropped PNG should receive a PDF 
 if (is_array($signaturePlacement)) {
     $check(abs(($signaturePlacement['width_mm'] / $signaturePlacement['height_mm']) - 6.0) < 0.0001, 'Signature placement must preserve the cropped PNG aspect ratio.');
     $measuredPadMm = 12 * $signaturePlacement['mm_per_px'];
-    $check(abs($measuredPadMm - 0.8594) < 0.01, 'A 12 px crop inset must be measurable at the actual PDF placement.');
+    $check(abs($measuredPadMm - 0.7154) < 0.01, 'A 12 px crop inset must be measurable at the actual PDF placement.');
+    $boxTopMm = skade_pdf_mm(471.8);
+    $boxBottomMm = skade_pdf_mm(471.8 + 21.9);
+    $check($signaturePlacement['top_mm'] - $boxTopMm >= skade_pdf_mm(2.49) && $boxBottomMm - ($signaturePlacement['top_mm'] + $signaturePlacement['height_mm']) >= skade_pdf_mm(2.49), 'There must be space above and below the signature in the original box.');
     $maximumOverrunMm = max(
         $signaturePlacement['left_overrun_mm'],
         $signaturePlacement['right_overrun_mm'],
@@ -72,6 +75,7 @@ foreach ([[100, 600], [600, 100], [6000, 25], [25, 6000], [100, 100]] as [$w, $h
     $placement = skade_pdf_signature_placement($w, $h);
     $check(is_array($placement) && max($placement['left_overrun_mm'], $placement['right_overrun_mm'], $placement['top_overrun_mm'], $placement['bottom_overrun_mm']) < 0.0001, 'Every signature aspect ratio must fit inside the PDF box.');
     $check(is_array($placement) && abs($placement['width_mm'] / $placement['height_mm'] - $w / $h) < 0.0001, 'Signature proportions must be preserved.');
+    $check(is_array($placement) && $placement['top_mm'] >= skade_pdf_mm(471.8 + 2.49) && $placement['top_mm'] + $placement['height_mm'] <= skade_pdf_mm(471.8 + 21.9 - 2.49), 'Top and bottom breathing room must remain for all aspect ratios.');
 }
 $check(skade_pdf_signature_placement(0, 100) === null, 'Zero-sized signature images must not receive a PDF placement.');
 
@@ -164,6 +168,33 @@ try {
     if (is_file($warningPath)) {
         @unlink($warningPath);
     }
+}
+
+// Exercise the real FPDF image placement with a synthetic, transparent blue PNG.
+// Decompress the content stream and check the actual PDF transform, not only the helper.
+$syntheticSignature = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAFoAAAAoCAYAAAB+Qu3IAAABnUlEQVR4nO2ZzW4DIQyEaVUpz5drHzDXPl9P6QmJEjBjbLNkdz4pUiKxmJ0M4/1JiRBCCLk4H5rBt/vjmb///nyrjr06n0cv4CrAQpduJnqmHU3hdTA6FvGFDFrt3jM2XbWjz3LiM2QDzBjPFB2agrf745k/mjl36QW1yNp1DYU+4zbW0hMVMU5mSTNc5UrL1vaoKzEltNXZkkNaNZATsW7t0bzlulrnP3K3KDQSG9rMfSektUuCt8af4joa2SEec7aERd29jdCt3aONj9G8FqS4bLm7/j0tNJLTtXgewkk10HVFzdkySKYrtOayzjOHNUL16tZzaK/30bFI7cwW0TFqOsi4eqymhjTG694hTOjoG53R9tbWjBQ5pY7QqEjeeYjOh25vS4R4m8PN0eVJSOLNNMTRMdZcj2ioNVtktIWRKCsbucSL0Ec9RIqs1YuQ6FwuMTtaykHPRaN3ZSgrRU7JOTpmm9QKrBFj5Z/Qu8dGeXc5s74jn6eHNcOVmbvbfKGUr6p2fzR6xAsCt3+Sr7xk3v46mhBCCCGElPwB+nk8GNooPgkAAAAASUVORK5CYII=', true);
+$signedPath = $projectRoot . '/pdf/.pdf-regression-signature-' . bin2hex(random_bytes(6)) . '.pdf';
+try {
+    $signedResult = create_skadeblankett_pdf_php(['signature_png_bytes' => $syntheticSignature], $templatePath, $signedPath, 'pdf');
+    $check(($signedResult[0] ?? false) === true && is_file($signedPath), 'A real PDF must be generated with the test signature.');
+    $content = '';
+    $pdfBytes = is_file($signedPath) ? file_get_contents($signedPath) : '';
+    if (is_string($pdfBytes) && preg_match_all('/stream\r?\n(.*?)\r?\nendstream/s', $pdfBytes, $streams)) {
+        foreach ($streams[1] as $stream) {
+            $decoded = @gzuncompress($stream);
+            if (is_string($decoded) && str_contains($decoded, '/I2 Do')) { $content = $decoded; break; }
+        }
+    }
+    $matched = preg_match('/q ([0-9.]+) 0 0 ([0-9.]+) ([0-9.]+) ([0-9.]+) cm \/I2 Do Q/', $content, $transform);
+    $check($matched === 1, 'The generated PDF must contain the signature image transform.');
+    if ($matched === 1) {
+        $imageWidth = (float) $transform[1]; $imageHeight = (float) $transform[2];
+        $imageX = (float) $transform[3]; $imageTop = 841.89 - (float) $transform[4] - $imageHeight;
+        $check(abs($imageWidth / $imageHeight - 90 / 40) < 0.005, 'The actual PDF transform preserves the signature proportions.');
+        $check($imageX >= 317.0 && $imageX + $imageWidth <= 317.0 + 203.1 && $imageTop >= 471.8 + 2.48 && $imageTop + $imageHeight <= 471.8 + 21.9 - 2.48, 'The actual PDF transform leaves vertical space inside the box.');
+    }
+} finally {
+    if (is_file($signedPath)) @unlink($signedPath);
 }
 
 unset($GLOBALS['skade_pdf_text_fit_stats']);

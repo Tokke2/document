@@ -353,8 +353,8 @@ function skade_pdf_signature_placement(int $imageWidthPx, int $imageHeightPx): ?
     $boxWidthPt = 203.1;
     $boxHeightPt = 21.9;
     // Leave the original box border visible, even for tall or very wide signatures.
-    $preferredWidthPt = $boxWidthPt - 1.6;
-    $preferredHeightPt = $boxHeightPt - 1.6;
+    $preferredWidthPt = $boxWidthPt - 10.0;
+    $preferredHeightPt = $boxHeightPt - 5.0;
     $imageWidthPt = min($preferredWidthPt, $preferredHeightPt * $aspect);
     $imageHeightPt = $imageWidthPt / $aspect;
     $imageXPt = $boxXPt + (($boxWidthPt - $imageWidthPt) / 2);
@@ -490,7 +490,7 @@ function create_skadeblankett_pdf_php(array $data, string $templatePath = '', st
                     throw new RuntimeException('Signature image rejected');
                 }
                 // Preserve the PNG's aspect ratio and keep crop air compact in physical PDF units.
-                // The helper also exposes mm/px for regression measurements; 10 mm remains a hard overrun ceiling.
+                // The helper also exposes mm/px for regression measurements and leaves breathing room around the ink.
                 $placement = skade_pdf_signature_placement((int) $signatureInfo[0], (int) $signatureInfo[1]);
                 if ($placement === null) {
                     $failureCode = 'skade.pdf_signature_invalid';

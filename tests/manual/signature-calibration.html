@@ -77,8 +77,8 @@
     var aspect = crop.imageWidthPx / crop.imageHeightPx;
     var boxWidthPt = 203.1;
     var boxHeightPt = 21.9;
-    var preferredWidthPt = boxWidthPt - 1.6;
-    var preferredHeightPt = boxHeightPt - 1.6;
+    var preferredWidthPt = boxWidthPt - 10.0;
+    var preferredHeightPt = boxHeightPt - 5.0;
     var imageWidthPt = Math.min(preferredWidthPt, preferredHeightPt * aspect);
     var imageHeightPt = imageWidthPt / aspect;
     var imageWidthMm = imageWidthPt * pointToMm;
