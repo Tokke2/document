@@ -37,6 +37,7 @@ if (!headers_sent()) {
 $portalPwaConfig = [
     'protocol' => ['tab' => 'protocol', 'entry' => 'pwa-protokoll.php', 'manifest' => 'manifest-protokoll.webmanifest'],
     'invoice' => ['tab' => 'invoice', 'entry' => 'pwa-underlag.php', 'manifest' => 'manifest-underlag.webmanifest'],
+    'calendar' => ['tab' => 'calendar', 'entry' => 'pwa-kalender.php', 'manifest' => 'manifest-kalender.webmanifest'],
     'skadeblankett' => ['tab' => 'skadeblankett', 'entry' => 'skadeblankett-kund.php', 'manifest' => 'manifest-skadeblankett.webmanifest'],
 ];
 $portalPwaApp = defined('TADEGA_PWA_APP') && is_string(TADEGA_PWA_APP) && isset($portalPwaConfig[TADEGA_PWA_APP])
@@ -2355,7 +2356,7 @@ function portal_serve_asset_route(): void
     if ($portalIsScopedPwa) {
         $pwaAssetBases = match ($portalPwaApp) {
             'protocol' => ['assets', 'uploads'],
-            'invoice' => ['assets'],
+            'invoice', 'calendar' => ['assets'],
             'skadeblankett' => ['assets', 'pdf'],
             default => [],
         };
@@ -2573,6 +2574,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             'invoice_admin_test_email', 'invoice_admin_create_user', 'invoice_admin_reset_pin',
         ],
         'skadeblankett' => ['client_diagnostic', 'generate_skadeblankett'],
+        'calendar' => ['client_diagnostic', 'calendar_login', 'calendar_logout', 'calendar_save', 'calendar_delete'],
         default => [],
     };
     if (!csrf_is_valid()) {
@@ -2598,17 +2600,17 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         portal_redirect('invoice');
     } else {
         if ($action === 'calendar_login') {
-            if ($activeTab !== 'calendar' || $portalIsScopedPwa) { http_response_code(403); $portalPostError = 'Åtkomst nekad.'; }
+            if ($activeTab !== 'calendar' || ($portalIsScopedPwa && $portalPwaApp !== 'calendar')) { http_response_code(403); $portalPostError = 'Åtkomst nekad.'; }
             else {
                 $login = portal_invoice_auth_login(is_string($_POST['username'] ?? null) ? $_POST['username'] : '', is_string($_POST['pin'] ?? null) ? $_POST['pin'] : '');
                 if ($login['ok'] ?? false) portal_redirect('calendar');
                 $portalPostError = $portalLanguage === 'en' ? 'Login failed. Check your credentials or try again later.' : 'Inloggningen misslyckades. Kontrollera uppgifterna eller försök igen senare.';
             }
         } elseif ($action === 'calendar_logout') {
-            if ($activeTab !== 'calendar' || $portalIsScopedPwa) { http_response_code(403); $portalPostError = 'Åtkomst nekad.'; }
+            if ($activeTab !== 'calendar' || ($portalIsScopedPwa && $portalPwaApp !== 'calendar')) { http_response_code(403); $portalPostError = 'Åtkomst nekad.'; }
             else { portal_invoice_auth_logout(); portal_redirect('calendar'); }
         } elseif (in_array($action, ['calendar_save', 'calendar_delete'], true)) {
-            $actor = !$portalIsScopedPwa && $activeTab === 'calendar' ? portal_invoice_auth_personal_user() : null;
+            $actor = $activeTab === 'calendar' && (!$portalIsScopedPwa || $portalPwaApp === 'calendar') ? portal_invoice_auth_personal_user() : null;
             if (!is_array($actor) || !portal_calendar_valid_id($actor['id'] ?? null)) { http_response_code(403); $portalPostError = 'Åtkomst nekad.'; }
             else {
                 $recipients = [];
@@ -3752,6 +3754,7 @@ $csrfReady = csrf_token() !== '';
 $portalPwaNames = [
     'protocol' => 'Serviceprotokoll',
     'invoice' => 'Fakturaunderlag',
+    'calendar' => 'Kalender',
     'skadeblankett' => 'Skadeblankett',
 ];
 $companySettingsForDisplay = load_settings();
@@ -3984,6 +3987,13 @@ $languageLink = static function (string $language): string {
                 </div>
             </div>
         </div>
+        <?php if (!$portalIsScopedPwa && in_array($activeTab, ['calendar', 'invoice', 'protocol'], true)):
+            $ownApp = $portalPwaConfig[$activeTab];
+            $ownAppPath = __DIR__ . '/' . $ownApp['entry'];
+            if (is_file($ownAppPath) && !is_link($ownAppPath)): ?>
+            <p><a class="btn btn-outline" href="<?= h('./' . $ownApp['entry']) ?>"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Open standalone app' : 'Öppna egen app' ?> · <?= h($portalTabs[$activeTab][0]) ?></a></p>
+            <?php endif; ?>
+        <?php endif; ?>
         <?php if ($notice !== ''): ?>
             <?= portal_ui_alert($notice, $noticeTone) ?>
         <?php endif; ?>

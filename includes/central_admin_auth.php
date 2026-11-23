@@ -43,7 +43,7 @@ function portal_central_admin_auth_is_scoped_pwa(): bool
 {
     return defined('TADEGA_PWA_APP')
         && is_string(TADEGA_PWA_APP)
-        && in_array(TADEGA_PWA_APP, ['protocol', 'invoice', 'skadeblankett'], true);
+        && in_array(TADEGA_PWA_APP, ['protocol', 'invoice', 'skadeblankett', 'calendar'], true);
 }
 
 function portal_central_admin_auth_pin_is_valid(string $pin): bool
