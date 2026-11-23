@@ -37,8 +37,12 @@ test.describe('touchgester på kundsidan', () => {
     test('sidledsdrag stoppas, vertikal scroll och signering fungerar', async ({page,context}, testInfo) => {
         test.skip(!process.env.PORTAL_BASE_URL, 'Ange PORTAL_BASE_URL till skyddad staging.');
         test.skip(testInfo.project.name !== 'chromium-desktop', 'Kräver Chromium CDP.');
+        // Exercise the installed-mode branch in Chromium; this is not an iPad PWA.
+        await page.addInitScript(() => Object.defineProperty(navigator, 'standalone', {value:true, configurable:true}));
         await page.goto('skadeblankett-kund.php');
         await expect(page.locator('#skade-form')).toBeVisible();
+        await expect(page.locator('html')).toHaveClass(/skade-kiosk-standalone/);
+        await expect(page.locator('html')).toHaveCSS('touch-action','pan-y');
         const cdp=await context.newCDPSession(page);
         async function drag(x1,y1,x2,y2) {
             const send=(type,x,y)=>cdp.send('Input.dispatchTouchEvent',{type,touchPoints:type==='touchEnd'?[]:[{x,y,id:1}]});
@@ -49,6 +53,7 @@ test.describe('touchgester på kundsidan', () => {
         await page.evaluate(()=>window.scrollTo(0,300));
         const before=await page.locator('#main-content').boundingBox();
         await drag(300,500,600,505);
+        await drag(600,500,300,505);
         const after=await page.locator('#main-content').boundingBox();
         expect(Math.abs(after.x-before.x)).toBeLessThanOrEqual(1);
         expect(Math.abs(await page.evaluate(()=>window.scrollX))).toBeLessThanOrEqual(1);

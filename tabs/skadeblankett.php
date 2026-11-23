@@ -152,6 +152,10 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
        remains on the page. Keep the fallback for older Safari versions. */
     html.skade-kiosk-root, body.skade-kiosk-mode { overflow-x:hidden; overscroll-behavior-x:none; }
     @supports (overflow-x:clip) { html.skade-kiosk-root, body.skade-kiosk-mode { overflow-x:clip; } }
+    /* Installed customer app: permit vertical panning only at normal scale.
+       A system/accessibility zoom that is already active remains navigable. */
+    html.skade-kiosk-root.skade-kiosk-standalone:not(.skade-kiosk-zoomed) { touch-action:pan-y; }
+    @media (display-mode:standalone) { html.skade-kiosk-root:not(.skade-kiosk-zoomed) { touch-action:pan-y; } }
     body.skade-kiosk-mode { width:100%; min-width:0; background:#f3f8fa; }
     body.skade-kiosk-mode #main-content { width:100%; max-width:1320px; min-height:100vh; margin:0 auto; padding:clamp(12px,2.6vw,28px) max(12px,env(safe-area-inset-right)) calc(18px + env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left)); }
     body.skade-kiosk-mode .page-content { width:100%; }
@@ -725,31 +729,61 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
 <script>
 (function () {
     <?php if ($skadeCustomerMode): ?>
-    // Older iPadOS versions may ignore overscroll-behavior. Cancel only an
-    // unzoomed, single-finger horizontal page gesture, not vertical scrolling,
-    // pinch zoom, signature drawing, or editing in a focused text control.
+    // Standalone gesture restrictions are scoped to the customer app. They do
+    // not lock the operating system or replace Guided Access / kiosk mode.
+    var standaloneQuery = typeof window.matchMedia === 'function' ? window.matchMedia('(display-mode: standalone)') : null;
+    function isStandalone() { return window.navigator.standalone === true || !!(standaloneQuery && standaloneQuery.matches); }
+    function zoomed() { return !!(window.visualViewport && window.visualViewport.scale > 1.01); }
+    function syncGestureClasses() {
+        document.documentElement.classList.toggle('skade-kiosk-standalone', isStandalone());
+        document.documentElement.classList.toggle('skade-kiosk-zoomed', zoomed());
+    }
+    syncGestureClasses();
+    if (standaloneQuery && typeof standaloneQuery.addEventListener === 'function') standaloneQuery.addEventListener('change', syncGestureClasses);
+    else if (standaloneQuery && typeof standaloneQuery.addListener === 'function') standaloneQuery.addListener(syncGestureClasses);
+    if (window.visualViewport && typeof window.visualViewport.addEventListener === 'function') window.visualViewport.addEventListener('resize', syncGestureClasses);
     var swipe = null;
-    function zoomed() { return window.visualViewport && window.visualViewport.scale > 1.01; }
+    var signatureGesture = false;
+    function inSignature(target) { return !!(target && target.closest && target.closest('#skade-signature-pad')); }
     function swipeExempt(target) {
         if (!target || !target.closest) return false;
-        if (target.closest('#skade-signature-pad, [contenteditable="true"]')) return true;
+        if (inSignature(target) || target.closest('[contenteditable="true"]')) return true;
         var editable = target.closest('input:not([type=checkbox]):not([type=radio]), textarea, select');
-        return !!editable && document.activeElement === editable;
+        // Normal browser mode leaves focused text-editing gestures untouched.
+        return !isStandalone() && !!editable && document.activeElement === editable;
     }
     document.addEventListener('touchstart', function (event) {
-        if (event.touches.length !== 1 || zoomed() || swipeExempt(event.target)) { swipe = null; return; }
+        if (event.touches.length === 1) signatureGesture = inSignature(event.target);
+        if (event.touches.length !== 1) {
+            for (var i = 0; i < event.touches.length; i++) if (inSignature(event.touches[i].target)) signatureGesture = true;
+            swipe = null;
+            if (isStandalone() && !zoomed() && !signatureGesture && event.cancelable) event.preventDefault();
+            return;
+        }
+        if (zoomed() || swipeExempt(event.target)) { swipe = null; return; }
         swipe = { x:event.touches[0].clientX, y:event.touches[0].clientY, axis:'' };
-    }, { passive:true });
+    }, { passive:false });
     document.addEventListener('touchmove', function (event) {
-        if (!swipe || event.touches.length !== 1 || zoomed()) { swipe = null; return; }
+        if (event.touches.length !== 1) {
+            swipe = null;
+            if (isStandalone() && !zoomed() && !signatureGesture && event.cancelable) event.preventDefault();
+            return;
+        }
+        if (!swipe || zoomed()) { swipe = null; return; }
         var dx = Math.abs(event.touches[0].clientX - swipe.x);
         var dy = Math.abs(event.touches[0].clientY - swipe.y);
         if (!swipe.axis && Math.max(dx, dy) >= 4) swipe.axis = dx > dy ? 'x' : 'y';
         if (swipe.axis === 'x' && event.cancelable) event.preventDefault();
     }, { passive:false });
-    function endSwipe() { swipe = null; }
+    function endSwipe(event) { swipe = null; if (!event.touches || event.touches.length === 0) signatureGesture = false; }
     document.addEventListener('touchend', endSwipe, { passive:true });
     document.addEventListener('touchcancel', endSwipe, { passive:true });
+    // Older iOS WebKit exposes separate pinch gesture events.
+    ['gesturestart', 'gesturechange'].forEach(function (type) {
+        document.addEventListener(type, function (event) {
+            if (isStandalone() && !zoomed() && !signatureGesture && !inSignature(event.target) && event.cancelable) event.preventDefault();
+        }, { passive:false });
+    });
     <?php endif; ?>
     var kioskNotice = document.getElementById('skade-kiosk-notice');
     if (kioskNotice && window.history && typeof window.history.replaceState === 'function') {
