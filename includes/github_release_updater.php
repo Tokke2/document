@@ -12,8 +12,8 @@ function portal_github_release_metadata(): array
     if (($response['status'] ?? 0) !== 200) return ['ok'=>false,'code'=>'github_response_invalid'];
     try { $data = json_decode($response['body'], true, 32, JSON_THROW_ON_ERROR); } catch (JsonException) { return ['ok'=>false,'code'=>'github_response_invalid']; }
     if (!is_array($data) || ($data['draft'] ?? true) !== false || ($data['prerelease'] ?? true) !== false || !is_int($data['id'] ?? null) || $data['id'] <= 0 || !is_string($data['tag_name'] ?? null) || preg_match('/\A[A-Za-z0-9][A-Za-z0-9.+_-]{0,79}\z/D', $data['tag_name']) !== 1) return ['ok'=>false,'code'=>'github_response_invalid'];
-    // Resolve the tag to an immutable commit so a moved tag is detectable.
-    $commitResponse = portal_release_http_get('https://api.github.com/repos/Tokke2/document/commits/'.rawurlencode($data['tag_name']), ['Accept: application/vnd.github+json','X-GitHub-Api-Version: 2022-11-28'], 1048576, 15);
+    // Resolve the explicit tag ref (not a same-named branch) to an immutable commit.
+    $commitResponse = portal_release_http_get('https://api.github.com/repos/Tokke2/document/commits/'.rawurlencode('refs/tags/'.$data['tag_name']), ['Accept: application/vnd.github+json','X-GitHub-Api-Version: 2022-11-28'], 1048576, 15);
     if (!($commitResponse['ok'] ?? false) || ($commitResponse['status'] ?? 0) !== 200) return ['ok'=>false,'code'=>'github_response_invalid'];
     try { $commitData = json_decode($commitResponse['body'], true, 32, JSON_THROW_ON_ERROR); } catch (JsonException) { return ['ok'=>false,'code'=>'github_response_invalid']; }
     $sha = $commitData['sha'] ?? null;
@@ -52,20 +52,42 @@ function portal_github_release_auto_status(string $root, ?callable $fetch = null
 
 /** Best-effort marker only: describes the last release installed by this
  * panel, not necessarily the currently running code after manual deployments. */
-function portal_github_release_install_marker(string $root, ?string $tag = null, ?string $commit = null): ?array
+function portal_github_release_install_marker(string $root, ?string $tag = null, ?string $commit = null, ?string $outcome = null): ?array
 {
     $dir=$root.'/storage'; $guard=$dir.'/.htaccess'; $path=$dir.'/github_release_installed.json';
-    if (is_link($dir) || !is_dir($dir) || is_link($guard) || !is_file($guard) || !preg_match('/^\s*(?:Require\s+all\s+denied|Deny\s+from\s+all)\b/im',(string)@file_get_contents($guard)) || is_link($path) || is_link($path.'.lock')) return null;
+    $guardPath=$path.'.guard.lock';
+    if (is_link($dir) || !is_dir($dir) || is_link($guard) || !is_file($guard) || !preg_match('/^\s*(?:Require\s+all\s+denied|Deny\s+from\s+all)\b/im',(string)@file_get_contents($guard)) || is_link($path) || is_link($path.'.lock') || is_link($guardPath)) return null;
     if ($tag !== null) {
-        if (preg_match('/\A[A-Za-z0-9][A-Za-z0-9.+_-]{0,79}\z/D',$tag)!==1 || !is_string($commit) || preg_match('/\A[a-f0-9]{40}\z/D',$commit)!==1 || !function_exists('save_data') || !save_data($path,['tag'=>$tag,'commit'=>$commit,'installed_at'=>time()])) return null;
-        return ['tag'=>$tag,'commit'=>$commit];
+        if (preg_match('/\A[A-Za-z0-9][A-Za-z0-9.+_-]{0,79}\z/D',$tag)!==1 || !is_string($commit) || preg_match('/\A[a-f0-9]{40}\z/D',$commit)!==1 || !in_array($outcome,[null,'installed','already_current'],true) || !function_exists('save_data')) return null;
+        $mask=umask(0077); $lock=@fopen($guardPath,'c'); umask($mask);
+        if (!is_resource($lock)) return null;
+        @chmod($guardPath,0600);
+        if (!@flock($lock,LOCK_EX)) { fclose($lock); return null; }
+        try {
+            if (is_link($path) || is_link($path.'.lock') || is_link($guardPath)) return null;
+            $previous=portal_github_release_install_marker($root);
+            $now=time();
+            $updatedAt=$outcome==='installed' ? $now : ($previous['last_updated_at'] ?? null);
+            $data=['tag'=>$tag,'commit'=>$commit,'installed_at'=>$now,'last_updated_at'=>$updatedAt];
+            if (!save_data($path,$data)) return null;
+            return ['tag'=>$tag,'commit'=>$commit];
+        } finally { @flock($lock,LOCK_UN); fclose($lock); }
     }
     if (!is_file($path) || !is_readable($path) || (int)@filesize($path)>4096) return null;
     $data=json_decode((string)@file_get_contents($path),true);
     if (!is_array($data) || !is_string($data['tag'] ?? null) || preg_match('/\A[A-Za-z0-9][A-Za-z0-9.+_-]{0,79}\z/D',$data['tag'])!==1) return null;
     $sha=$data['commit'] ?? null;
     return ['tag'=>$data['tag'],'commit'=>is_string($sha) && preg_match('/\A[a-f0-9]{40}\z/D',$sha)===1 ? $sha : null,
-        'installed_at'=>is_int($data['installed_at'] ?? null) && $data['installed_at'] > 0 ? $data['installed_at'] : null];
+        'installed_at'=>is_int($data['installed_at'] ?? null) && $data['installed_at'] > 0 ? $data['installed_at'] : null,
+        'last_updated_at'=>is_int($data['last_updated_at'] ?? null) && $data['last_updated_at'] > 0 ? $data['last_updated_at'] : null];
+}
+
+/** Format saved timestamps in Swedish local time, including daylight saving. */
+function portal_github_release_stockholm_time(mixed $timestamp): ?string
+{
+    if (!is_int($timestamp) || $timestamp <= 0) return null;
+    try { return (new DateTimeImmutable('@'.$timestamp))->setTimezone(new DateTimeZone('Europe/Stockholm'))->format('Y-m-d H:i'); }
+    catch (Throwable $e) { return null; }
 }
 
 /** Record a successful manual check without replacing a concurrent newer check. */

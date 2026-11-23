@@ -66,6 +66,18 @@ $assert($count===2 && $a['code']==='no_published_release' && $b['checked_at']===
 $sha1=str_repeat('a',40); $sha2=str_repeat('b',40);
 $marker=['tag'=>'0.0.1','commit'=>$sha1];
 $assert(portal_github_release_install_marker($cacheRoot)===null && portal_github_release_install_marker($cacheRoot,'0.0.1',$sha1)===$marker && (portal_github_release_install_marker($cacheRoot)['commit'] ?? null)===$sha1 && is_int(portal_github_release_install_marker($cacheRoot)['installed_at'] ?? null), 'Installed release commit and time persist safely');
+$legacy = portal_github_release_install_marker($cacheRoot);
+$assert(($legacy['last_updated_at'] ?? null)===null, 'Legacy timestamps do not claim an actual installation time');
+portal_github_release_install_marker($cacheRoot,'0.0.1',$sha1,'installed');
+$afterInstall=portal_github_release_install_marker($cacheRoot);
+$assert(is_int($afterInstall['last_updated_at'] ?? null), 'Successful installation records the actual file update time');
+$markerPath=$cacheRoot.'/storage/github_release_installed.json';
+$saved=json_decode((string)file_get_contents($markerPath),true); $saved['last_updated_at']=1700000000;
+$put($markerPath,json_encode($saved));
+portal_github_release_install_marker($cacheRoot,'0.0.1',$sha1,'already_current');
+$assert((portal_github_release_install_marker($cacheRoot)['last_updated_at'] ?? null)===1700000000, 'Matching unchanged files keeps the prior update time');
+$assert(portal_github_release_stockholm_time(1700000000)==='2023-11-14 23:13' && portal_github_release_stockholm_time(1719835200)==='2024-07-01 14:00', 'Update times use Stockholm time with DST');
+$assert(portal_github_release_install_marker($cacheRoot,'0.0.1',$sha1,'unknown')===null, 'Unknown outcomes are rejected');
 $assert(portal_github_release_install_marker($cacheRoot,'../bad',$sha1)===null && portal_github_release_install_marker($cacheRoot,'0.0.1','bad')===null, 'Invalid marker tag or commit rejected');
 $assert(portal_github_release_marker_differs(['ok'=>true,'tag'=>'0.0.1','commit'=>$sha2],$marker), 'Moved tag is detected even when version is unchanged');
 $assert(!portal_github_release_marker_differs(['ok'=>true,'tag'=>'0.0.1','commit'=>$sha1],$marker), 'Unchanged commit does not trigger update notice');

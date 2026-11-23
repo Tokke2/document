@@ -15,7 +15,7 @@ try {
  let src=fs.readFileSync(updater,'utf8');
  const marker='function portal_github_release_install_latest(string $root, ?callable $check = null, ?callable $install = null): array\n{';
  assert.ok(src.includes(marker));
- src=src.replace(marker,marker+"\n    file_put_contents($root.'/storage/test-call', 'called'); if (is_file($root.'/storage/test-succeed')) return ['ok'=>true,'code'=>'already_current','tag'=>'0.0.1','commit'=>str_repeat('b',40)]; return ['ok'=>false,'code'=>'zip_extension_unavailable'];\n"); fs.writeFileSync(updater,src);
+ src=src.replace(marker,marker+"\n    file_put_contents($root.'/storage/test-call', 'called'); if (is_file($root.'/storage/test-succeed')) return ['ok'=>true,'code'=>trim(file_get_contents($root.'/storage/test-succeed')),'tag'=>'0.0.1','commit'=>str_repeat('b',40)]; return ['ok'=>false,'code'=>'zip_extension_unavailable'];\n"); fs.writeFileSync(updater,src);
  const setup=call(`chdir(${q(sandbox)}); $_SERVER['SCRIPT_NAME']='/dokument/index.php'; session_save_path(${q(sandbox+'/storage/sessions')}); session_id('ReleaseOneClickSetupSession00000001'); session_start(); require 'functions.php'; require 'includes/invoice_auth.php'; require 'includes/central_admin_auth.php'; $a=portal_invoice_auth_create_first_admin('tester','Tester','123456'); $b=portal_invoice_auth_login('tester','123456'); $c=portal_central_admin_auth_enroll('765432'); if (!($a['ok']??false)||!($b['ok']??false)||!($c['ok']??false)) { echo 'SETUP_ERROR'; } else { echo json_encode(['id'=>session_id(),'admin'=>$_COOKIE[portal_central_admin_auth_session_name()]]); }`);
  const session=JSON.parse(setup); assert.ok(session.id && session.admin);
  // Cookie name comes from the actual auth module, not a hard-coded guess.
@@ -39,16 +39,30 @@ try {
  fs.writeFileSync(statusFile,JSON.stringify({ok:true,code:'latest_release_found',tag:'0.0.1',commit:'a'.repeat(40),checked_at:now-300}));
  fs.writeFileSync(markerFile,JSON.stringify({tag:'0.0.1',commit:'b'.repeat(40),installed_at:now-100}));
  const stale=run('admin');
- assert.match(stale,/Den sparade kontrollen är äldre än installationen/);
+ assert.match(stale,/Den sparade kontrollen är äldre än senaste installation eller matchning/);
  assert.doesNotMatch(stale,/En annan releasecommit rapporterades/);
  assert.match(stale,/aaaaaaaaaaaa/); assert.match(stale,/bbbbbbbbbbbb/);
- fs.writeFileSync(path.join(sandbox,'storage/test-succeed'),'yes');
+ fs.writeFileSync(path.join(sandbox,'storage/test-succeed'),'already_current');
  run('admin',action);
  const updated=JSON.parse(fs.readFileSync(statusFile,'utf8'));
  assert.equal(updated.commit,'b'.repeat(40),'A successful manual check updates the old status cache');
  const fresh=run('admin');
  assert.doesNotMatch(fresh,/En annan releasecommit rapporterades|Den sparade kontrollen är äldre/);
  assert.match(fresh,/Senaste releasekontroll/);
+ assert.match(fresh,/Datum för faktisk uppdatering saknas/,'Legacy and unchanged matches must not pretend to be an update');
+ assert.match(fresh,/Senast installerad eller matchad:.*Europe\/Stockholm/);
+ fs.writeFileSync(path.join(sandbox,'storage/test-succeed'),'installed');
+ run('admin',action);
+ let installed=JSON.parse(fs.readFileSync(markerFile,'utf8'));
+ assert.ok(Number.isInteger(installed.last_updated_at) && installed.last_updated_at>=now);
+ const afterInstall=run('admin'); assert.match(afterInstall,/Senast uppdaterad:/); assert.match(afterInstall,/Europe\/Stockholm/);
+ // A subsequent match must preserve the previous actual file-update time.
+ installed.last_updated_at=1700000000; fs.writeFileSync(markerFile,JSON.stringify(installed));
+ fs.writeFileSync(path.join(sandbox,'storage/test-succeed'),'already_current');
+ run('admin',action);
+ assert.equal(JSON.parse(fs.readFileSync(markerFile,'utf8')).last_updated_at,1700000000);
+ const afterMatch=run('admin'); assert.match(afterMatch,/Senast uppdaterad:<\/strong> 2023-11-14 23:13/);
+
  fs.writeFileSync(statusFile,JSON.stringify({ok:true,code:'latest_release_found',tag:'0.0.1',commit:'c'.repeat(40),checked_at:now}));
  fs.writeFileSync(markerFile,JSON.stringify({tag:'0.0.1',commit:'b'.repeat(40),installed_at:now-10}));
  const newer=run('admin'); assert.match(newer,/En annan releasecommit rapporterades vid senaste kontrollen/);
