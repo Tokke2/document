@@ -174,6 +174,11 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
     body.skade-kiosk-mode .skade-label small { color:#526774; font-size:.95rem; font-weight:650; }
     body.skade-kiosk-mode .skade-field input:not([type=checkbox]):not([type=radio]), body.skade-kiosk-mode .skade-field select, body.skade-kiosk-mode .skade-field textarea { min-height:60px; padding:14px 15px; font-size:1.15rem!important; line-height:1.4; }
     body.skade-kiosk-mode .skade-field textarea { min-height:145px; }
+    /* An unfocused multiline field must not consume a page-scroll gesture.
+       Once focused, restore normal text editing and internal scrolling. */
+    body.skade-kiosk-mode .skade-field textarea:not(:focus) { overflow:hidden; resize:none; }
+    @supports (overflow:clip) { body.skade-kiosk-mode .skade-field textarea:not(:focus) { overflow:clip; } }
+    body.skade-kiosk-mode .skade-field textarea:focus { overflow:auto; resize:vertical; }
     body.skade-kiosk-mode .skade-help { color:#526774; font-size:.95rem; line-height:1.5; }
     body.skade-kiosk-mode .skade-field-error { margin-top:8px; font-size:.95rem; line-height:1.45; }
     body.skade-kiosk-mode .skade-choice { min-height:60px; padding:14px 15px; gap:12px; font-size:1rem; line-height:1.5; }

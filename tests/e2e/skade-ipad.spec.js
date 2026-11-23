@@ -55,6 +55,20 @@ test.describe('touchgester på kundsidan', () => {
         const top=await page.evaluate(()=>window.scrollY);
         await drag(700,700,700,350);
         expect(await page.evaluate(()=>window.scrollY)).toBeGreaterThan(top+50);
+        // A long, unfocused textarea must not consume the page gesture or alter its value.
+        const text=page.locator('#sk-namn'); await text.scrollIntoViewIfNeeded();
+        const sample=Array.from({length:18},(_,i)=>`Testrad ${i+1}`).join('\n');
+        await text.fill(sample); await text.blur();
+        const textRect=await text.boundingBox();
+        const beforeText=await text.evaluate(el=>({scrollTop:el.scrollTop,value:el.value}));
+        const beforePage=await page.evaluate(()=>window.scrollY);
+        await drag(textRect.x+textRect.width/2,textRect.y+textRect.height-15,textRect.x+textRect.width/2,textRect.y+20);
+        expect(await page.evaluate(()=>window.scrollY)).toBeGreaterThan(beforePage+20);
+        expect(await text.inputValue()).toBe(beforeText.value);
+        expect(await text.evaluate(el=>el.scrollTop)).toBe(beforeText.scrollTop);
+        await expect(text).not.toBeFocused();
+        await text.focus(); await expect(text).toBeFocused();
+        await expect(text).toHaveCSS('overflow-y','auto');
         const pad=page.locator('#skade-signature-pad'); await pad.scrollIntoViewIfNeeded();
         const rect=await pad.boundingBox();
         await drag(rect.x+30,rect.y+45,rect.x+150,rect.y+70);

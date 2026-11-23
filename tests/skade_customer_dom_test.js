@@ -35,6 +35,13 @@ d.querySelector('#sk-namn').focus(); assert.equal(gesture(d.querySelector('#sk-n
 scale=2; assert.equal(gesture(surface,[100,100],[180,105]),false,'Zoomed page can be panned'); scale=1;
 touch(surface,'touchstart',[[100,100]]); touch(surface,'touchstart',[[100,100],[150,150]]); assert.equal(touch(surface,'touchmove',[[130,100],[180,150]]),false,'Pinch zoom is not intercepted'); touch(surface,'touchend',[]);
 assert.match(html,/overscroll-behavior-x:none/);
+assert.match(html,/textarea:not\(:focus\)\s*\{\s*overflow:hidden;\s*resize:none;/);
+assert.match(html,/textarea:focus\s*\{\s*overflow:auto;\s*resize:vertical;/);
+const nameField=d.querySelector('#sk-namn'); nameField.value='Oförändrad testtext'; nameField.blur();
+assert.equal(gesture(nameField,[100,100],[102,180]),false,'Unfocused textarea must allow vertical page gestures');
+assert.equal(nameField.value,'Oförändrad testtext'); assert.notEqual(d.activeElement,nameField,'Scroll gesture must not focus text');
+nameField.focus(); assert.equal(gesture(nameField,[100,100],[102,180]),false,'Focused textarea must allow its native editing gestures');
+
 assert.ok(d.querySelector('#skade-install-help').textContent.includes('Lägg till på hemskärmen'));
 assert.equal(d.querySelector('#skade-form').getAttribute('action'),'./skadeblankett-kund.php');
 assert.ok(d.querySelector('#skade-signature-confirmed').required);
@@ -59,6 +66,7 @@ const success=new JSDOM(render(true),{url:'https://example.test/skadeblankett-ku
 assert.ok(success.window.document.querySelector('#skade-kiosk-notice'));
 assert.equal(success.window.document.querySelector('#skade-form'),null);
 assert.ok(success.window.document.querySelector('a[href="./skadeblankett-kund.php"]'));
-assert.ok(new JSDOM(render(false,true)).window.document.querySelector('#skade-form'));
+const staffHtml=render(false,true); assert.ok(new JSDOM(staffHtml).window.document.querySelector('#skade-form'));
+assert.ok(!staffHtml.includes('textarea:not(:focus) { overflow:hidden; resize:none; }'),'Customer scroll rule must not affect staff mode');
 assert.deepEqual(errors,[]);
 console.log('PASS: customer PWA install help, progress, validation and success screen DOM checks.');
