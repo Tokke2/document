@@ -15,7 +15,7 @@ try {
  let src=fs.readFileSync(updater,'utf8');
  const marker='function portal_github_release_install_latest(string $root, ?callable $check = null, ?callable $install = null): array\n{';
  assert.ok(src.includes(marker));
- src=src.replace(marker,marker+"\n    file_put_contents($root.'/storage/test-call', 'called'); return ['ok'=>false,'code'=>'zip_extension_unavailable'];\n"); fs.writeFileSync(updater,src);
+ src=src.replace(marker,marker+"\n    file_put_contents($root.'/storage/test-call', 'called'); if (is_file($root.'/storage/test-succeed')) return ['ok'=>true,'code'=>'already_current','tag'=>'0.0.1','commit'=>str_repeat('b',40)]; return ['ok'=>false,'code'=>'zip_extension_unavailable'];\n"); fs.writeFileSync(updater,src);
  const setup=call(`chdir(${q(sandbox)}); $_SERVER['SCRIPT_NAME']='/dokument/index.php'; session_save_path(${q(sandbox+'/storage/sessions')}); session_id('ReleaseOneClickSetupSession00000001'); session_start(); require 'functions.php'; require 'includes/invoice_auth.php'; require 'includes/central_admin_auth.php'; $a=portal_invoice_auth_create_first_admin('tester','Tester','123456'); $b=portal_invoice_auth_login('tester','123456'); $c=portal_central_admin_auth_enroll('765432'); if (!($a['ok']??false)||!($b['ok']??false)||!($c['ok']??false)) { echo 'SETUP_ERROR'; } else { echo json_encode(['id'=>session_id(),'admin'=>$_COOKIE[portal_central_admin_auth_session_name()]]); }`);
  const session=JSON.parse(setup); assert.ok(session.id && session.admin);
  // Cookie name comes from the actual auth module, not a hard-coded guess.
@@ -33,5 +33,25 @@ try {
  run('admin',action,true,true); assert.equal(wasCalled(),false,'Scoped app must not update');
  const response=run('admin',action); assert.equal(wasCalled(),true,'Central admin POST should call one-click installer');
  assert.match(response,/PHP ZipArchive saknas/,'Installer errors are visible in admin panel');
+ const statusFile=path.join(sandbox,'storage/github_release_status.json');
+ const markerFile=path.join(sandbox,'storage/github_release_installed.json');
+ const now=Math.floor(Date.now()/1000);
+ fs.writeFileSync(statusFile,JSON.stringify({ok:true,code:'latest_release_found',tag:'0.0.1',commit:'a'.repeat(40),checked_at:now-300}));
+ fs.writeFileSync(markerFile,JSON.stringify({tag:'0.0.1',commit:'b'.repeat(40),installed_at:now-100}));
+ const stale=run('admin');
+ assert.match(stale,/Den sparade kontrollen är äldre än installationen/);
+ assert.doesNotMatch(stale,/En annan releasecommit rapporterades/);
+ assert.match(stale,/aaaaaaaaaaaa/); assert.match(stale,/bbbbbbbbbbbb/);
+ fs.writeFileSync(path.join(sandbox,'storage/test-succeed'),'yes');
+ run('admin',action);
+ const updated=JSON.parse(fs.readFileSync(statusFile,'utf8'));
+ assert.equal(updated.commit,'b'.repeat(40),'A successful manual check updates the old status cache');
+ const fresh=run('admin');
+ assert.doesNotMatch(fresh,/En annan releasecommit rapporterades|Den sparade kontrollen är äldre/);
+ assert.match(fresh,/Senaste releasekontroll/);
+ fs.writeFileSync(statusFile,JSON.stringify({ok:true,code:'latest_release_found',tag:'0.0.1',commit:'c'.repeat(40),checked_at:now}));
+ fs.writeFileSync(markerFile,JSON.stringify({tag:'0.0.1',commit:'b'.repeat(40),installed_at:now-10}));
+ const newer=run('admin'); assert.match(newer,/En annan releasecommit rapporterades vid senaste kontrollen/);
+
  console.log('PASS: one-click controller CSRF, admin identity, tab/PWA isolation and error response.');
 } finally { fs.rmSync(sandbox,{recursive:true,force:true}); }

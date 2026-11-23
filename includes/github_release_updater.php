@@ -23,7 +23,7 @@ function portal_github_release_metadata(): array
 
 /** Cache metadata only; called on an authenticated admin GET, not by cron.
  * A failed check is also cached to avoid repeated requests and rate limits. */
-function portal_github_release_auto_status(string $root, ?callable $fetch = null, ?int $now = null): array
+function portal_github_release_auto_status(string $root, ?callable $fetch = null, ?int $now = null, bool $force = false): array
 {
     $now = $now ?? time(); $dir = $root . '/storage'; $guard = $dir . '/.htaccess';
     if (is_link($dir) || !is_dir($dir) || is_link($guard) || !is_file($guard) || !preg_match('/^\s*(?:Require\s+all\s+denied|Deny\s+from\s+all)\b/im', (string)@file_get_contents($guard))) return ['ok'=>false,'code'=>'cache_unavailable'];
@@ -35,7 +35,11 @@ function portal_github_release_auto_status(string $root, ?callable $fetch = null
     if (!@flock($lock,LOCK_EX)) { fclose($lock); return ['ok'=>false,'code'=>'cache_unavailable']; }
     try {
         $cached = is_file($path) ? json_decode((string)@file_get_contents($path), true) : null;
-        if (is_array($cached) && is_int($cached['checked_at'] ?? null) && $cached['checked_at'] <= $now && $cached['checked_at'] > $now - 21600 && is_bool($cached['ok'] ?? null) && is_string($cached['code'] ?? null)) return $cached;
+        if (is_array($cached) && is_int($cached['checked_at'] ?? null) && is_bool($cached['ok'] ?? null) && is_string($cached['code'] ?? null)) {
+            // A concurrent check at or after the manual check's start may be newer.
+            if ($force && $cached['checked_at'] >= $now) return $cached;
+            if (!$force && $cached['checked_at'] <= $now && $cached['checked_at'] > $now - 21600) return $cached;
+        }
         $result = $fetch ? $fetch() : portal_github_release_metadata();
         if (!is_array($result) || !is_bool($result['ok'] ?? null) || !is_string($result['code'] ?? null)) $result=['ok'=>false,'code'=>'network_error'];
         $data=['ok'=>$result['ok'],'code'=>$result['code'],'checked_at'=>$now];
@@ -60,7 +64,24 @@ function portal_github_release_install_marker(string $root, ?string $tag = null,
     $data=json_decode((string)@file_get_contents($path),true);
     if (!is_array($data) || !is_string($data['tag'] ?? null) || preg_match('/\A[A-Za-z0-9][A-Za-z0-9.+_-]{0,79}\z/D',$data['tag'])!==1) return null;
     $sha=$data['commit'] ?? null;
-    return ['tag'=>$data['tag'],'commit'=>is_string($sha) && preg_match('/\A[a-f0-9]{40}\z/D',$sha)===1 ? $sha : null];
+    return ['tag'=>$data['tag'],'commit'=>is_string($sha) && preg_match('/\A[a-f0-9]{40}\z/D',$sha)===1 ? $sha : null,
+        'installed_at'=>is_int($data['installed_at'] ?? null) && $data['installed_at'] > 0 ? $data['installed_at'] : null];
+}
+
+/** Record a successful manual check without replacing a concurrent newer check. */
+function portal_github_release_record_manual_status(string $root, array $result, int $startedAt): void
+{
+    if (($result['ok'] ?? false) !== true || !is_string($result['tag'] ?? null) || !is_string($result['commit'] ?? null)
+        || preg_match('/\A[A-Za-z0-9][A-Za-z0-9.+_-]{0,79}\z/D', $result['tag']) !== 1
+        || preg_match('/\A[a-f0-9]{40}\z/D', $result['commit']) !== 1 || $startedAt <= 0 || $startedAt > time()) return;
+    $status = ['ok'=>true, 'code'=>'latest_release_found', 'tag'=>$result['tag'], 'commit'=>$result['commit']];
+    portal_github_release_auto_status($root, static fn(): array => $status, $startedAt, true);
+}
+
+function portal_github_release_status_predates_marker(array $status, array $marker): bool
+{
+    return is_int($status['checked_at'] ?? null) && is_int($marker['installed_at'] ?? null)
+        && $status['checked_at'] <= $marker['installed_at'];
 }
 
 function portal_github_release_marker_differs(array $status, array $marker): bool

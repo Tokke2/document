@@ -2636,11 +2636,13 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 // within this request; never accept a plan from the client.
                 if (function_exists('set_time_limit')) @set_time_limit(300);
                 unset($_SESSION['github_release_review']);
+                $releaseCheckStartedAt = time();
                 $portalReleaseResult = portal_github_release_install_latest(__DIR__);
                 $portalReleaseResult['action'] = 'install';
                 TadegaRequestLogger::outcome(($portalReleaseResult['ok'] ?? false) ? 'success' : (($portalReleaseResult['code'] ?? '') === 'rollback_failed' ? 'rollback_failed' : 'failure'));
                 if (($portalReleaseResult['ok'] ?? false) === true) {
                     $marker = portal_github_release_install_marker(__DIR__, $portalReleaseResult['tag'], $portalReleaseResult['commit']);
+                    portal_github_release_record_manual_status(__DIR__, $portalReleaseResult, $releaseCheckStartedAt);
                     portal_redirect('admin', $marker === null ? 'release_marker_error' : (($portalReleaseResult['code'] ?? '') === 'installed' ? 'release_install_success' : 'release_already_current'));
                 }
             } elseif ($action === 'portal_release_check') {
@@ -2648,8 +2650,10 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                     @set_time_limit(180);
                 }
                 unset($_SESSION['github_release_review']);
+                $releaseCheckStartedAt = time();
                 $portalReleaseResult = portal_github_release_check_latest(__DIR__);
                 if (($portalReleaseResult['ok'] ?? false) === true) {
+                    portal_github_release_record_manual_status(__DIR__, $portalReleaseResult, $releaseCheckStartedAt);
                     $_SESSION['github_release_review'] = $portalReleaseResult + ['reviewed_at'=>time()];
                     if ($portalReleaseResult['changed'] === []) portal_github_release_install_marker(__DIR__, $portalReleaseResult['tag'], $portalReleaseResult['commit']);
                 }
@@ -2669,11 +2673,13 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                     TadegaRequestLogger::outcome('denied');
                 } else {
                     unset($_SESSION['github_release_review']);
+                    $releaseCheckStartedAt = time();
                     $portalReleaseResult = portal_github_release_install_approved(__DIR__, $review);
                     $portalReleaseResult['action'] = 'install';
                     TadegaRequestLogger::outcome(($portalReleaseResult['ok'] ?? false) ? 'success' : (($portalReleaseResult['code'] ?? '') === 'rollback_failed' ? 'rollback_failed' : 'failure'));
                     if (($portalReleaseResult['ok'] ?? false) === true) {
                         $marker = portal_github_release_install_marker(__DIR__, $review['tag'], $review['commit']);
+                        portal_github_release_record_manual_status(__DIR__, ['ok'=>true,'tag'=>$review['tag'],'commit'=>$review['commit']], $releaseCheckStartedAt);
                         portal_redirect('admin', $marker === null ? 'release_marker_error' : (($portalReleaseResult['code'] ?? '') === 'installed' ? 'release_install_success' : 'release_already_current'));
                     }
                 }

@@ -65,13 +65,28 @@ $a=portal_github_release_auto_status($cacheRoot,$fetch,100000); $b=portal_github
 $assert($count===2 && $a['code']==='no_published_release' && $b['checked_at']===100000 && $c['checked_at']===121600,'Failed checks cached for six hours');
 $sha1=str_repeat('a',40); $sha2=str_repeat('b',40);
 $marker=['tag'=>'0.0.1','commit'=>$sha1];
-$assert(portal_github_release_install_marker($cacheRoot)===null && portal_github_release_install_marker($cacheRoot,'0.0.1',$sha1)===$marker && portal_github_release_install_marker($cacheRoot)===$marker, 'Installed release commit persists safely');
+$assert(portal_github_release_install_marker($cacheRoot)===null && portal_github_release_install_marker($cacheRoot,'0.0.1',$sha1)===$marker && (portal_github_release_install_marker($cacheRoot)['commit'] ?? null)===$sha1 && is_int(portal_github_release_install_marker($cacheRoot)['installed_at'] ?? null), 'Installed release commit and time persist safely');
 $assert(portal_github_release_install_marker($cacheRoot,'../bad',$sha1)===null && portal_github_release_install_marker($cacheRoot,'0.0.1','bad')===null, 'Invalid marker tag or commit rejected');
 $assert(portal_github_release_marker_differs(['ok'=>true,'tag'=>'0.0.1','commit'=>$sha2],$marker), 'Moved tag is detected even when version is unchanged');
 $assert(!portal_github_release_marker_differs(['ok'=>true,'tag'=>'0.0.1','commit'=>$sha1],$marker), 'Unchanged commit does not trigger update notice');
 $success=static fn(): array => ['ok'=>true,'code'=>'latest_release_found','tag'=>'0.0.1','commit'=>$sha2];
 $status=portal_github_release_auto_status($cacheRoot,$success,143200);
 $assert(($status['commit'] ?? '')===$sha2 && portal_github_release_marker_differs($status,$marker), 'Auto cache stores and compares the resolved commit');
+// A successful manual check must replace an older cached result, including when
+// the files already matched, without overwriting a concurrent newer check.
+$now = time();
+portal_github_release_record_manual_status($cacheRoot, ['ok'=>true,'tag'=>'0.0.1','commit'=>$sha1], $now-100);
+$manual=portal_github_release_auto_status($cacheRoot,$fetch,$now-99);
+$assert(($manual['commit'] ?? '')===$sha1 && ($manual['checked_at'] ?? 0)===$now-100, 'Manual success refreshes a stale cache without a new GitHub call');
+portal_github_release_record_manual_status($cacheRoot, ['ok'=>false,'tag'=>'0.0.1','commit'=>$sha2], $now-90);
+$assert((portal_github_release_auto_status($cacheRoot,$fetch,$now-89)['commit'] ?? '')===$sha1, 'Failed manual check does not claim a successful check');
+portal_github_release_record_manual_status($cacheRoot, ['ok'=>true,'tag'=>'0.0.1','commit'=>$sha2], $now-80);
+portal_github_release_record_manual_status($cacheRoot, ['ok'=>true,'tag'=>'0.0.1','commit'=>$sha1], $now-90);
+$assert((portal_github_release_auto_status($cacheRoot,$fetch,$now-79)['commit'] ?? '')===$sha2, 'A newer concurrent check is not overwritten by an older one');
+portal_github_release_record_manual_status($cacheRoot, ['ok'=>true,'tag'=>'0.0.1','commit'=>$sha1], $now-80);
+$assert((portal_github_release_auto_status($cacheRoot,$fetch,$now-79)['commit'] ?? '')===$sha2, 'Same-second concurrent results are conservatively retained');
+$assert(portal_github_release_status_predates_marker(['checked_at'=>10],['installed_at'=>11]) && portal_github_release_status_predates_marker(['checked_at'=>11],['installed_at'=>11]) && !portal_github_release_status_predates_marker(['checked_at'=>12],['installed_at'=>11]), 'Status comparisons account for installation timing');
+$assert(!portal_github_release_status_predates_marker([],['installed_at'=>11]), 'Legacy missing timestamps do not invent an ordering');
 $guard=$cacheRoot.'/storage/.htaccess'; unlink($guard);
 $assert(portal_github_release_auto_status($cacheRoot,$fetch,165000)['code']==='cache_unavailable' && $count===2,'Unprotected cache fails closed without contacting GitHub');
 foreach(glob($cacheRoot.'/storage/*') ?: [] as $p) unlink($p); rmdir($cacheRoot.'/storage');rmdir($cacheRoot);
