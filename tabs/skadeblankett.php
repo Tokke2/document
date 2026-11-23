@@ -343,6 +343,22 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
             box-shadow:0 8px 24px rgba(17,113,138,.28);
         }
     }
+    <?php if ($skadeCustomerMode): ?>
+    /* A single centered column at every iPad orientation and phone width. Do
+       not disable zoom: the layout should reflow rather than clip controls. */
+    body.skade-kiosk-mode #main-content { max-width:760px; min-width:0; width:100%; }
+    body.skade-kiosk-mode :is(.page-content,.skade-page,.skade-hero,.skade-hero > div,.skade-layout,.skade-main,.skade-card,.skade-signature,.skade-customer-declaration) { min-width:0; max-width:100%; }
+    body.skade-kiosk-mode :is(.skade-page,.skade-card,.skade-hero,.skade-kiosk-notice,.skade-kiosk-error) { overflow-wrap:anywhere; }
+    body.skade-kiosk-mode .skade-page { padding-bottom:0; }
+    body.skade-kiosk-mode .skade-form-actions .skade-submit { position:static; width:100%; min-height:60px; margin:0; }
+    body.skade-kiosk-mode .skade-signature-canvas { width:100%; max-width:100%; }
+    body.skade-kiosk-mode .skade-install { margin:16px 0 0; font-size:.95rem; }
+    body.skade-kiosk-mode .skade-install summary { cursor:pointer; color:#075c59; font-weight:750; min-height:44px; padding:10px 0; }
+    body.skade-kiosk-mode .skade-install ol { margin:4px 0 8px; padding-left:1.5em; }
+    body.skade-kiosk-mode .skade-install p { font-size:.9rem; margin:6px 0; }
+    body.skade-kiosk-mode .skade-kiosk-notice .btn { margin-top:16px; min-height:54px; }
+    @media (display-mode:standalone) { body.skade-kiosk-mode .skade-install { display:none; } }
+    <?php endif; ?>
     @media print { .skade-hero-actions,.skade-progress,.skade-form-actions,.skade-preview,.skade-page form { display:none!important; } .skade-page { display:none!important; } }
     /* Shared Tadega mobile design system for staff and customer PWA modes. */
     .skade-page { --sk-ink:var(--ink); --sk-muted:var(--muted); --sk-line:var(--line); --sk-brand:var(--brand); --sk-bg:var(--canvas); }
@@ -380,8 +396,15 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
         <div>
             <?php if ($skadeCustomerMode): ?>
                 <p class="skade-hero-kicker"><span aria-hidden="true">◈</span> <?= ($portalLanguage ?? 'sv') === 'en' ? 'Auto glass · customer form' : 'Bilglas · kundformulär' ?></p>
-                <h2 id="skade-title"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Complete the damage form' : 'Fyll i skadeblanketten' ?></h2>
+                <h2 id="skade-title"><?= $skadeCustomerDone ? (($portalLanguage ?? 'sv') === 'en' ? 'Thank you!' : 'Tack!') : (($portalLanguage ?? 'sv') === 'en' ? 'Complete the damage form' : 'Fyll i skadeblanketten') ?></h2>
+                <?php if (!$skadeCustomerDone): ?>
                 <p><?= ($portalLanguage ?? 'sv') === 'en' ? 'Fields marked * are required. Other fields are optional. In the final step, draw your signature.' : 'Fält märkta med * är obligatoriska. Övriga fält är frivilliga. I sista steget ritar du din signatur.' ?></p>
+                <details class="skade-install" id="skade-install-help">
+                    <summary><?= ($portalLanguage ?? 'sv') === 'en' ? 'Install on iPad' : 'Installera på iPad' ?></summary>
+                    <ol><li>Öppna denna kundsida i Safari på iPad.</li><li>Tryck på <strong>Dela</strong> och välj <strong>Lägg till på hemskärmen</strong>.</li><li>Välj vid behov <strong>Öppna som webbapp</strong>, tryck på <strong>Lägg till</strong> och öppna ikonen.</li></ol>
+                    <p>Det krävs internet för att fylla i och skicka. Om alternativet saknas, uppdatera iPadOS eller be personalen om hjälp.</p>
+                </details>
+                <?php endif; ?>
             <?php else: ?>
                 <p class="skade-hero-kicker"><span aria-hidden="true">◈</span> <?= ($portalLanguage ?? 'sv') === 'en' ? 'Auto glass · customer record' : 'Bilglas · kundunderlag' ?></p>
                 <?php if ($skadeEditMode): ?>
@@ -423,10 +446,11 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
                 <p>En eller flera textrutor i PDF:en använder text mindre än 5 pt. Be personalen kontrollera att den går att läsa innan den används.</p>
             <?php endif; ?>
             <?php if ($skadeMailStatus === 'failed'): ?>
-                <p>Uppgifterna och PDF:en är sparade, men e-postaviseringen kunde inte skickas. Meddela personalen så att de kan kontrollera e-poststatusen och vid behov försöka igen. Nästa kund kan fylla i den tomma blanketten nedan.</p>
+                <p>Uppgifterna och PDF:en är sparade, men e-postaviseringen kunde inte skickas. Meddela personalen så att de kan kontrollera e-poststatusen och vid behov försöka igen.</p>
             <?php else: ?>
-                <p><?= ($portalLanguage ?? 'sv') === 'en' ? 'The next customer can complete their form below.' : 'Nästa kund kan fylla i sin blankett nedan.' ?></p>
+                <p><?= ($portalLanguage ?? 'sv') === 'en' ? 'Tell the staff that you are finished.' : 'Meddela personalen att du är klar.' ?></p>
             <?php endif; ?>
+            <a class="btn btn-outline" href="./skadeblankett-kund.php"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Start a new form' : 'Starta ny blankett' ?></a>
         </div>
     <?php elseif (!$skadeCustomerMode && !$skadeEditMode && $skadePdfValid): ?>
         <section class="skade-success" role="status" aria-live="polite">
@@ -478,6 +502,7 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
         </section>
     <?php endif; ?>
 
+    <?php if (!$skadeCustomerDone): ?>
     <div class="skade-layout">
         <div class="skade-main">
             <?php if ($skadeTextFitConfirmationRequired): ?>
@@ -487,8 +512,9 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
                 </div>
             <?php endif; ?>
             <div class="skade-progress" aria-live="polite">
-                <div class="skade-progress-row"><span><?= ($portalLanguage ?? 'sv') === 'en' ? 'Required information' : 'Obligatoriska uppgifter' ?></span><span id="skade-progress-text">0 av 0</span></div>
-                <div class="skade-progress-track"><div class="skade-progress-bar" id="skade-progress-bar"></div></div>
+                <div class="skade-progress-row"><span><?= ($portalLanguage ?? 'sv') === 'en' ? 'Required information' : 'Obligatoriska uppgifter' ?></span><span id="skade-progress-text">0 %</span></div>
+                <div class="skade-progress-track" id="skade-progress-track" role="progressbar" aria-label="Obligatoriska uppgifter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="skade-progress-bar" id="skade-progress-bar"></div></div>
+                <?php if ($skadeCustomerMode): ?><small class="skade-help"><?= ($portalLanguage ?? 'sv') === 'en' ? '100% means required fields are filled in; the form is not sent until you press Send.' : '100 % betyder att de obligatoriska fälten är ifyllda. Blanketten skickas först när du trycker på Skicka.' ?></small><?php endif; ?>
             </div>
 
             <form id="skade-form" data-validation-error="<?= $skadeValidationError ? '1' : '0' ?>" data-signature-required="<?= $skadeCustomerMode ? '1' : '0' ?>" method="post" action="<?= h($skadeCustomerMode ? './skadeblankett-kund.php' : '?tab=skadeblankett') ?>" autocomplete="<?= $skadeCustomerMode ? 'off' : 'on' ?>">
@@ -571,7 +597,7 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
                     <div class="skade-card-head"><span class="skade-step" aria-hidden="true">✓</span><div><h3><?= $skadeCustomerMode ? 'Bekräfta uppgifterna' : 'Skapa kundunderlaget' ?></h3><p><?= $skadeCustomerMode ? 'Kontrollera att uppgifterna är riktiga. Rita din signatur och bekräfta innan du skickar.' : 'Skadedetaljer, åtgärd, utrustning, tilläggstjänster, betalning och datum lämnas utanför kundinmatningen och kompletteras av er.' ?></p></div></div>
                     <div class="skade-signature" aria-labelledby="skade-signature-title">
                         <p class="skade-signature-title" id="skade-signature-title"><?= $skadeCustomerMode ? 'Din digitala signatur' : 'Kundens digitala signatur' ?> <?php if ($skadeCustomerMode): ?><span class="skade-required">*</span><?php else: ?><small><?= ($portalLanguage ?? 'sv') === 'en' ? '(optional)' : '(frivillig)' ?></small><?php endif; ?></p>
-                        <p class="skade-signature-copy" id="skade-signature-help"><?= $skadeCustomerMode ? 'Skriv din namnteckning i ett lugnt, sammanhängande drag med finger eller penna. Ritytan jämnar ut små ryck och ger strecket naturlig avsmalning och diskret breddvariation; i PDF:en kan signaturen gå högst 1 cm utanför originalrutan. Rensa och försök igen om du vill börja om.' : 'Låt kunden skriva sin signatur i ett lugnt, sammanhängande drag med finger eller penna. Ritytan jämnar ut små ryck och ger strecket naturlig avsmalning och diskret breddvariation; i PDF:en kan signaturen gå högst 1 cm utanför originalrutan. Lämna rutan tom för utskrift och handskriven underskrift.' ?></p>
+                        <p class="skade-signature-copy" id="skade-signature-help"><?= $skadeCustomerMode ? 'Skriv din namnteckning i rutan med finger eller Apple Pencil. Tryck på Rensa signatur om du vill börja om.' : 'Låt kunden skriva sin signatur i ett lugnt, sammanhängande drag med finger eller penna. Ritytan jämnar ut små ryck och ger strecket naturlig avsmalning och diskret breddvariation; i PDF:en kan signaturen gå högst 1 cm utanför originalrutan. Lämna rutan tom för utskrift och handskriven underskrift.' ?></p>
                         <canvas id="skade-signature-pad" class="skade-signature-canvas" width="1600" height="360" role="img" aria-label="<?= h($skadeCustomerMode ? 'Rita din signatur här' : 'Rita kundens signatur här') ?>" aria-describedby="skade-signature-help skade-signature-status" tabindex="0"></canvas>
                         <noscript><small class="skade-help"><?= $skadeCustomerMode ? 'Digital signering kräver JavaScript. Be personalen om hjälp.' : 'Ritning kräver JavaScript. Ni kan ändå skapa PDF:en utan digital signatur och låta kunden skriva under utskriften för hand.' ?></small></noscript>
                         <input type="hidden" name="s[signature_png]" id="skade-signature-png" value="<?= $skadeText('signature_png') ?>">
@@ -600,7 +626,7 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
                     <?php endif; ?>
                     <div class="skade-form-actions">
                         <p><?= $skadeCustomerMode ? 'Kontrollera att allt är rätt innan du skickar uppgifterna.' : 'PDF:en sparas privat i arkivet. Loggen innehåller inte kund-, fordons- eller försäkringsuppgifter.' ?></p>
-                        <button class="btn btn-main skade-submit" type="submit" data-mobile-action-dock <?= empty($csrfReady) || $skadeSubmissionBlocked || $skadeEditError !== '' ? 'disabled' : '' ?>><?= $skadeTextFitConfirmationRequired ? ($skadeCustomerMode ? 'Skicka ändå — texten är liten' : 'Fortsätt ändå — skapa PDF med liten text') : ($skadeCustomerMode ? 'Skicka blanketten' : ($skadeEditMode ? 'Spara ändringar och skapa ny PDF' : 'Skapa PDF för utskrift')) ?> <span aria-hidden="true">→</span></button>
+                        <button class="btn btn-main skade-submit" type="submit" <?= $skadeCustomerMode ? '' : 'data-mobile-action-dock' ?> <?= empty($csrfReady) || $skadeSubmissionBlocked || $skadeEditError !== '' ? 'disabled' : '' ?>><?= $skadeTextFitConfirmationRequired ? ($skadeCustomerMode ? 'Skicka ändå — texten är liten' : 'Fortsätt ändå — skapa PDF med liten text') : ($skadeCustomerMode ? 'Skicka blanketten' : ($skadeEditMode ? 'Spara ändringar och skapa ny PDF' : 'Skapa PDF för utskrift')) ?> <span aria-hidden="true">→</span></button>
                     </div>
                 </section>
             </form>
@@ -645,6 +671,7 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
         </aside>
         <?php endif; ?>
     </div>
+    <?php endif; ?>
 </div>
 
 <script>
@@ -653,6 +680,8 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
     if (kioskNotice && window.history && typeof window.history.replaceState === 'function') {
         window.history.replaceState(null, '', window.location.pathname);
     }
+    var installHelp = document.getElementById('skade-install-help');
+    if (installHelp && (window.navigator.standalone === true || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches))) installHelp.hidden = true;
     var form = document.getElementById('skade-form');
     if (!form) return;
     form.noValidate = true;
@@ -662,6 +691,7 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
     var formSubmitting = false;
     var reportedClientValidationKeys = Object.create(null);
     var bar = document.getElementById('skade-progress-bar');
+    var progressTrack = document.getElementById('skade-progress-track');
     var text = document.getElementById('skade-progress-text');
     var canvas = document.getElementById('skade-signature-pad');
     var signatureInput = document.getElementById('skade-signature-png');
@@ -741,6 +771,7 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
     function getValidationMessage(field) {
         if (!field || field === canvas || field.type === 'hidden' || field.disabled) return '';
         var currentValue = String(field.value || '').trim();
+        if (field.required && field.type !== 'checkbox' && field.type !== 'radio' && !currentValue) return 'Fyll i det här fältet.';
         if (field.id === 'sk-epost' && currentValue === '') return '';
         if (field.id === 'sk-datum' && currentValue !== '' && !normalizeSkadeDate(currentValue)) {
             return 'Ange ett giltigt datum, t.ex. 2026-11-03 eller 03.11.2026.';
@@ -948,7 +979,7 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
                 return;
             }
             total++;
-            if (field.type === 'checkbox' ? field.checked : String(field.value || '').trim() !== '') complete++;
+            if ((field.type === 'checkbox' ? field.checked : String(field.value || '').trim() !== '') && !getValidationMessage(field)) complete++;
         });
         Object.keys(radioGroups).forEach(function (name) {
             total++;
@@ -958,8 +989,14 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
             total++;
             if (signatureInput.value !== '') complete++;
         }
-        if (bar) bar.style.width = (total ? Math.round(complete / total * 100) : 0) + '%';
-        if (text) text.textContent = complete + <?= json_encode(($portalLanguage ?? 'sv') === 'en' ? " of " : " av ", JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?> + total;
+        var percent = total ? Math.round(complete / total * 100) : 0;
+        var invalidOptional = Array.prototype.some.call(form.querySelectorAll('input:not([type=hidden]),textarea,select'), function (field) {
+            return !field.required && !field.disabled && !!getValidationMessage(field);
+        });
+        if (invalidOptional && percent === 100) percent = 99;
+        if (bar) bar.style.width = percent + '%';
+        if (progressTrack) progressTrack.setAttribute('aria-valuenow', String(percent));
+        if (text) text.textContent = percent + ' % (' + complete + <?= json_encode(($portalLanguage ?? 'sv') === 'en' ? " of " : " av ", JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?> + total + ')' + (invalidOptional ? <?= json_encode(($portalLanguage ?? 'sv') === 'en' ? " · Check optional fields" : " · Kontrollera valfria fält", JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?> : '');
     }
     function setSignatureStatus(message, state) {
         if (signatureStatus) {
