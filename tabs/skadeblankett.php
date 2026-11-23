@@ -147,7 +147,12 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
     .skade-page { --sk-ink:#142b3a; --sk-muted:#667784; --sk-line:#dfe7eb; --sk-brand:#11718a; --sk-bg:#f7fafb; color:var(--sk-ink); }
     .skade-page * { box-sizing:border-box; }
     <?php if ($skadeCustomerMode): ?>
-    body.skade-kiosk-mode { background:#f3f8fa; }
+    /* Prevent horizontal scroll chaining / rubber-banding on the customer page.
+       clip does not create an inner scroll container, so vertical scrolling
+       remains on the page. Keep the fallback for older Safari versions. */
+    html.skade-kiosk-root, body.skade-kiosk-mode { overflow-x:hidden; overscroll-behavior-x:none; }
+    @supports (overflow-x:clip) { html.skade-kiosk-root, body.skade-kiosk-mode { overflow-x:clip; } }
+    body.skade-kiosk-mode { width:100%; min-width:0; background:#f3f8fa; }
     body.skade-kiosk-mode #main-content { width:100%; max-width:1320px; min-height:100vh; margin:0 auto; padding:clamp(12px,2.6vw,28px) max(12px,env(safe-area-inset-right)) calc(18px + env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left)); }
     body.skade-kiosk-mode .page-content { width:100%; }
     body.skade-kiosk-mode .skade-page { width:100%; max-width:1260px; margin:0 auto; }
@@ -676,6 +681,33 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
 
 <script>
 (function () {
+    <?php if ($skadeCustomerMode): ?>
+    // Older iPadOS versions may ignore overscroll-behavior. Cancel only an
+    // unzoomed, single-finger horizontal page gesture, not vertical scrolling,
+    // pinch zoom, signature drawing, or editing in a focused text control.
+    var swipe = null;
+    function zoomed() { return window.visualViewport && window.visualViewport.scale > 1.01; }
+    function swipeExempt(target) {
+        if (!target || !target.closest) return false;
+        if (target.closest('#skade-signature-pad, [contenteditable="true"]')) return true;
+        var editable = target.closest('input:not([type=checkbox]):not([type=radio]), textarea, select');
+        return !!editable && document.activeElement === editable;
+    }
+    document.addEventListener('touchstart', function (event) {
+        if (event.touches.length !== 1 || zoomed() || swipeExempt(event.target)) { swipe = null; return; }
+        swipe = { x:event.touches[0].clientX, y:event.touches[0].clientY, axis:'' };
+    }, { passive:true });
+    document.addEventListener('touchmove', function (event) {
+        if (!swipe || event.touches.length !== 1 || zoomed()) { swipe = null; return; }
+        var dx = Math.abs(event.touches[0].clientX - swipe.x);
+        var dy = Math.abs(event.touches[0].clientY - swipe.y);
+        if (!swipe.axis && Math.max(dx, dy) >= 4) swipe.axis = dx > dy ? 'x' : 'y';
+        if (swipe.axis === 'x' && event.cancelable) event.preventDefault();
+    }, { passive:false });
+    function endSwipe() { swipe = null; }
+    document.addEventListener('touchend', endSwipe, { passive:true });
+    document.addEventListener('touchcancel', endSwipe, { passive:true });
+    <?php endif; ?>
     var kioskNotice = document.getElementById('skade-kiosk-notice');
     if (kioskNotice && window.history && typeof window.history.replaceState === 'function') {
         window.history.replaceState(null, '', window.location.pathname);

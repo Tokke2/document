@@ -17,6 +17,24 @@ const virtual = new VirtualConsole(); virtual.on('jsdomError', e => errors.push(
 const html=render();
 const dom=new JSDOM(`<!doctype html><html><body class="skade-kiosk-mode">${html}</body></html>`,{url:'https://example.test/skadeblankett-kund.php',runScripts:'dangerously',virtualConsole:virtual});
 const d=dom.window.document;
+// Touch-event regression: this checks cancellation policy, not actual iPad scrolling.
+let scale=1;
+Object.defineProperty(dom.window,'visualViewport',{configurable:true,value:{get scale(){return scale;}}});
+function touch(target,type,points) {
+  const event=new dom.window.Event(type,{bubbles:true,cancelable:true});
+  Object.defineProperty(event,'touches',{value:points.map(([clientX,clientY])=>({clientX,clientY}))});
+  target.dispatchEvent(event); return event.defaultPrevented;
+}
+const surface=d.querySelector('.skade-card');
+function gesture(target,from,to) { touch(target,'touchstart',[from]); const cancelled=touch(target,'touchmove',[to]); touch(target,'touchend',[]); return cancelled; }
+assert.equal(gesture(surface,[100,100],[180,105]),true,'Unzoomed horizontal page swipe is blocked');
+assert.equal(gesture(surface,[100,100],[105,180]),false,'Vertical scrolling is not blocked');
+assert.equal(gesture(surface,[100,100],[102,101]),false,'Tap is not blocked');
+assert.equal(gesture(d.querySelector('#skade-signature-pad'),[100,100],[180,105]),false,'Signature canvas is not intercepted');
+d.querySelector('#sk-namn').focus(); assert.equal(gesture(d.querySelector('#sk-namn'),[100,100],[180,105]),false,'Editing a focused control is not intercepted');
+scale=2; assert.equal(gesture(surface,[100,100],[180,105]),false,'Zoomed page can be panned'); scale=1;
+touch(surface,'touchstart',[[100,100]]); touch(surface,'touchstart',[[100,100],[150,150]]); assert.equal(touch(surface,'touchmove',[[130,100],[180,150]]),false,'Pinch zoom is not intercepted'); touch(surface,'touchend',[]);
+assert.match(html,/overscroll-behavior-x:none/);
 assert.ok(d.querySelector('#skade-install-help').textContent.includes('Lägg till på hemskärmen'));
 assert.equal(d.querySelector('#skade-form').getAttribute('action'),'./skadeblankett-kund.php');
 assert.ok(d.querySelector('#skade-signature-confirmed').required);

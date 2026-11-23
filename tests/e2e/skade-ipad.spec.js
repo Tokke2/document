@@ -29,3 +29,36 @@ test('kundläge fungerar i iPad-storlekar och utan sidledsskroll', async ({ page
         await expect(page.locator('#skade-progress-track')).not.toHaveAttribute('aria-valuenow','0');
     }
 });
+
+test.describe('touchgester på kundsidan', () => {
+    test.use({ hasTouch:true, isMobile:true, viewport:{width:834,height:1194} });
+    // CDP sends actual browser touch input, unlike dispatchEvent. This remains
+    // a simulated Chromium device; real iPad Safari / standalone is essential.
+    test('sidledsdrag stoppas, vertikal scroll och signering fungerar', async ({page,context}, testInfo) => {
+        test.skip(!process.env.PORTAL_BASE_URL, 'Ange PORTAL_BASE_URL till skyddad staging.');
+        test.skip(testInfo.project.name !== 'chromium-desktop', 'Kräver Chromium CDP.');
+        await page.goto('skadeblankett-kund.php');
+        await expect(page.locator('#skade-form')).toBeVisible();
+        const cdp=await context.newCDPSession(page);
+        async function drag(x1,y1,x2,y2) {
+            const send=(type,x,y)=>cdp.send('Input.dispatchTouchEvent',{type,touchPoints:type==='touchEnd'?[]:[{x,y,id:1}]});
+            await send('touchStart',x1,y1);
+            for (let i=1;i<=8;i++) { await send('touchMove',x1+(x2-x1)*i/8,y1+(y2-y1)*i/8); await page.waitForTimeout(12); }
+            await send('touchEnd',x2,y2); await page.waitForTimeout(200);
+        }
+        await page.evaluate(()=>window.scrollTo(0,300));
+        const before=await page.locator('#main-content').boundingBox();
+        await drag(300,500,600,505);
+        const after=await page.locator('#main-content').boundingBox();
+        expect(Math.abs(after.x-before.x)).toBeLessThanOrEqual(1);
+        expect(Math.abs(await page.evaluate(()=>window.scrollX))).toBeLessThanOrEqual(1);
+        const top=await page.evaluate(()=>window.scrollY);
+        await drag(700,700,700,350);
+        expect(await page.evaluate(()=>window.scrollY)).toBeGreaterThan(top+50);
+        const pad=page.locator('#skade-signature-pad'); await pad.scrollIntoViewIfNeeded();
+        const rect=await pad.boundingBox();
+        await drag(rect.x+30,rect.y+45,rect.x+150,rect.y+70);
+        await expect(page.locator('#skade-signature-png')).toHaveValue(/^data:image\/png;base64,/);
+        await cdp.detach();
+    });
+});
