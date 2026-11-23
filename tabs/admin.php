@@ -391,9 +391,13 @@ $releaseApprovalDataValid = preg_match('/\\A[A-Za-z0-9][A-Za-z0-9.+_-]{0,119}\\z
     .central-admin-release-backup-note { padding:10px 11px; border-left:3px solid var(--color-warning); border-radius:0 8px 8px 0; background:var(--color-warning-soft); }
     .central-admin-release-backup-note strong { display:block; margin-bottom:3px; color:var(--color-ink); font-size:.75rem; }
     .central-admin-release-backup-note p { margin:0; color:var(--color-muted); font-size:.72rem; line-height:1.5; }
-    .central-admin-release-approval label { display:flex; align-items:flex-start; gap:9px; color:var(--color-ink); font-size:.77rem; line-height:1.5; }
-    .central-admin-release-approval input[type=checkbox] { flex:0 0 auto; width:18px; height:18px; margin:1px 0 0; accent-color:var(--color-info); }
-    .central-admin-release-approval .btn { width:100%; min-height:45px; }
+    .central-admin-release-confirm-title { margin:3px 0 0; color:#183c38; font-size:1rem; line-height:1.35; }
+    .central-admin-release-approval label.central-admin-release-confirm { display:flex; align-items:flex-start; gap:15px; padding:16px; border:2px solid #0b7770; border-radius:12px; background:#eef9f5; color:#173b36; font-size:1rem; line-height:1.5; cursor:pointer; }
+    .central-admin-release-confirm strong { display:block; margin-bottom:4px; color:#123c35; font-size:1.05rem; }
+    .central-admin-release-approval input[type=checkbox] { flex:0 0 auto; width:27px; height:27px; margin:1px 0 0; accent-color:#08756b; cursor:pointer; }
+    .central-admin-release-approval input[type=checkbox]:focus-visible { outline:3px solid #123c35; outline-offset:3px; }
+    .central-admin-release-approval .central-admin-release-next { margin:2px 0 0; color:var(--color-ink); font-size:.9rem; font-weight:750; }
+    .central-admin-release-approval .btn { width:100%; min-height:52px; font-size:1rem; }
     .central-admin-release ol { margin:12px 0 0; padding-left:21px; color:#536b77; font-size:.78rem; line-height:1.6; }
     .central-admin-sftp code { padding:2px 5px; border-radius:5px; background:#f1f6f7; color:#173747; font-size:.75rem; overflow-wrap:anywhere; }
     .central-admin-warning { border-color:#fedf89; background:#fffbef; }
@@ -540,7 +544,12 @@ $releaseApprovalDataValid = preg_match('/\\A[A-Za-z0-9][A-Za-z0-9.+_-]{0,119}\\z
                                         <strong><?= ($portalLanguage ?? 'sv') === 'en' ? 'Create a manual backup before installation' : 'Ta en manuell backup före installationen' ?></strong>
                                         <p><?= ($portalLanguage ?? 'sv') === 'en' ? 'The updater also creates a temporary recovery copy and attempts rollback on error. A hosting backup is needed if the process is interrupted or recovery fails.' : 'Uppdateraren tar också en tillfällig återställningskopia och försöker rulla tillbaka vid fel. Webbhotellets backup behövs om processen avbryts eller återställningen misslyckas.' ?></p>
                                     </div>
-                                    <label><input type="checkbox" name="confirm_install" value="1" required> Jag har granskat versionen och hela listan, tagit en manuell backup och godkänner installation av de <?= h((string) $releaseChangedFileTotal) ?> avvikande programfilerna. Inga kunddata eller lokala inställningar skrivs över.</label>
+                                    <h3 class="central-admin-release-confirm-title"><?= ($portalLanguage ?? 'sv') === 'en' ? '1. Tick the confirmation box' : '1. Kryssa i bekräftelserutan' ?></h3>
+                                    <label class="central-admin-release-confirm" for="release-confirm-install">
+                                        <input id="release-confirm-install" type="checkbox" name="confirm_install" value="1" required>
+                                        <span><strong><?= ($portalLanguage ?? 'sv') === 'en' ? 'I have reviewed the files and made a backup' : 'Jag har granskat filerna och tagit backup' ?></strong><?= ($portalLanguage ?? 'sv') === 'en' ? 'I approve installation of the listed program files. Customer data and local settings will not be overwritten.' : 'Jag godkänner installation av de listade programfilerna. Kunddata och lokala inställningar skrivs inte över.' ?></span>
+                                    </label>
+                                    <p class="central-admin-release-next"><?= ($portalLanguage ?? 'sv') === 'en' ? '2. Then press the button once' : '2. Tryck sedan på knappen en gång' ?></p>
                                     <button class="btn btn-main" type="submit" <?= !$csrfReady ? 'disabled' : '' ?>><?= ($portalLanguage ?? 'sv') === 'en' ? 'Approve and install' : 'Godkänn och installera' ?></button>
                                 </form>
                             <?php endif; ?>

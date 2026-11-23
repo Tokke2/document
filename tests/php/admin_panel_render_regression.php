@@ -126,6 +126,8 @@ $review = render_admin_panel_for_test('configured', $activeUser, null, 'configur
 $assert(str_contains($review, '1 fil avviker') && str_contains($review, 'includes/nested/release.php'), 'A release review should show a clear singular file count and its exact path.');
 $assert(str_contains($review, 'Visa jämförelsens innehållsdigest') && str_contains($review, str_repeat('a', 64)), 'A release review should expose the exact approval digest on demand.');
 $assert(str_contains($review, 'name="action" value="portal_release_install"') && str_contains($review, 'name="confirm_install"'), 'A reviewed release requires a separate confirmation.');
+$assert(str_contains($review, '1. Kryssa i bekräftelserutan') && str_contains($review, '2. Tryck sedan på knappen en gång') && str_contains($review, 'for="release-confirm-install"'), 'The confirmation and single install press must be prominent and associated.');
+$assert(str_contains($review, 'name="confirm_install" value="1" required') && !str_contains($review, 'name="confirm_install" value="1" required checked'), 'The confirmation remains explicit and unchecked by default.');
 $disabledCheck = render_admin_panel_for_test('configured', $activeUser, null, 'configured', ['ok' => false, 'code' => 'configuration_incomplete', 'action' => 'check']);
 $assert(!str_contains($disabledCheck, 'name="action" value="portal_release_install"'), 'Failed checks never offer installation.');
 
