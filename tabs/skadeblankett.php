@@ -174,6 +174,25 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
     body.skade-kiosk-mode .skade-label small { color:#526774; font-size:.95rem; font-weight:650; }
     body.skade-kiosk-mode .skade-field input:not([type=checkbox]):not([type=radio]), body.skade-kiosk-mode .skade-field select, body.skade-kiosk-mode .skade-field textarea { min-height:60px; padding:14px 15px; font-size:1.15rem!important; line-height:1.4; }
     body.skade-kiosk-mode .skade-field textarea { min-height:145px; }
+    body.skade-kiosk-mode [data-skade-step][hidden], body.skade-kiosk-mode #skade-review-open[hidden], body.skade-kiosk-mode .skade-customer-tools[hidden], body.skade-kiosk-mode #skade-speech-stop[hidden], body.skade-kiosk-mode #skade-speech-note[hidden], body.skade-kiosk-mode #skade-sign-back[hidden] { display:none!important; }
+    body.skade-kiosk-mode .skade-customer-tools { display:flex; flex-wrap:wrap; gap:10px; margin:0 0 16px; }
+    body.skade-kiosk-mode .skade-customer-tools button, body.skade-kiosk-mode .skade-read-field { min-height:44px; }
+    body.skade-kiosk-mode .skade-speech-note { width:100%; margin:0; font-size:.9rem; }
+    body.skade-kiosk-mode .skade-read-field { margin:5px 0 8px; font-size:.9rem; }
+    body.skade-kiosk-mode .skade-field-has-speech { flex-wrap:wrap; min-width:0; }
+    body.skade-kiosk-mode .skade-read-field { max-width:100%; white-space:normal; }
+    body.skade-kiosk-mode .skade-review-list { display:grid; gap:10px; margin:16px 0; }
+    body.skade-kiosk-mode .skade-review-item { min-width:0; padding:12px; background:#f1f7f4; border:1px solid #cfe3dc; border-radius:10px; }
+    body.skade-kiosk-mode .skade-review-item dt { font-weight:750; }
+    body.skade-kiosk-mode .skade-review-item dd { margin:4px 0 8px; white-space:pre-wrap; overflow-wrap:anywhere; }
+    body.skade-kiosk-mode .skade-review-actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:14px; }
+    body.skade-kiosk-mode .skade-review-actions .btn { min-height:54px; }
+    body.skade-kiosk-mode :is(button,input,select,textarea,a,summary,canvas,#skade-review-heading,#skade-sign-heading):focus-visible { outline:3px solid #075c59; outline-offset:3px; }
+    body.skade-kiosk-mode.skade-large-text .skade-page { font-size:1.25rem; line-height:1.65; }
+    body.skade-kiosk-mode.skade-large-text :is(.skade-label,.skade-help,.skade-choice,.skade-card-head p,.skade-signature-copy,.skade-signature-disclaimer,.skade-customer-declaration,.skade-speech-note,.skade-read-field,.skade-review-list,.skade-form-actions p) { font-size:1.2rem; line-height:1.6; }
+    body.skade-kiosk-mode.skade-large-text .skade-field :is(input:not([type=checkbox]):not([type=radio]),select,textarea) { font-size:1.3rem!important; }
+    body.skade-kiosk-mode.skade-large-text :is(.skade-card-head h3,.skade-review-item dt) { font-size:1.35rem; }
+    body.skade-kiosk-mode.skade-large-text :is(.skade-review-actions .btn,.skade-customer-tools button,.skade-submit,#skade-review-open) { font-size:1.15rem; }
     /* An unfocused multiline field must not consume a page-scroll gesture.
        Once focused, restore normal text editing and internal scrolling. */
     body.skade-kiosk-mode .skade-field textarea:not(:focus) { overflow:hidden; resize:none; }
@@ -521,6 +540,13 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
                     <p><?= h(is_string($portalSkadeTextFitMessage ?? null) && $portalSkadeTextFitMessage !== '' ? $portalSkadeTextFitMessage : 'PDF-förhandskontrollen visar att text behöver vara mindre än 5 pt. Ingen PDF har sparats eller skickats.') ?> Uppgifterna är kvar i formuläret. Du kan ändra dem nu eller uttryckligen fortsätta med knappen nedan.</p>
                 </div>
             <?php endif; ?>
+            <?php if ($skadeCustomerMode): ?>
+            <div class="skade-customer-tools" id="skade-customer-tools" hidden>
+                <button type="button" class="btn btn-outline" id="skade-text-size" aria-pressed="false"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Larger text' : 'Större text' ?></button>
+                <button type="button" class="btn btn-outline" id="skade-speech-stop" hidden><?= ($portalLanguage ?? 'sv') === 'en' ? 'Stop reading' : 'Stoppa uppläsning' ?></button>
+                <p class="skade-speech-note" id="skade-speech-note" hidden><?= ($portalLanguage ?? 'sv') === 'en' ? 'Reading instructions does not read entered information. Your device or speech provider processes the spoken text; others nearby can hear it.' : 'Uppläsning läser instruktioner, inte det du har skrivit. Enheten eller dess taltjänst behandlar texten, och personer i närheten kan höra.' ?></p>
+            </div>
+            <?php endif; ?>
             <div class="skade-progress" aria-live="polite">
                 <div class="skade-progress-row"><span><?= ($portalLanguage ?? 'sv') === 'en' ? 'Required information' : 'Obligatoriska uppgifter' ?></span><span id="skade-progress-text">0 %</span></div>
                 <div class="skade-progress-track" id="skade-progress-track" role="progressbar" aria-label="Obligatoriska uppgifter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="skade-progress-bar" id="skade-progress-bar"></div></div>
@@ -540,7 +566,7 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
                     <input type="hidden" name="confirm_small_text" value="1">
                 <?php endif; ?>
 
-                <section class="skade-card" aria-labelledby="skade-kund-heading">
+                <section class="skade-card" aria-labelledby="skade-kund-heading"<?= $skadeCustomerMode ? ' data-skade-step="entry"' : '' ?>>
                     <div class="skade-card-head"><span class="skade-step">1</span><div><h3 id="skade-kund-heading"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Customer details' : 'Kunduppgifter' ?></h3><p><?= ($portalLanguage ?? 'sv') === 'en' ? 'Enter the details exactly as they should appear on the form.' : 'Ange uppgifterna precis som de ska stå på blanketten.' ?></p></div></div>
                     <div class="skade-grid">
                         <div class="skade-field" style="display:flex;align-items:end;padding-bottom:3px">
@@ -548,20 +574,22 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
                         </div>
                         <div class="skade-field skade-field-wide">
                             <label class="skade-label" for="sk-namn"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Name, address, postal code and city' : 'Namn, adress, postnummer och ort' ?> <span class="skade-required">*</span></label>
-                            <textarea id="sk-namn" name="s[namn_adress]" maxlength="250" autocomplete="<?= $skadeCustomerMode ? 'off' : 'street-address' ?>" required><?= $skadeText('namn_adress') ?></textarea>
+                            <textarea id="sk-namn" name="s[namn_adress]"<?= $skadeCustomerMode ? ' aria-describedby="sk-namn-help"' : '' ?> maxlength="250" autocomplete="<?= $skadeCustomerMode ? 'off' : 'street-address' ?>" required><?= $skadeText('namn_adress') ?></textarea>
+                            <?php if ($skadeCustomerMode): ?><small class="skade-help" id="sk-namn-help"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Enter your full name, street address, postal code and city.' : 'Skriv för- och efternamn, gatuadress, postnummer och ort.' ?></small><?php endif; ?>
                         </div>
                         <div class="skade-field">
                             <label class="skade-label" for="sk-personnr"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Personal / company identification number' : 'Personnummer / organisationsnummer' ?> <span class="skade-required">*</span></label>
-                            <input id="sk-personnr" name="s[person_orgnr]" maxlength="40" autocomplete="off" required value="<?= $skadeText('person_orgnr') ?>">
+                            <input id="sk-personnr" name="s[person_orgnr]" inputmode="text" maxlength="40" autocomplete="off" required value="<?= $skadeText('person_orgnr') ?>">
                             <small class="skade-help"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Enter the customer\'s personal identification number or the company\'s registration number.' : 'Ange kundens personnummer eller företagets organisationsnummer.' ?></small>
                         </div>
                         <div class="skade-field">
                             <label class="skade-label" for="sk-telefon">Telefonnummer <?php if ($skadeCustomerMode): ?><span class="skade-required">*</span><?php else: ?><small><?= ($portalLanguage ?? 'sv') === 'en' ? '(optional)' : '(frivilligt)' ?></small><?php endif; ?></label>
                             <input id="sk-telefon" name="s[telefon]" type="tel" inputmode="numeric" maxlength="40" autocomplete="<?= $skadeCustomerMode ? 'off' : 'tel' ?>" <?= $skadeCustomerMode ? 'required' : '' ?> value="<?= $skadeText('telefon') ?>">
+                            <?php if ($skadeCustomerMode): ?><small class="skade-help"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Enter a phone number where we can reach you.' : 'Skriv ett telefonnummer där vi kan nå dig.' ?></small><?php endif; ?>
                         </div>
                         <div class="skade-field skade-field-wide">
                             <label class="skade-label" for="sk-epost"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Email address' : 'E-postadress' ?> <small><?= ($portalLanguage ?? 'sv') === 'en' ? '(optional)' : '(frivillig)' ?></small></label>
-                            <input id="sk-epost" name="s[epost]" type="email" maxlength="254" autocomplete="<?= $skadeCustomerMode ? 'off' : 'email' ?>" value="<?= $skadeText('epost') ?>">
+                            <input id="sk-epost" name="s[epost]" type="email" inputmode="email" maxlength="254" autocomplete="<?= $skadeCustomerMode ? 'off' : 'email' ?>" value="<?= $skadeText('epost') ?>">
                             <?php if ($skadeCustomerMode): ?>
                                 <small class="skade-help"><?= ($portalLanguage ?? 'sv') === 'en' ? 'If you enter an email address, it is included on the form.' : 'Om du anger e-postadress skrivs den i blanketten.' ?></small>
                             <?php else: ?>
@@ -571,7 +599,7 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
                     </div>
                 </section>
 
-                <section class="skade-card" aria-labelledby="skade-fordon-heading">
+                <section class="skade-card" aria-labelledby="skade-fordon-heading"<?= $skadeCustomerMode ? ' data-skade-step="entry"' : '' ?>>
                     <div class="skade-card-head"><span class="skade-step">2</span><div><h3 id="skade-fordon-heading"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Vehicle and insurance' : 'Fordon och försäkring' ?></h3><p><?= ($portalLanguage ?? 'sv') === 'en' ? 'The details are copied to the vehicle fields on the Bilrutan form.' : 'Uppgifterna förs över till fordonets fält på Bilrutan-blanketten.' ?></p></div></div>
                     <div class="skade-grid">
                         <div class="skade-field">
@@ -584,27 +612,37 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
                             <input id="sk-modell" name="s[modell]" maxlength="70" required value="<?= $skadeText('modell') ?>">
                             <small class="skade-help"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Enter the vehicle\'s make and model.' : 'Ange bilens märke och modell.' ?></small>
                         </div>
-                        <div class="skade-field"><label class="skade-label" for="sk-matarstallning"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Current odometer reading in kilometers' : 'Aktuell mätarställning i kilometer' ?> <small><?= ($portalLanguage ?? 'sv') === 'en' ? '(optional)' : '(valfritt)' ?></small></label><input id="sk-matarstallning" name="s[matarstallning]" type="number" min="0" max="99999999" step="1" value="<?= $skadeText('matarstallning') ?>"></div>
-                        <div class="skade-field"><label class="skade-label" for="sk-forsakring"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Insurance company' : 'Försäkringsbolag' ?> <span class="skade-required">*</span></label><input id="sk-forsakring" name="s[forsakringsbolag]" maxlength="70" required value="<?= $skadeText('forsakringsbolag') ?>"></div>
+                        <div class="skade-field"><label class="skade-label" for="sk-matarstallning"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Current odometer reading in kilometers' : 'Aktuell mätarställning i kilometer' ?> <small><?= ($portalLanguage ?? 'sv') === 'en' ? '(optional)' : '(valfritt)' ?></small></label><input id="sk-matarstallning" name="s[matarstallning]" type="number" inputmode="numeric" min="0" max="99999999" step="1" value="<?= $skadeText('matarstallning') ?>"><?php if ($skadeCustomerMode): ?><small class="skade-help"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Enter the whole number of kilometers shown in the car, if known.' : 'Skriv antalet kilometer som bilen visar, om du vet.' ?></small><?php endif; ?></div>
+                        <div class="skade-field"><label class="skade-label" for="sk-forsakring"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Insurance company' : 'Försäkringsbolag' ?> <span class="skade-required">*</span></label><input id="sk-forsakring" name="s[forsakringsbolag]" maxlength="70" required value="<?= $skadeText('forsakringsbolag') ?>"><?php if ($skadeCustomerMode): ?><small class="skade-help"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Enter the name of the vehicle insurance company.' : 'Skriv namnet på bilens försäkringsbolag.' ?></small><?php endif; ?></div>
                         <div class="skade-field">
                             <label class="skade-label" for="sk-datum">Skadedatum <?php if ($skadeAdminCanOmitAccidentDate): ?><small>(frivilligt för admin)</small><?php else: ?><span class="skade-required">*</span><?php endif; ?></label>
                             <div class="skade-date-control">
-                                <input id="sk-datum" name="s[skadedatum]" type="text" inputmode="text" maxlength="32" autocomplete="off" placeholder="2026-03-21, 21.03.2026 eller 260321" aria-describedby="sk-datum-help" <?= $skadeAdminCanOmitAccidentDate ? '' : 'required' ?> value="<?= $skadeText('skadedatum') ?>">
+                                <input id="sk-datum" name="s[skadedatum]" type="text" inputmode="<?= $skadeCustomerMode ? 'numeric' : 'text' ?>" maxlength="32" autocomplete="off" placeholder="2026-03-21, 21.03.2026 eller 260321" aria-describedby="sk-datum-help" <?= $skadeAdminCanOmitAccidentDate ? '' : 'required' ?> value="<?= $skadeText('skadedatum') ?>">
                                 <div class="skade-calendar-trigger">
                                     <svg viewBox="0 0 24 24" width="21" height="21" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M16 3v4M8 3v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"></path></svg>
                                     <input class="skade-calendar-input" id="sk-datum-picker" type="date" aria-label="Välj skadedatum i kalendern" tabindex="0" value="<?= $skadeText('skadedatum') ?>">
                                 </div>
                             </div>
-                            <small class="skade-help" id="sk-datum-help"><?php if ($skadeAdminCanOmitAccidentDate): ?>Skriv t.ex. 2026-03-21 eller 21.03.2026. Admin kan lämna fältet tomt när skadedatum saknas; PDF:en sparas och skickas som vanligt. Om datum anges måste det vara giltigt.<?php else: ?>Skriv t.ex. 2026-03-21 eller 21.03.2026. Sex siffror tolkas som ÅÅMMDD: 260321 blir 2026-03-21 (00–49 = 2000–2049, 50–99 = 1950–1999). Du kan även välja datum i kalendern.<?php endif; ?></small>
+                            <small class="skade-help" id="sk-datum-help"><?php if ($skadeAdminCanOmitAccidentDate): ?>Skriv t.ex. 2026-03-21 eller 21.03.2026. Admin kan lämna fältet tomt när skadedatum saknas; PDF:en sparas och skickas som vanligt. Om datum anges måste det vara giltigt.<?php elseif ($skadeCustomerMode): ?>Skriv sex siffror, till exempel 260321 för 21 mars 2026, eller åtta siffror som 20260321. Du kan också välja i kalendern. År 00–49 tolkas som 2000–2049 och 50–99 som 1950–1999.<?php else: ?>Skriv t.ex. 2026-03-21 eller 21.03.2026. Sex siffror tolkas som ÅÅMMDD: 260321 blir 2026-03-21 (00–49 = 2000–2049, 50–99 = 1950–1999). Du kan även välja datum i kalendern.<?php endif; ?></small>
                         </div>
-                        <div class="skade-field"><label class="skade-label" for="sk-plats"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Place of damage' : 'Skadeplats' ?> <small><?= ($portalLanguage ?? 'sv') === 'en' ? '(optional)' : '(frivillig)' ?></small></label><input id="sk-plats" name="s[skadeplats]" maxlength="80" value="<?= $skadeText('skadeplats') ?>"></div>
-                        <div class="skade-field"><label class="skade-label" for="sk-skadenr"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Insurance / claim number' : 'Försäkrings- / skadenummer' ?> <small><?= ($portalLanguage ?? 'sv') === 'en' ? '(optional)' : '(valfritt)' ?></small></label><input id="sk-skadenr" name="s[skadenummer]" maxlength="80" value="<?= $skadeText('skadenummer') ?>"></div>
-                        <div class="skade-field" style="display:flex;align-items:end;padding-bottom:3px"><label class="skade-choice" style="width:100%"><input type="checkbox" name="s[nya_torkarblad_bestalls]" value="1" <?= $skadeChecked('nya_torkarblad_bestalls') ? 'checked' : '' ?>><span><strong><?= ($portalLanguage ?? 'sv') === 'en' ? 'Order new wiper blades' : 'Beställ nya torkarblad' ?></strong><br><small><?= ($portalLanguage ?? 'sv') === 'en' ? 'An additional charge applies if selected.' : 'Kostnad tillkommer om rutan markeras.' ?></small></span></label></div>
+                        <div class="skade-field"><label class="skade-label" for="sk-plats"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Place of damage' : 'Skadeplats' ?> <small><?= ($portalLanguage ?? 'sv') === 'en' ? '(optional)' : '(frivillig)' ?></small></label><input id="sk-plats" name="s[skadeplats]" maxlength="80" value="<?= $skadeText('skadeplats') ?>"><?php if ($skadeCustomerMode): ?><small class="skade-help"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Enter where the damage happened, if known.' : 'Skriv var skadan inträffade, om du vet.' ?></small><?php endif; ?></div>
+                        <div class="skade-field"><label class="skade-label" for="sk-skadenr"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Insurance / claim number' : 'Försäkrings- / skadenummer' ?> <small><?= ($portalLanguage ?? 'sv') === 'en' ? '(optional)' : '(valfritt)' ?></small></label><input id="sk-skadenr" name="s[skadenummer]" maxlength="80" value="<?= $skadeText('skadenummer') ?>"><?php if ($skadeCustomerMode): ?><small class="skade-help"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Enter the claim number from your insurer, if you have one.' : 'Skriv skadenumret från försäkringsbolaget om du har ett.' ?></small><?php endif; ?></div>
+                        <div class="skade-field" style="display:flex;align-items:end;padding-bottom:3px"><label class="skade-choice" style="width:100%"><input id="sk-wiper-request" type="checkbox" name="s[nya_torkarblad_bestalls]" value="1" <?= $skadeChecked('nya_torkarblad_bestalls') ? 'checked' : '' ?>><span><strong><?= ($portalLanguage ?? 'sv') === 'en' ? 'Order new wiper blades' : 'Beställ nya torkarblad' ?></strong><br><small><?= ($portalLanguage ?? 'sv') === 'en' ? 'An additional charge applies if selected.' : 'Kostnad tillkommer om rutan markeras.' ?></small></span></label></div>
                     </div>
                 </section>
 
-                <section class="skade-card" aria-label="<?= h($skadeCustomerMode ? 'Bekräfta uppgifter' : 'Skapa kundunderlag') ?>">
-                    <div class="skade-card-head"><span class="skade-step" aria-hidden="true">✓</span><div><h3><?= $skadeCustomerMode ? 'Bekräfta uppgifterna' : 'Skapa kundunderlaget' ?></h3><p><?= $skadeCustomerMode ? 'Kontrollera att uppgifterna är riktiga. Rita din signatur och bekräfta innan du skickar.' : 'Skadedetaljer, åtgärd, utrustning, tilläggstjänster, betalning och datum lämnas utanför kundinmatningen och kompletteras av er.' ?></p></div></div>
+                <?php if ($skadeCustomerMode): ?>
+                <button class="btn btn-main" type="button" id="skade-review-open" hidden><?= ($portalLanguage ?? 'sv') === 'en' ? 'Review information' : 'Granska uppgifter' ?> →</button>
+                <section class="skade-card" id="skade-review" data-skade-step="review" aria-labelledby="skade-review-heading" hidden>
+                    <h3 id="skade-review-heading" tabindex="-1"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Review your information' : 'Granska dina uppgifter' ?></h3>
+                    <p><?= ($portalLanguage ?? 'sv') === 'en' ? 'Check the information before signing. Use Change to correct a field.' : 'Kontrollera uppgifterna innan du signerar. Välj Ändra för att rätta ett fält.' ?></p>
+                    <dl class="skade-review-list" id="skade-review-list"></dl>
+                    <div class="skade-review-actions"><button class="btn btn-outline" type="button" id="skade-review-back"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Back to fields' : 'Tillbaka till fälten' ?></button><button class="btn btn-main" type="button" id="skade-review-continue"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Continue to signature' : 'Fortsätt till signering' ?> →</button></div>
+                </section>
+                <?php endif; ?>
+                <section class="skade-card"<?= $skadeCustomerMode ? ' id="skade-sign-stage" data-skade-step="signature"' : '' ?> aria-label="<?= h($skadeCustomerMode ? 'Bekräfta uppgifter' : 'Skapa kundunderlag') ?>">
+                    <div class="skade-card-head"><span class="skade-step" aria-hidden="true">✓</span><div><h3<?= $skadeCustomerMode ? ' id="skade-sign-heading" tabindex="-1"' : '' ?>><?= $skadeCustomerMode ? 'Bekräfta uppgifterna' : 'Skapa kundunderlaget' ?></h3><p><?= $skadeCustomerMode ? 'Kontrollera att uppgifterna är riktiga. Rita din signatur och bekräfta innan du skickar.' : 'Skadedetaljer, åtgärd, utrustning, tilläggstjänster, betalning och datum lämnas utanför kundinmatningen och kompletteras av er.' ?></p></div></div>
+                    <?php if ($skadeCustomerMode): ?><button class="btn btn-outline" type="button" id="skade-sign-back" hidden><?= ($portalLanguage ?? 'sv') === 'en' ? 'Back to review' : 'Tillbaka till granskning' ?></button><?php endif; ?>
                     <div class="skade-signature" aria-labelledby="skade-signature-title">
                         <p class="skade-signature-title" id="skade-signature-title"><?= $skadeCustomerMode ? 'Din digitala signatur' : 'Kundens digitala signatur' ?> <?php if ($skadeCustomerMode): ?><span class="skade-required">*</span><?php else: ?><small><?= ($portalLanguage ?? 'sv') === 'en' ? '(optional)' : '(frivillig)' ?></small><?php endif; ?></p>
                         <p class="skade-signature-copy" id="skade-signature-help"><?= $skadeCustomerMode ? 'Skriv din namnteckning i rutan med finger eller Apple Pencil. Tryck på Rensa signatur om du vill börja om.' : 'Låt kunden skriva sin signatur i ett lugnt, sammanhängande drag med finger eller penna. Ritytan jämnar ut små ryck och ger strecket naturlig avsmalning och diskret breddvariation; i PDF:en kan signaturen gå högst 1 cm utanför originalrutan. Lämna rutan tom för utskrift och handskriven underskrift.' ?></p>
@@ -815,7 +853,7 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
         }
         if (field.id === 'sk-telefon' && currentValue !== '') {
             var phoneDigits = String(field.value).replace(/\D/g, '');
-            if (phoneDigits.length < 5) return 'Ange minst fem siffror eller lämna telefonfältet tomt.';
+            if (phoneDigits.length < 5) return field.required ? 'Ange minst fem siffror i telefonnumret.' : 'Ange minst fem siffror eller lämna telefonfältet tomt.';
         }
         var validity = field.validity;
         if (!validity || validity.valid) return '';
@@ -968,6 +1006,151 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
         try { field.focus({ preventScroll: true }); }
         catch (error) { try { field.focus(); } catch (ignored) {} }
     }
+    <?php if ($skadeCustomerMode): ?>
+    var customerStep = 'entry';
+    var entrySections = Array.prototype.slice.call(form.querySelectorAll('[data-skade-step="entry"]'));
+    var reviewSection = document.getElementById('skade-review');
+    var reviewList = document.getElementById('skade-review-list');
+    var signStage = document.getElementById('skade-sign-stage');
+    var reviewOpen = document.getElementById('skade-review-open');
+    var reviewBack = document.getElementById('skade-review-back');
+    var reviewContinue = document.getElementById('skade-review-continue');
+    var signBack = document.getElementById('skade-sign-back');
+    var customerLang = <?= json_encode(($portalLanguage ?? 'sv') === 'en' ? 'en' : 'sv') ?>;
+    function showCustomerStep(step) {
+        customerStep = step;
+        entrySections.forEach(function (section) { section.hidden = step !== 'entry'; });
+        if (reviewOpen) reviewOpen.hidden = step !== 'entry';
+        if (reviewSection) reviewSection.hidden = step !== 'review';
+        if (signStage) signStage.hidden = step !== 'signature';
+        if (step === 'signature' && signaturePad && typeof signaturePad.resize === 'function') {
+            if (window.requestAnimationFrame) window.requestAnimationFrame(function () { signaturePad.resize(); });
+            else signaturePad.resize();
+        }
+    }
+    function entryValidation() {
+        var first = null;
+        entrySections.forEach(function (section) {
+            Array.prototype.forEach.call(section.querySelectorAll('input,textarea,select'), function (field) {
+                if (field.type !== 'hidden' && !validateField(field) && !first) first = field;
+            });
+        });
+        return first;
+    }
+    function reviewLabel(field) {
+        var label = field.id ? form.querySelector('label[for="' + field.id + '"]') : null;
+        if (!label) label = field.closest('label');
+        return label ? label.textContent.replace(/\s+/g, ' ').trim().replace(/\s*\*\s*$/, '') : '';
+    }
+    function buildCustomerReview() {
+        if (!reviewList) return;
+        while (reviewList.firstChild) reviewList.removeChild(reviewList.firstChild);
+        ['sk-foretag','sk-namn','sk-personnr','sk-telefon','sk-epost','sk-regnr','sk-modell','sk-matarstallning','sk-forsakring','sk-datum','sk-plats','sk-skadenr','sk-wiper-request'].forEach(function (id) {
+            var field = document.getElementById(id);
+            if (!field) return;
+            var label = reviewLabel(field);
+            var item = document.createElement('div'); item.className = 'skade-review-item';
+            var dt = document.createElement('dt'); dt.textContent = label;
+            var dd = document.createElement('dd');
+            dd.textContent = field.type === 'checkbox' ? (field.checked ? (customerLang === 'en' ? 'Yes' : 'Ja') : (customerLang === 'en' ? 'No' : 'Nej')) : (field.value.trim() || (customerLang === 'en' ? 'Not provided' : 'Inte angivet'));
+            var edit = document.createElement('button'); edit.type = 'button'; edit.className = 'btn btn-outline';
+            edit.textContent = customerLang === 'en' ? 'Change' : 'Ändra';
+            edit.setAttribute('aria-label', (customerLang === 'en' ? 'Change ' : 'Ändra ') + label);
+            edit.addEventListener('click', function () { showCustomerStep('entry'); focusInvalidField(field); });
+            item.append(dt, dd, edit); reviewList.appendChild(item);
+        });
+    }
+    function openCustomerReview() {
+        validationAttempted = true;
+        var invalid = entryValidation();
+        if (invalid) { showCustomerStep('entry'); reportClientValidationFailure(); focusInvalidField(invalid); return false; }
+        buildCustomerReview(); showCustomerStep('review');
+        focusInvalidField(document.getElementById('skade-review-heading'));
+        return true;
+    }
+    if (reviewOpen && reviewSection && signStage) {
+        reviewOpen.addEventListener('click', openCustomerReview);
+        reviewBack.addEventListener('click', function () { showCustomerStep('entry'); focusInvalidField(reviewOpen); });
+        reviewContinue.addEventListener('click', function () { showCustomerStep('signature'); focusInvalidField(document.getElementById('skade-sign-heading')); });
+        signBack.hidden = false;
+        signBack.addEventListener('click', function () { buildCustomerReview(); showCustomerStep('review'); focusInvalidField(document.getElementById('skade-review-heading')); });
+        showCustomerStep('entry');
+    }
+
+    // Text size is temporary to this page and stores no customer information.
+    var tools = document.getElementById('skade-customer-tools');
+    var textSize = document.getElementById('skade-text-size');
+    if (tools && textSize) {
+        tools.hidden = false;
+        textSize.addEventListener('click', function () {
+            var large = document.body.classList.toggle('skade-large-text');
+            textSize.setAttribute('aria-pressed', large ? 'true' : 'false');
+            textSize.textContent = large ? (customerLang === 'en' ? 'Normal text' : 'Normal text') : (customerLang === 'en' ? 'Larger text' : 'Större text');
+            if (signaturePad && typeof signaturePad.resize === 'function') signaturePad.resize();
+        });
+    }
+    // Associate existing helper text with controls for screen-reader users.
+    entrySections.forEach(function (section) {
+        Array.prototype.forEach.call(section.querySelectorAll('.skade-field'), function (container) {
+            var control = container.querySelector('input:not([type=hidden]),textarea,select');
+            var help = container.querySelector('.skade-help');
+            if (!control || !control.id || !help) return;
+            if (!help.id) help.id = control.id + '-help';
+            var ids = (control.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean);
+            if (ids.indexOf(help.id) < 0) ids.push(help.id);
+            control.setAttribute('aria-describedby', ids.join(' '));
+        });
+    });
+    // Only static labels and help are spoken, never field contents.
+    var speechStop = document.getElementById('skade-speech-stop');
+    var speechNote = document.getElementById('skade-speech-note');
+    if (window.speechSynthesis && typeof window.SpeechSynthesisUtterance === 'function' && speechStop && speechNote) {
+        speechStop.hidden = false; speechNote.hidden = false;
+        speechStop.addEventListener('click', function () { window.speechSynthesis.cancel(); });
+        entrySections.forEach(function (section) {
+            Array.prototype.forEach.call(section.querySelectorAll('.skade-field'), function (container) {
+                var label = container.querySelector('label');
+                if (!label) return;
+                var help = container.querySelector('.skade-help');
+                var labelText = label.textContent.replace(/\s+/g, ' ').trim();
+                var spoken = labelText + (help ? '. ' + help.textContent.replace(/\s+/g, ' ').trim() : '');
+                var button = document.createElement('button'); button.type = 'button'; button.className = 'btn btn-outline skade-read-field';
+                button.textContent = customerLang === 'en' ? 'Read instructions' : 'Läs upp';
+                button.setAttribute('aria-label', (customerLang === 'en' ? 'Read instructions for ' : 'Läs upp instruktion för ') + labelText);
+                button.addEventListener('click', function () { window.speechSynthesis.cancel(); var utterance = new window.SpeechSynthesisUtterance(spoken); utterance.lang = customerLang === 'en' ? 'en-GB' : 'sv-SE'; window.speechSynthesis.speak(utterance); });
+                container.classList.add('skade-field-has-speech');
+                container.appendChild(button);
+            });
+        });
+        var signHelp = document.getElementById('skade-signature-help');
+        var declaration = form.querySelector('.skade-customer-declaration');
+        [signHelp, declaration].forEach(function (content) {
+            if (!content) return;
+            var button = document.createElement('button'); button.type = 'button'; button.className = 'btn btn-outline skade-read-field';
+            button.textContent = customerLang === 'en' ? 'Read instructions' : 'Läs upp';
+            button.setAttribute('aria-label', content === signHelp ? (customerLang === 'en' ? 'Read signature instructions' : 'Läs upp signeringsinstruktioner') : (customerLang === 'en' ? 'Read declaration and payment terms' : 'Läs upp intygande och betalningsvillkor'));
+            button.addEventListener('click', function () { window.speechSynthesis.cancel(); var utterance = new window.SpeechSynthesisUtterance(content.textContent.replace(/\s+/g, ' ').trim()); utterance.lang = customerLang === 'en' ? 'en-GB' : 'sv-SE'; window.speechSynthesis.speak(utterance); });
+            content.insertAdjacentElement('afterend', button);
+        });
+        window.addEventListener('pagehide', function () { window.speechSynthesis.cancel(); });
+    }
+    // Customer pages do not have a mobile action dock; handle the visual
+    // viewport separately and do not force horizontal scroll or disable zoom.
+    var keyboardTimer = 0;
+    function keepCustomerFieldVisible() {
+        var active = document.activeElement;
+        if (!active || !form.contains(active) || !active.matches('textarea, input:not([type=checkbox]):not([type=radio]):not([type=hidden]):not([type=date]), select')) return;
+        var viewport = window.visualViewport;
+        if (!viewport || !viewport.height || window.innerHeight - viewport.height < 100) return;
+        var rect = active.getBoundingClientRect(), top = viewport.offsetTop + 12, bottom = viewport.offsetTop + viewport.height - 16;
+        var delta = rect.top < top ? rect.top - top : (rect.bottom > bottom ? Math.min(rect.bottom - bottom, rect.top - top) : 0);
+        if (Math.abs(delta) > 2) window.scrollBy({ top:delta, left:0, behavior:'auto' });
+    }
+    function scheduleCustomerVisibility() { window.clearTimeout(keyboardTimer); keyboardTimer = window.setTimeout(keepCustomerFieldVisible, 120); }
+    form.addEventListener('focusin', scheduleCustomerVisibility);
+    if (window.visualViewport && typeof window.visualViewport.addEventListener === 'function') window.visualViewport.addEventListener('resize', scheduleCustomerVisibility);
+    window.addEventListener('resize', scheduleCustomerVisibility, {passive:true});
+    <?php endif; ?>
     if (regnrInput) {
         var initialRegnr = normalizeRegnr(regnrInput.value);
         if (regnrInput.value !== initialRegnr) regnrInput.value = initialRegnr;
@@ -1172,24 +1355,34 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
         }
     }
 
-    form.addEventListener('input', function (event) {
+    function handleFormChange(event) {
+        <?php if ($skadeCustomerMode): ?>
+        if (event.target.closest('[data-skade-step="entry"]') && signatureConfirmedInput && signatureConfirmedInput.checked) {
+            signatureConfirmedInput.checked = false;
+            setSignatureStatus(<?= json_encode(($portalLanguage ?? 'sv') === 'en' ? 'The information changed. Review it and confirm again.' : 'Uppgifterna har ändrats. Granska och bekräfta igen.', JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>);
+        }
+        <?php endif; ?>
         updateProgress();
         if (validationAttempted && event.target !== signatureInput) validateField(event.target);
-    });
-    form.addEventListener('change', function (event) {
-        updateProgress();
-        if (validationAttempted && event.target !== signatureInput) validateField(event.target);
-    });
+    }
+    form.addEventListener('input', handleFormChange);
+    form.addEventListener('change', handleFormChange);
     form.addEventListener('submit', function (event) {
         if (formSubmitting) {
             event.preventDefault();
             return;
         }
+        <?php if ($skadeCustomerMode): ?>
+        if (customerStep !== 'signature') { event.preventDefault(); openCustomerReview(); return; }
+        <?php endif; ?>
         validationAttempted = true;
         var firstInvalid = validateForm();
         if (firstInvalid) {
             event.preventDefault();
             reportClientValidationFailure();
+            <?php if ($skadeCustomerMode): ?>
+            if (firstInvalid.closest('[data-skade-step="entry"]')) showCustomerStep('entry');
+            <?php endif; ?>
             focusInvalidField(firstInvalid);
             return;
         }
@@ -1204,7 +1397,12 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
     if (form.getAttribute('data-validation-error') === '1') {
         validationAttempted = true;
         var serverFirstInvalid = validateForm();
-        if (serverFirstInvalid) focusInvalidField(serverFirstInvalid);
+        if (serverFirstInvalid) {
+            <?php if ($skadeCustomerMode): ?>
+            showCustomerStep(serverFirstInvalid.closest('[data-skade-step="entry"]') ? 'entry' : 'signature');
+            <?php endif; ?>
+            focusInvalidField(serverFirstInvalid);
+        }
     }
 }());
 </script>

@@ -697,6 +697,7 @@
 
         return {
             context: context,
+            resize: syncBackingStoreToDisplay,
             clear: clear,
             serialize: serialize,
             serializeCropped: serializeCropped,

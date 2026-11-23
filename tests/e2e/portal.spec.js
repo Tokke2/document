@@ -119,6 +119,16 @@ test('kundläge: signaturen kan ritas och rensas utan att blanketten skickas', a
     await page.goto('skadeblankett-kund.php');
 
     await expect(page.getByRole('heading', { name: 'Fyll i skadeblanketten' })).toBeVisible();
+    await page.locator('#sk-namn').fill('Testperson\nTestgatan 1');
+    await page.locator('#sk-personnr').fill('19900101-1234');
+    await page.locator('#sk-telefon').fill('0701234567');
+    await page.locator('#sk-regnr').fill('ABC123');
+    await page.locator('#sk-modell').fill('Testbil');
+    await page.locator('#sk-forsakring').fill('Testbolag');
+    await page.locator('#sk-datum').fill('2026-11-03');
+    await page.locator('#skade-review-open').click();
+    await expect(page.locator('#skade-review')).toContainText('Testperson');
+    await page.locator('#skade-review-continue').click();
     await expect(page.locator('#skade-signature-pad')).toBeVisible();
     await expect(page.locator('#skade-signature-confirmed')).toHaveAttribute('required', '');
     await expect(page.locator('.tabs-wrap')).toHaveCount(0);

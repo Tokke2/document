@@ -69,6 +69,15 @@ test.describe('touchgester på kundsidan', () => {
         await expect(text).not.toBeFocused();
         await text.focus(); await expect(text).toBeFocused();
         await expect(text).toHaveCSS('overflow-y','auto');
+        await page.locator('#sk-personnr').fill('19900101-1234');
+        await page.locator('#sk-telefon').fill('0701234567');
+        await page.locator('#sk-regnr').fill('ABC123');
+        await page.locator('#sk-modell').fill('Testbil');
+        await page.locator('#sk-forsakring').fill('Testbolag');
+        await page.locator('#sk-datum').fill('2026-11-03');
+        await page.locator('#skade-review-open').click();
+        await expect(page.locator('#skade-review')).toBeVisible();
+        await page.locator('#skade-review-continue').click();
         const pad=page.locator('#skade-signature-pad'); await pad.scrollIntoViewIfNeeded();
         const rect=await pad.boundingBox();
         await drag(rect.x+30,rect.y+45,rect.x+150,rect.y+70);

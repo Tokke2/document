@@ -56,7 +56,7 @@ assert.notEqual(d.querySelector('#skade-progress-track').getAttribute('aria-valu
 set('#skade-signature-png','data:image/png;base64,TEST');
 assert.equal(d.querySelector('#skade-progress-track').getAttribute('aria-valuenow'),'100');
 assert.match(d.querySelector('#skade-progress-text').textContent,/100 %/);
-set('#sk-epost','invalid'); assert.equal(d.querySelector('#skade-progress-track').getAttribute('aria-valuenow'),'99','Invalid optional field must not report complete');
+set('#sk-epost','invalid'); assert.notEqual(d.querySelector('#skade-progress-track').getAttribute('aria-valuenow'),'100','Invalid optional field or revoked confirmation must not report complete');
 set('#sk-epost',''); set('#sk-datum','2026-02-31');assert.notEqual(d.querySelector('#skade-progress-track').getAttribute('aria-valuenow'),'100','Invalid date is incomplete');
 set('#sk-datum','2026-11-03'); set('#sk-namn','   ');assert.notEqual(d.querySelector('#skade-progress-track').getAttribute('aria-valuenow'),'100','Whitespace does not satisfy required input');
 const event=new dom.window.Event('submit',{bubbles:true,cancelable:true});
