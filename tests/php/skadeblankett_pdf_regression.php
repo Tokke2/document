@@ -59,14 +59,19 @@ $check(is_array($signaturePlacement), 'A valid cropped PNG should receive a PDF 
 if (is_array($signaturePlacement)) {
     $check(abs(($signaturePlacement['width_mm'] / $signaturePlacement['height_mm']) - 6.0) < 0.0001, 'Signature placement must preserve the cropped PNG aspect ratio.');
     $measuredPadMm = 12 * $signaturePlacement['mm_per_px'];
-    $check(abs($measuredPadMm - 1.2657) < 0.01, 'A 12 px crop inset must be measurable as about 1.27 mm at the actual PDF placement.');
+    $check(abs($measuredPadMm - 0.8594) < 0.01, 'A 12 px crop inset must be measurable at the actual PDF placement.');
     $maximumOverrunMm = max(
         $signaturePlacement['left_overrun_mm'],
         $signaturePlacement['right_overrun_mm'],
         $signaturePlacement['top_overrun_mm'],
         $signaturePlacement['bottom_overrun_mm']
     );
-    $check($maximumOverrunMm <= 10.0, 'Signature placement must stay under the hard 10 mm overrun ceiling.');
+    $check($maximumOverrunMm < 0.0001, 'Signature must stay inside the box border.');
+}
+foreach ([[100, 600], [600, 100], [6000, 25], [25, 6000], [100, 100]] as [$w, $h]) {
+    $placement = skade_pdf_signature_placement($w, $h);
+    $check(is_array($placement) && max($placement['left_overrun_mm'], $placement['right_overrun_mm'], $placement['top_overrun_mm'], $placement['bottom_overrun_mm']) < 0.0001, 'Every signature aspect ratio must fit inside the PDF box.');
+    $check(is_array($placement) && abs($placement['width_mm'] / $placement['height_mm'] - $w / $h) < 0.0001, 'Signature proportions must be preserved.');
 }
 $check(skade_pdf_signature_placement(0, 100) === null, 'Zero-sized signature images must not receive a PDF placement.');
 

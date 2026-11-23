@@ -82,11 +82,25 @@ test.describe('touchgester på kundsidan', () => {
         await page.locator('#sk-datum').fill('2026-11-03');
         await page.locator('#skade-review-open').click();
         await expect(page.locator('#skade-review')).toBeVisible();
+        await expect(page.locator('#skade-review-list .skade-review-item')).toHaveCount(3);
+        await expect(page.locator('#skade-review-extra')).toBeHidden();
+        await page.locator('#skade-review-more summary').click();
+        await expect(page.locator('#skade-review-extra')).toBeVisible();
+        await page.locator('#skade-review-more summary').click();
         await page.locator('#skade-review-continue').click();
         const pad=page.locator('#skade-signature-pad'); await pad.scrollIntoViewIfNeeded();
         const rect=await pad.boundingBox();
         await drag(rect.x+30,rect.y+45,rect.x+150,rect.y+70);
         await expect(page.locator('#skade-signature-png')).toHaveValue(/^data:image\/png;base64,/);
+        const ink=await page.evaluate(() => {
+            const canvas=document.querySelector('#skade-signature-pad');
+            const pixels=canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height).data;
+            for(let i=0;i<pixels.length;i+=4) if(pixels[i+3]>240) return [pixels[i],pixels[i+1],pixels[i+2]];
+            return null;
+        });
+        expect(ink).not.toBeNull();
+        expect(ink[2]).toBeGreaterThan(ink[0]);
+        expect(ink[2]).toBeGreaterThan(ink[1]);
         await cdp.detach();
     });
 });

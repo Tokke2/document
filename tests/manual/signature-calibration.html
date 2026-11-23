@@ -77,11 +77,8 @@
     var aspect = crop.imageWidthPx / crop.imageHeightPx;
     var boxWidthPt = 203.1;
     var boxHeightPt = 21.9;
-    var maxOverrunPt = 28.34;
-    var maxWidthPt = boxWidthPt + maxOverrunPt * 2;
-    var maxHeightPt = boxHeightPt + maxOverrunPt * 2;
-    var preferredWidthPt = Math.min(boxWidthPt * 0.94, maxWidthPt);
-    var preferredHeightPt = Math.min(boxHeightPt + 8, maxHeightPt);
+    var preferredWidthPt = boxWidthPt - 1.6;
+    var preferredHeightPt = boxHeightPt - 1.6;
     var imageWidthPt = Math.min(preferredWidthPt, preferredHeightPt * aspect);
     var imageHeightPt = imageWidthPt / aspect;
     var imageWidthMm = imageWidthPt * pointToMm;

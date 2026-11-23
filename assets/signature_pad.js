@@ -39,6 +39,7 @@
         if (!context) return null;
 
         var inkColor = typeof options.color === 'string' ? options.color : '#18385f';
+        var baseWidthCssPx = Number.isFinite(Number(options.baseWidthCssPx)) ? clamp(Number(options.baseWidthCssPx), 0.5, 6) : 1.9;
         var background = Object.prototype.hasOwnProperty.call(options, 'background') ? options.background : null;
         if (background === false) background = null;
         var basePadding = Number.isFinite(Number(options.basePadding)) ? Math.max(0, Number(options.basePadding)) : 40;
@@ -209,7 +210,7 @@
                 point.tiltX = previous.tiltX;
                 point.tiltY = previous.tiltY;
             }
-            var baseWidth = 1.9 * point.scale.mean;
+            var baseWidth = baseWidthCssPx * point.scale.mean;
             var targetWidth;
             var speed = activeStroke ? activeStroke.filteredSpeed : 0;
             var elapsed = 0;

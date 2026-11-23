@@ -189,6 +189,7 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
     body.skade-kiosk-mode .skade-review-item { min-width:0; padding:12px; background:#f1f7f4; border:1px solid #cfe3dc; border-radius:10px; }
     body.skade-kiosk-mode .skade-review-item dt { font-weight:750; }
     body.skade-kiosk-mode .skade-review-item dd { margin:4px 0 8px; white-space:pre-wrap; overflow-wrap:anywhere; }
+    body.skade-kiosk-mode .skade-review-more summary { cursor:pointer; min-height:44px; padding:12px 0; color:#075c59; font-weight:700; }
     body.skade-kiosk-mode .skade-review-actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:14px; }
     body.skade-kiosk-mode .skade-review-actions .btn { min-height:54px; }
     body.skade-kiosk-mode :is(button,input,select,textarea,a,summary,canvas,#skade-review-heading,#skade-sign-heading):focus-visible { outline:3px solid #075c59; outline-offset:3px; }
@@ -639,8 +640,9 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
                 <button class="btn btn-main" type="button" id="skade-review-open" hidden><?= ($portalLanguage ?? 'sv') === 'en' ? 'Review information' : 'Granska uppgifter' ?> →</button>
                 <section class="skade-card" id="skade-review" data-skade-step="review" aria-labelledby="skade-review-heading" hidden>
                     <h3 id="skade-review-heading" tabindex="-1"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Review your information' : 'Granska dina uppgifter' ?></h3>
-                    <p><?= ($portalLanguage ?? 'sv') === 'en' ? 'Check the information before signing. Use Change to correct a field.' : 'Kontrollera uppgifterna innan du signerar. Välj Ändra för att rätta ett fält.' ?></p>
+                    <p><?= ($portalLanguage ?? 'sv') === 'en' ? 'A quick check before signing. You can also show the other fields.' : 'En snabb kontroll före signering. Du kan även visa övriga uppgifter.' ?></p>
                     <dl class="skade-review-list" id="skade-review-list"></dl>
+                    <details class="skade-review-more" id="skade-review-more"><summary><?= ($portalLanguage ?? 'sv') === 'en' ? 'Show other information' : 'Visa övriga uppgifter' ?></summary><dl class="skade-review-list" id="skade-review-extra"></dl></details>
                     <div class="skade-review-actions"><button class="btn btn-outline" type="button" id="skade-review-back"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Back to fields' : 'Tillbaka till fälten' ?></button><button class="btn btn-main" type="button" id="skade-review-continue"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Continue to signature' : 'Fortsätt till signering' ?> →</button></div>
                 </section>
                 <?php endif; ?>
@@ -649,7 +651,7 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
                     <?php if ($skadeCustomerMode): ?><button class="btn btn-outline" type="button" id="skade-sign-back" hidden><?= ($portalLanguage ?? 'sv') === 'en' ? 'Back to review' : 'Tillbaka till granskning' ?></button><?php endif; ?>
                     <div class="skade-signature" aria-labelledby="skade-signature-title">
                         <p class="skade-signature-title" id="skade-signature-title"><?= $skadeCustomerMode ? 'Din digitala signatur' : 'Kundens digitala signatur' ?> <?php if ($skadeCustomerMode): ?><span class="skade-required">*</span><?php else: ?><small><?= ($portalLanguage ?? 'sv') === 'en' ? '(optional)' : '(frivillig)' ?></small><?php endif; ?></p>
-                        <p class="skade-signature-copy" id="skade-signature-help"><?= $skadeCustomerMode ? 'Skriv din namnteckning i rutan med finger eller Apple Pencil. Tryck på Rensa signatur om du vill börja om.' : 'Låt kunden skriva sin signatur i ett lugnt, sammanhängande drag med finger eller penna. Ritytan jämnar ut små ryck och ger strecket naturlig avsmalning och diskret breddvariation; i PDF:en kan signaturen gå högst 1 cm utanför originalrutan. Lämna rutan tom för utskrift och handskriven underskrift.' ?></p>
+                        <p class="skade-signature-copy" id="skade-signature-help"><?= $skadeCustomerMode ? 'Skriv din namnteckning i rutan med finger eller Apple Pencil. Tryck på Rensa signatur om du vill börja om.' : 'Låt kunden skriva sin signatur i ett lugnt, sammanhängande drag med finger eller penna. Ritytan jämnar ut små ryck och ger blått bläck med diskret breddvariation; signaturen anpassas till originalrutans storlek i PDF:en. Lämna rutan tom för utskrift och handskriven underskrift.' ?></p>
                         <canvas id="skade-signature-pad" class="skade-signature-canvas" width="1600" height="360" role="img" aria-label="<?= h($skadeCustomerMode ? 'Rita din signatur här' : 'Rita kundens signatur här') ?>" aria-describedby="skade-signature-help skade-signature-status" tabindex="0"></canvas>
                         <noscript><small class="skade-help"><?= $skadeCustomerMode ? 'Digital signering kräver JavaScript. Be personalen om hjälp.' : 'Ritning kräver JavaScript. Ni kan ändå skapa PDF:en utan digital signatur och låta kunden skriva under utskriften för hand.' ?></small></noscript>
                         <input type="hidden" name="s[signature_png]" id="skade-signature-png" value="<?= $skadeText('signature_png') ?>">
@@ -1045,6 +1047,7 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
     var entrySections = Array.prototype.slice.call(form.querySelectorAll('[data-skade-step="entry"]'));
     var reviewSection = document.getElementById('skade-review');
     var reviewList = document.getElementById('skade-review-list');
+    var reviewExtra = document.getElementById('skade-review-extra');
     var signStage = document.getElementById('skade-sign-stage');
     var reviewOpen = document.getElementById('skade-review-open');
     var reviewBack = document.getElementById('skade-review-back');
@@ -1077,8 +1080,9 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
         return label ? label.textContent.replace(/\s+/g, ' ').trim().replace(/\s*\*\s*$/, '') : '';
     }
     function buildCustomerReview() {
-        if (!reviewList) return;
+        if (!reviewList || !reviewExtra) return;
         while (reviewList.firstChild) reviewList.removeChild(reviewList.firstChild);
+        while (reviewExtra.firstChild) reviewExtra.removeChild(reviewExtra.firstChild);
         ['sk-foretag','sk-namn','sk-personnr','sk-telefon','sk-epost','sk-regnr','sk-modell','sk-matarstallning','sk-forsakring','sk-datum','sk-plats','sk-skadenr','sk-wiper-request'].forEach(function (id) {
             var field = document.getElementById(id);
             if (!field) return;
@@ -1091,7 +1095,8 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
             edit.textContent = customerLang === 'en' ? 'Change' : 'Ändra';
             edit.setAttribute('aria-label', (customerLang === 'en' ? 'Change ' : 'Ändra ') + label);
             edit.addEventListener('click', function () { showCustomerStep('entry'); focusInvalidField(field); });
-            item.append(dt, dd, edit); reviewList.appendChild(item);
+            item.append(dt, dd, edit);
+            (['sk-namn','sk-regnr','sk-datum'].indexOf(id) !== -1 ? reviewList : reviewExtra).appendChild(item);
         });
     }
     function openCustomerReview() {
@@ -1282,7 +1287,8 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
     if (canvas && signatureInput) {
         var signaturePad = window.TadegaSignaturePad && typeof window.TadegaSignaturePad.attach === 'function'
             ? window.TadegaSignaturePad.attach(canvas, {
-                color: '#18385f',
+                color: '#0751a6',
+                baseWidthCssPx: 2.6,
                 background: null,
                 onStart: function () {
                     setSignatureStatus(<?= json_encode(($portalLanguage ?? 'sv') === 'en' ? "Draw the signature in a calm, continuous stroke." : "Skriv signaturen i ett lugnt, sammanhängande drag.", JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>);
@@ -1345,7 +1351,8 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
                     updateProgress();
                     return;
                 }
-                var padding = 40;
+                var rect = canvas.getBoundingClientRect();
+                var padding = Math.max(13, Math.round(6 * Math.sqrt((canvas.width / Math.max(1, rect.width)) * (canvas.height / Math.max(1, rect.height)))));
                 var left = Math.max(0, minX - padding);
                 var top = Math.max(0, minY - padding);
                 var right = Math.min(canvas.width - 1, maxX + padding);

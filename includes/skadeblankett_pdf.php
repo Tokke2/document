@@ -352,11 +352,9 @@ function skade_pdf_signature_placement(int $imageWidthPx, int $imageHeightPx): ?
     $boxTopPt = 471.8;
     $boxWidthPt = 203.1;
     $boxHeightPt = 21.9;
-    $maxOverrunPt = 28.34;
-    $maxWidthPt = $boxWidthPt + ($maxOverrunPt * 2);
-    $maxHeightPt = $boxHeightPt + ($maxOverrunPt * 2);
-    $preferredWidthPt = min($boxWidthPt * 0.94, $maxWidthPt);
-    $preferredHeightPt = min($boxHeightPt + 8.0, $maxHeightPt);
+    // Leave the original box border visible, even for tall or very wide signatures.
+    $preferredWidthPt = $boxWidthPt - 1.6;
+    $preferredHeightPt = $boxHeightPt - 1.6;
     $imageWidthPt = min($preferredWidthPt, $preferredHeightPt * $aspect);
     $imageHeightPt = $imageWidthPt / $aspect;
     $imageXPt = $boxXPt + (($boxWidthPt - $imageWidthPt) / 2);
@@ -440,7 +438,7 @@ function create_skadeblankett_pdf_php(array $data, string $templatePath = '', st
         skade_pdf_mark($pdf, !empty($data['nya_torkarblad_bestalls']), 315.0, 365.0, 14);
 
         // Keep an explicit date if supplied; otherwise date the customer's drawn signature
-        // using Stockholm local time. The signature is centered on the original box below with a 10 mm maximum overrun.
+        // using Stockholm local time. The signature is centered inside the original box below.
         $signatureBytes = $data['signature_png_bytes'] ?? '';
         $signatureDate = skade_pdf_format_date($data['signature_date'] ?? '');
         if ($signatureDate === '' && is_string($signatureBytes) && $signatureBytes !== '') {
