@@ -113,6 +113,15 @@ if ($centralAdminIsAuthenticated && !$centralAdminMustChangePin) {
         );
     }
 
+    $logsPath = $appRoot . DIRECTORY_SEPARATOR . 'logs';
+    $logsReal = realpath($logsPath);
+    $logsReady = $projectRoot !== false && !is_link($logsPath) && is_dir($logsPath)
+        && $logsReal !== false && dirname($logsReal) === $projectRoot
+        && is_writable($logsPath) && $hasDenyRule($logsPath . DIRECTORY_SEPARATOR . '.htaccess');
+    $addAdminHealthRow('Loggmapp', $logsReady ? 'ok' : 'error', $logsReady
+        ? 'logs/ är skrivbar och har en nekande .htaccess. Kontrollera även webbserverns faktiska åtkomstskydd.'
+        : 'logs/ eller dess skydd saknas eller är inte skrivbart. Kontrollera mapp, rättigheter och direktåtkomst.');
+
     $storagePath = $appRoot . DIRECTORY_SEPARATOR . 'storage';
     $storageReal = realpath($storagePath);
     $storageRootReady = $projectRoot !== false

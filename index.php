@@ -10,6 +10,8 @@ error_reporting(E_ALL);
 ini_set('display_errors', '0');
 ini_set('log_errors', '1');
 require_once __DIR__ . '/includes/logger.php';
+require_once __DIR__ . '/includes/request_logger.php';
+TadegaRequestLogger::start(__DIR__);
 TadegaPrivacyLogger::registerErrorHandlers();
 
 // Tabs retain their POST handlers for backward compatibility. Buffer the shell
@@ -2625,6 +2627,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 exit;
             } elseif (!$centralAdminCanAccess || !is_array($centralAdminUser) || $centralAdminNeedsPinChange) {
                 http_response_code(403);
+                TadegaRequestLogger::outcome('denied');
                 $portalPostError = 'Endast en aktiv central admin kan använda releasefunktionen.';
             } elseif ($action === 'portal_release_check') {
                 if (function_exists('set_time_limit')) {
@@ -2636,6 +2639,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                     $_SESSION['github_release_review'] = $portalReleaseResult + ['reviewed_at'=>time()];
                     if ($portalReleaseResult['changed'] === []) portal_github_release_install_marker(__DIR__, $portalReleaseResult['tag'], $portalReleaseResult['commit']);
                 }
+                TadegaRequestLogger::outcome(($portalReleaseResult['ok'] ?? false) ? 'success' : 'failure');
                 $portalReleaseResult['action'] = 'check';
             } else {
                 if (function_exists('set_time_limit')) {
@@ -2645,12 +2649,15 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 $approvalConfirmed = isset($_POST['confirm_install']) && is_string($_POST['confirm_install']) && $_POST['confirm_install'] === '1';
                 if (!$approvalConfirmed) {
                     $portalReleaseResult = ['ok'=>false,'code'=>'approval_required','action'=>'install'];
+                    TadegaRequestLogger::outcome('denied');
                 } elseif (!is_array($review) || !is_int($review['reviewed_at'] ?? null) || $review['reviewed_at'] > time() || time() - $review['reviewed_at'] > 1800) {
                     $portalReleaseResult = ['ok'=>false,'code'=>'approval_invalid','action'=>'install'];
+                    TadegaRequestLogger::outcome('denied');
                 } else {
                     unset($_SESSION['github_release_review']);
                     $portalReleaseResult = portal_github_release_install_approved(__DIR__, $review);
                     $portalReleaseResult['action'] = 'install';
+                    TadegaRequestLogger::outcome(($portalReleaseResult['ok'] ?? false) ? 'success' : (($portalReleaseResult['code'] ?? '') === 'rollback_failed' ? 'rollback_failed' : 'failure'));
                     if (($portalReleaseResult['ok'] ?? false) === true) {
                         $marker = portal_github_release_install_marker(__DIR__, $review['tag'], $review['commit']);
                         portal_redirect('admin', $marker === null ? 'release_marker_error' : (($portalReleaseResult['code'] ?? '') === 'installed' ? 'release_install_success' : 'release_already_current'));
@@ -2862,6 +2869,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             }
             $centralPin = isset($_POST['central_pin']) && is_string($_POST['central_pin']) ? $_POST['central_pin'] : '';
             $login = portal_central_admin_auth_login($centralPin);
+            TadegaRequestLogger::outcome(($login['ok'] ?? false) ? 'success' : 'failure');
             if (($login['ok'] ?? false) === true) {
                 portal_redirect('admin', ($login['must_change_pin'] ?? false) === true
                     ? 'central_admin_pin_expired'
