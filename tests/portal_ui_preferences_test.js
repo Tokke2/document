@@ -65,6 +65,7 @@ for (const file of ['tabs/invoice.php','tabs/protocol.php','tabs/settings.php'])
 }
 const calendar=fs.readFileSync('tabs/calendar.php','utf8');
 assert(calendar.includes('calendar-planner') && calendar.includes('calendar-heading-icon') && calendar.includes('max-width:380px'), 'Calendar has scalable layout and vector icons');
+assert(css.includes('Screen readability: vector icons') && css.includes('letter-spacing:normal') && css.includes('pointer:coarse'), 'Crisp screen-only typography, vector icons and touch controls exist');
 assert(css.includes('forced-colors:active') && css.includes('#invoice-shared-learning form') && css.includes('grid-template-columns:minmax(0,1fr)'), 'Responsive and high-contrast controls exist');
 
 

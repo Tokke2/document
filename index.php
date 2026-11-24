@@ -4411,6 +4411,7 @@ $languageLink = static function (string $language): string {
     if (!docks.length) return;
     var mobileQuery = typeof window.matchMedia === 'function' ? window.matchMedia('(max-width:720px), (max-width:900px) and (max-height:560px) and (orientation:landscape)') : null;
     var animationFrame = 0;
+    var visibilityTimer = 0;
 
     function isEditableControl(target) {
         if (!target || target.disabled || target.readOnly) return false;
@@ -4461,7 +4462,9 @@ $languageLink = static function (string $language): string {
             // virtual keyboard instead of hiding it while the user is editing.
             dock.classList.toggle('mobile-action-dock-keyboard-open', keyboardOpen);
         });
-        if (keyboardOpen) window.setTimeout(keepActiveFieldVisible, 80);
+        // Coalesce viewport scroll/resize bursts instead of queuing a timer per frame.
+        window.clearTimeout(visibilityTimer);
+        visibilityTimer = keyboardOpen ? window.setTimeout(keepActiveFieldVisible, 80) : 0;
     }
 
     function scheduleSync() {

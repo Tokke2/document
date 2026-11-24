@@ -517,23 +517,34 @@ $rowCount = max(8, count($items));
  function optimizeMeterPhoto(file){
   if(!file||typeof window.createImageBitmap!=='function')return Promise.resolve(file);
   return window.createImageBitmap(file).then(function(bitmap){
-   var width=bitmap.width||0,height=bitmap.height||0;
-   if(width<1||height<1){if(bitmap.close)bitmap.close();return file;}
-   if(Math.max(width,height)<=2400&&file.size<=2621440){if(bitmap.close)bitmap.close();return file;}
-   var scale=Math.min(1,2400/Math.max(width,height));
-   var canvas=document.createElement('canvas');
-   canvas.width=Math.max(1,Math.round(width*scale));
-   canvas.height=Math.max(1,Math.round(height*scale));
-   var context=canvas.getContext('2d');
-   if(!context){if(bitmap.close)bitmap.close();return file;}
-   context.fillStyle='#fff';context.fillRect(0,0,canvas.width,canvas.height);
-   context.drawImage(bitmap,0,0,canvas.width,canvas.height);
+   var canvas=null;
+   try {
+    var width=bitmap.width||0,height=bitmap.height||0;
+    if(width<1||height<1||(Math.max(width,height)<=2400&&file.size<=2621440))return file;
+    var scale=Math.min(1,2400/Math.max(width,height));
+    canvas=document.createElement('canvas');
+    canvas.width=Math.max(1,Math.round(width*scale));
+    canvas.height=Math.max(1,Math.round(height*scale));
+    var context=canvas.getContext('2d');
+    if(!context||typeof canvas.toBlob!=='function'){canvas.width=canvas.height=0;return file;}
+    context.fillStyle='#fff';context.fillRect(0,0,canvas.width,canvas.height);
+    context.drawImage(bitmap,0,0,canvas.width,canvas.height);
+   } catch(error) {
+    if(canvas)canvas.width=canvas.height=0;
+    return file;
+   } finally {
+    // The bitmap is no longer needed once pixels have been copied to canvas.
+    try{if(bitmap.close)bitmap.close();}catch(ignore){}
+   }
    return new Promise(function(resolve){
-    canvas.toBlob(function(blob){
-     if(bitmap.close)bitmap.close();
-     if(!blob||blob.size<1||blob.size>=file.size){resolve(file);return;}
-     try{resolve(new File([blob],'matarstallning.jpg',{type:'image/jpeg',lastModified:Date.now()}));}catch(e){resolve(file);}
-    },'image/jpeg',0.84);
+    try {
+     canvas.toBlob(function(blob){
+      // Release the large backing buffer as soon as encoding completes.
+      canvas.width=canvas.height=0;
+      if(!blob||blob.size<1||blob.size>=file.size){resolve(file);return;}
+      try{resolve(new File([blob],'matarstallning.jpg',{type:'image/jpeg',lastModified:Date.now()}));}catch(e){resolve(file);}
+     },'image/jpeg',0.84);
+    } catch(error) { canvas.width=canvas.height=0; resolve(file); }
    });
   }).catch(function(){return file;});
  }
@@ -585,6 +596,13 @@ $rowCount = max(8, count($items));
  var signatureClearButton=document.getElementById('protocol-signature-clear');
  if(signatureClearButton)signatureClearButton.addEventListener('click',clearSignature);
  if(photoInput)photoInput.addEventListener('change',handleMeterPhotoChange);
+ window.addEventListener('pagehide',function(event){
+  // Keep the preview valid when the browser restores this page from bfcache.
+  if(!event.persisted){
+   photoSelectionVersion++;
+   if(photoPreviewUrl){URL.revokeObjectURL(photoPreviewUrl);photoPreviewUrl='';}
+  }
+ });
  if(photoRetakeButton&&photoInput)photoRetakeButton.addEventListener('click',function(){
   photoSelectionVersion++;
   photoOptimizationPending=false;

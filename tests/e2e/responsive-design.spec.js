@@ -15,10 +15,13 @@ test('layout, sharp surfaces and navigation at phone, tablet and desktop widths'
             await expect(page.locator('main')).toBeVisible();
             const metrics = await page.evaluate(() => {
                 const main = document.querySelector('main').getBoundingClientRect();
-                return { left:main.left, right:main.right, viewport:document.documentElement.clientWidth };
+                const root=document.documentElement;
+                return { left:main.left, right:main.right, viewport:root.clientWidth, pageWidth:root.scrollWidth, bodyFont:parseFloat(getComputedStyle(document.body).fontSize) };
             });
             expect(metrics.left).toBeGreaterThanOrEqual(-1);
             expect(metrics.right).toBeLessThanOrEqual(metrics.viewport + 1);
+            expect(metrics.pageWidth).toBeLessThanOrEqual(metrics.viewport + 1);
+            expect(metrics.bodyFont).toBeGreaterThanOrEqual(15.5);
             const blurred = await page.locator('body *').evaluateAll(elements => elements.some(el => {
                 const style = getComputedStyle(el);
                 return style.display !== 'none' && (style.backdropFilter || '').includes('blur(');
