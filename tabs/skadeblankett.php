@@ -274,6 +274,13 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
        into the field. Entered values are never cleared by validation. */
     .skade-field.has-error { outline:2px solid #d92d20; outline-offset:3px; border-radius:12px; }
     .skade-field.has-error .skade-label { color:#b42318; }
+    .skade-field input[type=file] { padding:8px 10px; cursor:pointer; }
+    .skade-field input[type=file]::file-selector-button { margin-right:10px; padding:7px 12px; border:1px solid #ccd8de; border-radius:8px; background:#f4f8fa; color:#172d3a; font:inherit; font-size:.8rem; font-weight:650; cursor:pointer; }
+    .skade-field input[type=file]::file-selector-button:hover { background:#eaf2f6; border-color:#b5d8e0; }
+    .skade-photo-preview { display:flex; align-items:center; gap:10px; margin-top:9px; }
+    .skade-photo-preview[hidden] { display:none; }
+    .skade-photo-preview img { max-width:150px; max-height:90px; border:1px solid #d6e5e9; border-radius:9px; background:#fff; object-fit:contain; }
+    .skade-photo-preview .btn { flex:0 0 auto; font-size:.78rem; padding:7px 11px; }
     .skade-choice input[aria-invalid="true"] { outline:2px solid #d92d20; outline-offset:2px; }
     .skade-signature.has-error { border-color:#d92d20; box-shadow:0 0 0 3px rgba(217,45,32,.1); }
     .skade-signature-canvas[aria-invalid="true"] { border-color:#d92d20; box-shadow:0 0 0 3px rgba(217,45,32,.12); }
@@ -563,9 +570,9 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
                 <?php if ($skadeCustomerMode): ?><small class="skade-help"><?= ($portalLanguage ?? 'sv') === 'en' ? '100% means required fields are filled in; the form is not sent until you press Send.' : '100 % betyder att de obligatoriska fälten är ifyllda. Blanketten skickas först när du trycker på Skicka.' ?></small><?php endif; ?>
             </div>
 
-            <form id="skade-form" data-validation-error="<?= $skadeValidationError ? '1' : '0' ?>" data-signature-required="<?= $skadeCustomerMode ? '1' : '0' ?>" method="post" action="<?= h($skadeCustomerMode ? './skadeblankett-kund.php' : '?tab=skadeblankett') ?>" autocomplete="<?= $skadeCustomerMode ? 'off' : 'on' ?>">
+            <form id="skade-form" data-validation-error="<?= $skadeValidationError ? '1' : '0' ?>" data-invalid-photos="<?= h(implode(' ', $portalSkadeInvalidPhotos ?? [])) ?>" data-signature-required="<?= $skadeCustomerMode ? '1' : '0' ?>" method="post" action="<?= h($skadeCustomerMode ? './skadeblankett-kund.php' : '?tab=skadeblankett') ?>" autocomplete="<?= $skadeCustomerMode ? 'off' : 'on' ?>">
                 <input type="hidden" name="action" value="generate_skadeblankett">
-                <input type="hidden" name="form_version" value="skade-customer-v3-signature">
+                <input type="hidden" name="form_version" value="skade-customer-v4-photos">
                 <input type="hidden" name="skade_submission_token" value="<?= h($skadeSubmissionToken) ?>">
                 <?php if ($skadeEditMode): ?>
                     <input type="hidden" name="edit_id" value="<?= h($skadeEditId) ?>">
@@ -638,6 +645,26 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
                         <div class="skade-field"><label class="skade-label" for="sk-plats"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Place of damage' : 'Skadeplats' ?> <small><?= ($portalLanguage ?? 'sv') === 'en' ? '(optional)' : '(frivillig)' ?></small></label><input id="sk-plats" name="s[skadeplats]" maxlength="80" value="<?= $skadeText('skadeplats') ?>"><?php if ($skadeCustomerMode): ?><small class="skade-help"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Enter where the damage happened, if known.' : 'Skriv var skadan inträffade, om du vet.' ?></small><?php endif; ?></div>
                         <div class="skade-field"><label class="skade-label" for="sk-skadenr"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Insurance / claim number' : 'Försäkrings- / skadenummer' ?> <small><?= ($portalLanguage ?? 'sv') === 'en' ? '(optional)' : '(valfritt)' ?></small></label><input id="sk-skadenr" name="s[skadenummer]" maxlength="80" value="<?= $skadeText('skadenummer') ?>"><?php if ($skadeCustomerMode): ?><small class="skade-help"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Enter the claim number from your insurer, if you have one.' : 'Skriv skadenumret från försäkringsbolaget om du har ett.' ?></small><?php endif; ?></div>
                         <div class="skade-field" style="display:flex;align-items:end;padding-bottom:3px"><label class="skade-choice" style="width:100%"><input id="sk-wiper-request" type="checkbox" name="s[nya_torkarblad_bestalls]" value="1" <?= $skadeChecked('nya_torkarblad_bestalls') ? 'checked' : '' ?>><span><strong><?= ($portalLanguage ?? 'sv') === 'en' ? 'Order new wiper blades' : 'Beställ nya torkarblad' ?></strong><br><small><?= ($portalLanguage ?? 'sv') === 'en' ? 'An additional charge applies if selected.' : 'Kostnad tillkommer om rutan markeras.' ?></small></span></label></div>
+                    </div>
+                </section>
+
+                <section class="skade-card" aria-labelledby="skade-photos-heading"<?= $skadeCustomerMode ? ' data-skade-step="entry"' : '' ?>>
+                    <div class="skade-card-head"><span class="skade-step">3</span><div><h3 id="skade-photos-heading"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Photos (optional)' : 'Bilder (frivilligt)' ?></h3><p><?= ($portalLanguage ?? 'sv') === 'en' ? 'Add a photo of the damage and a photo of the front of the vehicle where the registration plate is visible. Sending without photos works too.' : 'Lägg till en bild på skadan och en bild på fordonets front där regnr syns. Det går även att skicka in utan bilder.' ?></p></div></div>
+                    <div class="skade-grid">
+                        <div class="skade-field">
+                            <label class="skade-label" for="sk-photo-damage">Bild på skada <small>(frivillig)</small></label>
+                            <input type="file" id="sk-photo-damage" accept="image/*" data-photo-target="sk-photo-damage-value" data-photo-key="photo_damage">
+                            <input type="hidden" name="s[photo_damage]" id="sk-photo-damage-value" value="<?= $skadeText('photo_damage') ?>">
+                            <div class="skade-photo-preview" id="sk-photo-damage-preview" hidden><img alt="Förhandsvisning av bilden på skadan"><button class="btn btn-outline" type="button" data-photo-remove="sk-photo-damage">Ta bort bild</button></div>
+                            <small class="skade-help" id="sk-photo-damage-help">JPG eller PNG, högst 20 MB. Bilden skalas ner och sparas med blanketten.</small>
+                        </div>
+                        <div class="skade-field">
+                            <label class="skade-label" for="sk-photo-front">Bild på fordonets front där regnr syns <small>(frivillig)</small></label>
+                            <input type="file" id="sk-photo-front" accept="image/*" data-photo-target="sk-photo-front-value" data-photo-key="photo_front">
+                            <input type="hidden" name="s[photo_front]" id="sk-photo-front-value" value="<?= $skadeText('photo_front') ?>">
+                            <div class="skade-photo-preview" id="sk-photo-front-preview" hidden><img alt="Förhandsvisning av bilden på fordonets front"><button class="btn btn-outline" type="button" data-photo-remove="sk-photo-front">Ta bort bild</button></div>
+                            <small class="skade-help" id="sk-photo-front-help">JPG eller PNG, högst 20 MB. Registreringsnumret ska synas på bilden.</small>
+                        </div>
                     </div>
                 </section>
 
@@ -890,6 +917,17 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
         if (!field || field === canvas || field.type === 'hidden' || field.disabled) return '';
         var currentValue = String(field.value || '').trim();
         if (field.required && field.type !== 'checkbox' && field.type !== 'radio' && !currentValue) return 'Fyll i det här fältet.';
+        if (field.type === 'file' && field.dataset && field.dataset.photoTarget) {
+            if (field.dataset.photoError) return field.dataset.photoError;
+            var photoHidden = document.getElementById(field.dataset.photoTarget);
+            var photoValue = photoHidden ? String(photoHidden.value || '') : '';
+            if (!photoValue) return '';
+            if (photoValue.length > 550000) return 'Bilden är för stor (max 550 kB). Välj en mindre bild.';
+            if (photoValue.lastIndexOf('data:image/jpeg;base64,', 0) !== 0 && photoValue.lastIndexOf('data:image/png;base64,', 0) !== 0) {
+                return 'Bilden måste vara en JPG eller PNG.';
+            }
+            return '';
+        }
         if (field.id === 'sk-epost' && currentValue === '') return '';
         if (field.id === 'sk-datum' && currentValue !== '' && !normalizeSkadeDate(currentValue)) {
             return 'Ange ett giltigt datum, t.ex. 2026-11-03 eller 03.11.2026.';
@@ -994,6 +1032,7 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
     }
     function safeClientValidationField(field) {
         if (field === canvas) return 'signature_png';
+        if (field && field.dataset && field.dataset.photoKey) return field.dataset.photoKey;
         var name = field && typeof field.name === 'string' ? field.name : '';
         var match = /^s\[([a-z0-9_]+)\](?:\[\])?$/.exec(name);
         if (!match) return '';
@@ -1003,7 +1042,8 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
             'stone_count', 'mount_time', 'glass_price', 'notes', 'wiper_price', 'washer_liters',
             'solar_price', 'payment_amount', 'signature_date', 'replacement_date', 'signature_png',
             'signature_confirmed', 'damage_cause', 'payment_method', 'glass_locations', 'actions',
-            'equipment', 'foretag', 'nya_torkarblad_bestalls', 'wiper_service', 'solar_film', 'consent'
+            'equipment', 'foretag', 'nya_torkarblad_bestalls', 'wiper_service', 'solar_film', 'consent',
+            'photo_damage', 'photo_front'
         ];
         return allowed.indexOf(match[1]) !== -1 ? match[1] : '';
     }
@@ -1105,6 +1145,22 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
             edit.addEventListener('click', function () { showCustomerStep('entry'); focusInvalidField(field); });
             item.append(dt, dd, edit);
             (['sk-namn','sk-regnr','sk-datum'].indexOf(id) !== -1 ? reviewList : reviewExtra).appendChild(item);
+        });
+        [['sk-photo-damage', 'Bild på skada'], ['sk-photo-front', 'Bild på fordonets front']].forEach(function (photoPair) {
+            var fileInput = document.getElementById(photoPair[0]);
+            if (!fileInput) return;
+            var hidden = photoHiddenFor(fileInput);
+            var hasPhoto = !!(hidden && hidden.value);
+            var item = document.createElement('div'); item.className = 'skade-review-item';
+            var dt = document.createElement('dt'); dt.textContent = photoPair[1];
+            var dd = document.createElement('dd');
+            dd.textContent = hasPhoto ? (customerLang === 'en' ? 'Photo added' : 'Bild tillagd') : (customerLang === 'en' ? 'No photo' : 'Inge bild');
+            var edit = document.createElement('button'); edit.type = 'button'; edit.className = 'btn btn-outline';
+            edit.textContent = customerLang === 'en' ? 'Change' : 'Ändra';
+            edit.setAttribute('aria-label', (customerLang === 'en' ? 'Change ' : 'Ändra ') + photoPair[1]);
+            edit.addEventListener('click', function () { showCustomerStep('entry'); focusInvalidField(fileInput); });
+            item.append(dt, dd, edit);
+            reviewExtra.appendChild(item);
         });
     }
     function openCustomerReview() {
@@ -1420,6 +1476,140 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
         }
     }
 
+    // Optional photos: FileReader → Image → canvas downscale. The hidden input keeps
+    // the data URI; on failure the previous value is kept and only the file selection
+    // is cleared so an earlier good photo is never lost.
+    function photoHiddenFor(fileInput) {
+        return fileInput && fileInput.dataset && fileInput.dataset.photoTarget
+            ? document.getElementById(fileInput.dataset.photoTarget)
+            : null;
+    }
+    function photoPreviewFor(fileInput) {
+        return fileInput && fileInput.id ? document.getElementById(fileInput.id + '-preview') : null;
+    }
+    function syncPhotoPreview(fileInput) {
+        var hidden = photoHiddenFor(fileInput);
+        var preview = photoPreviewFor(fileInput);
+        if (!preview) return;
+        var hasPhoto = !!(hidden && hidden.value);
+        var hasError = !!(fileInput.dataset && fileInput.dataset.photoError);
+        preview.hidden = !(hasPhoto || hasError);
+        var img = preview.querySelector('img');
+        if (img) {
+            if (hasPhoto) { img.src = hidden.value; img.hidden = false; }
+            else { img.removeAttribute('src'); img.hidden = true; }
+        }
+        var removeButton = preview.querySelector('[data-photo-remove]');
+        if (removeButton) removeButton.hidden = !hasPhoto;
+    }
+    function failPhotoCapture(fileInput, message) {
+        fileInput.dataset.photoError = message;
+        fileInput.value = '';
+        syncPhotoPreview(fileInput);
+        updateProgress();
+        if (validationAttempted) validateField(fileInput);
+    }
+    function finishPhotoCapture(fileInput, dataUri) {
+        var hidden = photoHiddenFor(fileInput);
+        if (!hidden || typeof dataUri !== 'string' || !dataUri) {
+            failPhotoCapture(fileInput, 'Bilden kunde inte sparas. Försök igen eller välj en annan bild.');
+            return;
+        }
+        hidden.value = dataUri;
+        delete fileInput.dataset.photoError;
+        syncPhotoPreview(fileInput);
+        updateProgress();
+        if (validationAttempted) validateField(fileInput);
+    }
+    function capturePhoto(fileInput) {
+        var file = fileInput.files && fileInput.files[0];
+        if (!file) return;
+        if (!/^image\//.test(String(file.type || ''))) {
+            failPhotoCapture(fileInput, 'Välj en bild i formatet JPG eller PNG.');
+            return;
+        }
+        if (file.size > 20 * 1024 * 1024) {
+            failPhotoCapture(fileInput, 'Bilden är för stor (max 20 MB). Välj en mindre bild.');
+            return;
+        }
+        fileInput.dataset.photoError = 'Bilden bearbetas…';
+        syncPhotoPreview(fileInput);
+        updateProgress();
+        if (validationAttempted) validateField(fileInput);
+        var reader = new FileReader();
+        reader.onerror = function () {
+            failPhotoCapture(fileInput, 'Bilden kunde inte läsas. Försök igen eller välj en annan bild.');
+        };
+        reader.onload = function () {
+            var img = new Image();
+            img.onerror = function () {
+                failPhotoCapture(fileInput, 'Bilden kunde inte läsas. Välj en JPG eller PNG.');
+            };
+            img.onload = function () {
+                try {
+                    if (img.naturalWidth < 200 || img.naturalHeight < 200) {
+                        failPhotoCapture(fileInput, 'Bilden är för liten (minst 200×200 pixlar).');
+                        return;
+                    }
+                    var maxEdge = 1600;
+                    var scale = Math.min(1, maxEdge / Math.max(img.naturalWidth, img.naturalHeight));
+                    var width = Math.max(1, Math.round(img.naturalWidth * scale));
+                    var height = Math.max(1, Math.round(img.naturalHeight * scale));
+                    var workCanvas = document.createElement('canvas');
+                    var workContext = workCanvas.getContext('2d');
+                    if (!workContext || typeof workCanvas.toDataURL !== 'function') {
+                        failPhotoCapture(fileInput, 'Bilden kunde inte bearbetas. Försök igen eller välj en annan bild.');
+                        return;
+                    }
+                    var dataUri = '';
+                    var edge = 1;
+                    while (edge >= 0.25 && !dataUri) {
+                        workCanvas.width = Math.max(1, Math.round(width * edge));
+                        workCanvas.height = Math.max(1, Math.round(height * edge));
+                        workContext.drawImage(img, 0, 0, workCanvas.width, workCanvas.height);
+                        var quality = 0.82;
+                        while (quality >= 0.55 && !dataUri) {
+                            var candidate = workCanvas.toDataURL('image/jpeg', Math.round(quality * 100) / 100);
+                            if (typeof candidate === 'string' && candidate.length > 0 && candidate.length <= 540000) {
+                                dataUri = candidate;
+                            }
+                            quality = Math.round((quality - 0.09) * 100) / 100;
+                        }
+                        if (!dataUri) edge = Math.round(edge * 0.75 * 100) / 100;
+                    }
+                    if (!dataUri) {
+                        failPhotoCapture(fileInput, 'Bilden kunde inte komprimeras tillräckligt. Välj en mindre bild.');
+                        return;
+                    }
+                    finishPhotoCapture(fileInput, dataUri);
+                } catch (error) {
+                    failPhotoCapture(fileInput, 'Bilden kunde inte bearbetas. Försök igen eller välj en annan bild.');
+                }
+            };
+            img.src = String(reader.result || '');
+        };
+        reader.readAsDataURL(file);
+    }
+    Array.prototype.forEach.call(form.querySelectorAll('input[type="file"][data-photo-target]'), function (fileInput) {
+        syncPhotoPreview(fileInput);
+        fileInput.addEventListener('change', function () {
+            capturePhoto(fileInput);
+        });
+        var preview = photoPreviewFor(fileInput);
+        var removeButton = preview && preview.querySelector('[data-photo-remove]');
+        if (removeButton) {
+            removeButton.addEventListener('click', function () {
+                var hidden = photoHiddenFor(fileInput);
+                if (hidden) hidden.value = '';
+                fileInput.value = '';
+                delete fileInput.dataset.photoError;
+                syncPhotoPreview(fileInput);
+                updateProgress();
+                if (validationAttempted) validateField(fileInput);
+                fileInput.focus();
+            });
+        }
+    });
     function handleFormChange(event) {
         <?php if ($skadeCustomerMode): ?>
         if (event.target.closest('[data-skade-step="entry"]') && signatureConfirmedInput && signatureConfirmedInput.checked) {
@@ -1459,6 +1649,16 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
     window.addEventListener('pageshow', function () { formSubmitting = false; });
     syncSignatureConfirmationRequirement();
     updateProgress();
+    // Server-rejected photos: mark the file inputs so validateForm() below flags them
+    // even when the retained value passes client-side format checks (e.g. dimensions).
+    var invalidPhotoKeys = (form.getAttribute('data-invalid-photos') || '').split(/\s+/).filter(Boolean);
+    invalidPhotoKeys.forEach(function (photoKey) {
+        var photoInput = form.querySelector('input[type="file"][data-photo-key="' + photoKey + '"]');
+        if (photoInput && !photoInput.dataset.photoError) {
+            photoInput.dataset.photoError = 'Bilden kunde inte användas. Välj en JPG eller PNG på 200–4000 pixlar och högst 550 kB.';
+            syncPhotoPreview(photoInput);
+        }
+    });
     if (form.getAttribute('data-validation-error') === '1') {
         validationAttempted = true;
         var serverFirstInvalid = validateForm();

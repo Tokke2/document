@@ -372,6 +372,57 @@ function skade_pdf_signature_placement(int $imageWidthPx, int $imageHeightPx): ?
     ];
 }
 
+/**
+ * Validates an optional customer photo supplied as a data URI and returns its raw bytes.
+ * Accepts JPEG/PNG only; full value ≤ 550000 chars, payload strictly base64 (%4 == 0),
+ * decoded size 500–410000 bytes, dimensions 200–4000 px per side and ≤ 8 megapixels,
+ * and the declared prefix must match what getimagesizefromstring reports.
+ * $failureCode receives skade.photo_invalid, skade.photo_processor_unavailable or
+ * skade.photo_image_invalid when null is returned.
+ *
+ * @return array{bytes: string, mime: string, width: int, height: int}|null
+ */
+function skade_photo_data_uri_bytes(string $value, ?string &$failureCode = null): ?array
+{
+    $failureCode = 'skade.photo_invalid';
+    $prefix = null;
+    $mime = '';
+    foreach (['data:image/jpeg;base64,' => 'image/jpeg', 'data:image/png;base64,' => 'image/png'] as $candidatePrefix => $candidateMime) {
+        if (str_starts_with($value, $candidatePrefix)) {
+            $prefix = $candidatePrefix;
+            $mime = $candidateMime;
+            break;
+        }
+    }
+    if ($prefix === null || strlen($value) > 550000) {
+        return null;
+    }
+    $payload = substr($value, strlen($prefix));
+    if ($payload === '' || strlen($payload) % 4 !== 0) {
+        return null;
+    }
+    $bytes = base64_decode($payload, true);
+    if (!is_string($bytes) || strlen($bytes) < 500 || strlen($bytes) > 410000) {
+        return null;
+    }
+    if (!function_exists('getimagesizefromstring')) {
+        $failureCode = 'skade.photo_processor_unavailable';
+        return null;
+    }
+    $info = @getimagesizefromstring($bytes);
+    if (!is_array($info) || ($info['mime'] ?? '') !== $mime) {
+        $failureCode = 'skade.photo_image_invalid';
+        return null;
+    }
+    $width = (int) $info[0];
+    $height = (int) $info[1];
+    if ($width < 200 || $height < 200 || $width > 4000 || $height > 4000 || $width * $height > 8000000) {
+        $failureCode = 'skade.photo_image_invalid';
+        return null;
+    }
+    return ['bytes' => $bytes, 'mime' => $mime, 'width' => $width, 'height' => $height];
+}
+
 function create_skadeblankett_pdf_php(array $data, string $templatePath = '', string $outputPath = '', string $templateType = ''): array
 {
     skade_timer_start('total');
@@ -559,6 +610,106 @@ function create_skadeblankett_pdf_php(array $data, string $templatePath = '', st
             skade_timer_end('total');
             return [false, 'One or more text fields do not fit without clipping', 'skade.pdf_text_unfit', null, []];
         }
+
+        // Optional customer photos ride on a dedicated page after the text-fit gate.
+        // $clean carries validated raw bytes in photo_*_bytes; captions use plain
+        // Cell/SetFont (never skade_pdf_write_* — those feed the gate).
+        $photoSpecs = [
+            ['key' => 'photo_damage', 'caption' => 'Bild på skadan'],
+            ['key' => 'photo_front', 'caption' => 'Bild på fordonets front – regnr syns'],
+        ];
+        $embeddedPhotos = [];
+        foreach ($photoSpecs as $photoSpec) {
+            $photoBytes = $data[$photoSpec['key'] . '_bytes'] ?? '';
+            if (!is_string($photoBytes) || $photoBytes === '') {
+                continue;
+            }
+            $photoInfo = null;
+            if (function_exists('getimagesizefromstring')) {
+                $photoSize = @getimagesizefromstring($photoBytes);
+                if (is_array($photoSize) && in_array($photoSize['mime'] ?? '', ['image/jpeg', 'image/png'], true)) {
+                    $photoWidth = (int) $photoSize[0];
+                    $photoHeight = (int) $photoSize[1];
+                    if ($photoWidth >= 200 && $photoHeight >= 200 && $photoWidth <= 4000 && $photoHeight <= 4000 && $photoWidth * $photoHeight <= 8000000) {
+                        $photoInfo = ['bytes' => $photoBytes, 'mime' => $photoSize['mime'], 'width' => $photoWidth, 'height' => $photoHeight];
+                    }
+                }
+            }
+            if ($photoInfo === null) {
+                $failureCode = 'skade.pdf_photo_invalid';
+                $failureFields = [$photoSpec['key']];
+                throw new RuntimeException('Customer photo rejected by PDF generator');
+            }
+            $embeddedPhotos[] = ['caption' => $photoSpec['caption'], 'info' => $photoInfo, 'key' => $photoSpec['key']];
+        }
+        if ($embeddedPhotos !== []) {
+            $pdf->AddPage();
+            $pdf->SetTextColor(20, 34, 46);
+            $pdf->SetFont('Arial', 'B', 14);
+            $pdf->SetXY(10, 12);
+            $pdf->Cell(190, 8, skade_pdf_encoding('Bilder till skadeblanketten'), 0, 1, 'C');
+            $boxWidth = 190.0;
+            $slotTop = 28.0;
+            $slotBottom = 287.0;
+            $slotHeight = ($slotBottom - $slotTop) / count($embeddedPhotos);
+            foreach ($embeddedPhotos as $index => $photo) {
+                $captionY = $slotTop + $index * $slotHeight;
+                $pdf->SetFont('Arial', '', 11);
+                $pdf->SetXY(10, $captionY);
+                $pdf->Cell(190, 7, skade_pdf_encoding($photo['caption']), 0, 1, 'L');
+                $imageTop = $captionY + 9;
+                $imageBoxHeight = $slotHeight - 16;
+                $pixelWidth = $photo['info']['width'];
+                $pixelHeight = $photo['info']['height'];
+                $scale = min($boxWidth / $pixelWidth, $imageBoxHeight / $pixelHeight);
+                $drawWidth = $pixelWidth * $scale;
+                $drawHeight = $pixelHeight * $scale;
+                $drawX = 10 + ($boxWidth - $drawWidth) / 2;
+                $drawY = $imageTop + max(0.0, ($imageBoxHeight - $drawHeight) / 2);
+                $storageDirectory = $appRoot . '/storage';
+                $storageGuard = $storageDirectory . '/.htaccess';
+                $tempDirectory = $storageDirectory . '/tmp';
+                if (
+                    is_link($storageDirectory) || is_link($storageGuard) || !is_file($storageGuard) ||
+                    is_link($tempDirectory) ||
+                    (!is_dir($tempDirectory) && !@mkdir($tempDirectory, 0700, true))
+                ) {
+                    $failureCode = 'skade.pdf_photo_temp_unavailable';
+                    $failureFields = [$photo['key']];
+                    throw new RuntimeException('Private photo temp directory unavailable');
+                }
+                $realStorageDirectory = realpath($storageDirectory);
+                $realTempDirectory = realpath($tempDirectory);
+                if (
+                    $realStorageDirectory === false || $realTempDirectory === false ||
+                    dirname($realTempDirectory) !== $realStorageDirectory || !is_writable($realTempDirectory)
+                ) {
+                    $failureCode = 'skade.pdf_photo_temp_unavailable';
+                    $failureFields = [$photo['key']];
+                    throw new RuntimeException('Private photo temp directory unavailable');
+                }
+                @chmod($realTempDirectory, 0700);
+                $photoTemp = @tempnam($realTempDirectory, 'skade-photo-');
+                if (!is_string($photoTemp) || $photoTemp === '' || is_link($photoTemp)) {
+                    $failureCode = 'skade.pdf_photo_temp_unavailable';
+                    $failureFields = [$photo['key']];
+                    throw new RuntimeException('Photo temp file unavailable');
+                }
+                try {
+                    @chmod($photoTemp, 0600);
+                    $written = @file_put_contents($photoTemp, $photo['info']['bytes'], LOCK_EX);
+                    if ($written !== strlen($photo['info']['bytes'])) {
+                        $failureCode = 'skade.pdf_photo_temp_unavailable';
+                        $failureFields = [$photo['key']];
+                        throw new RuntimeException('Photo temp file write failed');
+                    }
+                    $pdf->Image($photoTemp, $drawX, $drawY, $drawWidth, $drawHeight, $photo['info']['mime'] === 'image/png' ? 'PNG' : 'JPEG');
+                } finally {
+                    @unlink($photoTemp);
+                }
+            }
+        }
+
         $pdf->Output('F', $outputPath);
         if (!is_file($outputPath) || filesize($outputPath) < 1000) {
             unset($GLOBALS['skade_pdf_text_fit_stats']);

@@ -70,8 +70,18 @@ function send_skadeblankett_email(string $pdfPath, array $data, string $regnr): 
         $bodyText .= 'Kund: ' . str_replace(["\r", "\n"], ', ', $name) . "\n";
         $bodyText .= 'Modell: ' . str_replace(["\r", "\n"], ' ', $model) . "\n";
         $bodyText .= 'Försäkringsbolag: ' . str_replace(["\r", "\n"], ' ', $insurance) . "\n";
-        $bodyText .= 'Skadedatum: ' . str_replace(["\r", "\n"], ' ', $damageDate) . "\n\n";
-        $bodyText .= "Se bifogad PDF.\n";
+        $bodyText .= 'Skadedatum: ' . str_replace(["\r", "\n"], ' ', $damageDate) . "\n";
+        $photoNotes = [];
+        if (!empty($data['photo_damage'])) {
+            $photoNotes[] = 'skada';
+        }
+        if (!empty($data['photo_front'])) {
+            $photoNotes[] = 'front';
+        }
+        if ($photoNotes !== []) {
+            $bodyText .= 'Bilder: ' . implode(', ', $photoNotes) . "\n";
+        }
+        $bodyText .= "\nSe bifogad PDF.\n";
         if ($textFitWarning) {
             $bodyText .= $textFitWarningText . "\n";
         }

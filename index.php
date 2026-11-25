@@ -1746,7 +1746,8 @@ function portal_handle_skade_email_retry(): never
 
 function portal_handle_skade_submission(): bool
 {
-    global $portalPostError, $portalSkadeTextFitConfirmationRequired, $portalSkadeTextFitMessage;
+    global $portalPostError, $portalSkadeTextFitConfirmationRequired, $portalSkadeTextFitMessage, $portalSkadeInvalidPhotos;
+    $portalSkadeInvalidPhotos = [];
 
     $reject = static function (string $message, string $diagnosticCode = '', array $fieldKeys = [], ?Throwable $exception = null) use (&$portalPostError): bool {
         if ($diagnosticCode !== '') {
@@ -1793,9 +1794,9 @@ function portal_handle_skade_submission(): bool
     }
 
     $versionValue = isset($_POST['form_version']) && is_string($_POST['form_version']) ? $_POST['form_version'] : '';
-    $formVersion = in_array($versionValue, ['skade-customer-v2', 'skade-customer-v3-signature'], true);
-    $digitalSignature = $versionValue === 'skade-customer-v3-signature';
-    if ($isEdit && !$digitalSignature) {
+    $formVersion = in_array($versionValue, ['skade-customer-v2', 'skade-customer-v3-signature', 'skade-customer-v4-photos'], true);
+    $digitalSignature = in_array($versionValue, ['skade-customer-v3-signature', 'skade-customer-v4-photos'], true);
+    if ($isEdit && $versionValue !== 'skade-customer-v4-photos') {
         return $reject('Redigeringsformuläret är gammalt eller ogiltigt. Öppna posten igen från Historik.', 'skade.edit_form_version_invalid');
     }
     $legacySubmission = !$formVersion && !array_key_exists('damage_cause', $data) && !array_key_exists('payment_method', $data) && !array_key_exists('consent', $data);
@@ -1862,6 +1863,25 @@ function portal_handle_skade_submission(): bool
             }
             $clean['signature_png_bytes'] = $signatureBytes;
         }
+    }
+
+    // Optional customer photos: validate before $clean['regnr'] so photo keys enter
+    // $clean ahead of $formData=$clean (edit round-trip) and PDF generation.
+    require_once __DIR__ . '/includes/skadeblankett_pdf.php';
+    foreach (['photo_damage', 'photo_front'] as $photoKey) {
+        $photoValue = isset($data[$photoKey]) && is_string($data[$photoKey]) ? $data[$photoKey] : '';
+        if ($photoValue === '') {
+            $clean[$photoKey] = '';
+            continue;
+        }
+        $photoFailureCode = 'skade.photo_invalid';
+        $photoInfo = skade_photo_data_uri_bytes($photoValue, $photoFailureCode);
+        if ($photoInfo === null) {
+            $portalSkadeInvalidPhotos[] = $photoKey;
+            return $reject('Bilden kunde inte användas. Välj en JPG eller PNG på 200–4000 pixlar och högst 550 kB, eller lämna fältet tomt.', $photoFailureCode, [$photoKey]);
+        }
+        $clean[$photoKey] = $photoValue;
+        $clean[$photoKey . '_bytes'] = $photoInfo['bytes'];
     }
 
     $clean['regnr'] = strtoupper(preg_replace('/[^A-Z0-9-]/i', '', $clean['regnr']));
@@ -2131,7 +2151,7 @@ function portal_handle_skade_submission(): bool
     $signatureDrawn = isset($clean['signature_png_bytes']);
     $signatureBase64 = $signatureDrawn ? base64_encode($clean['signature_png_bytes']) : '';
     $formData = $clean;
-    unset($formData['signature_png_bytes']);
+    unset($formData['signature_png_bytes'], $formData['photo_damage_bytes'], $formData['photo_front_bytes']);
     $pdfException = null;
     try {
         $result = create_skadeblankett_pdf_php($clean, $templatePath, $outputPath, 'pdf');
@@ -2139,7 +2159,7 @@ function portal_handle_skade_submission(): bool
         $result = null;
         $pdfException = $exception;
     }
-    unset($clean['signature_png_bytes']);
+    unset($clean['signature_png_bytes'], $clean['photo_damage_bytes'], $clean['photo_front_bytes']);
     $pdfFailureCode = 'skade.pdf_generation_failed';
     $pdfFailureFields = [];
     $pdfTextFitWarning = false;
@@ -2161,7 +2181,16 @@ function portal_handle_skade_submission(): bool
         TadegaPrivacyLogger::event('skade.pdf_failed');
         $pdfFailureMessage = $pdfFailureCode === 'skade.pdf_text_unfit'
             ? 'Ett eller flera fält innehåller text som inte ryms i PDF-mallen utan att kapas. Ingen PDF har sparats eller skickats. Förkorta texten eller lägg in mellanslag där långa ord kan delas, och försök igen.'
-            : 'PDF-filen kunde inte skapas. Inga uppgifter sparades; be personalen kontrollera PDF-mall och skrivbehörighet.';
+            : (str_starts_with($pdfFailureCode, 'skade.pdf_photo')
+                ? 'Bilden kunde inte läggas in i PDFen. Ta bort bilden eller välj en annan och försök igen. Inga uppgifter har sparats.'
+                : 'PDF-filen kunde inte skapas. Inga uppgifter sparades; be personalen kontrollera PDF-mall och skrivbehörighet.');
+        if (str_starts_with($pdfFailureCode, 'skade.pdf_photo')) {
+            foreach ($pdfFailureFields as $failureField) {
+                if (in_array($failureField, ['photo_damage', 'photo_front'], true) && !in_array($failureField, $portalSkadeInvalidPhotos, true)) {
+                    $portalSkadeInvalidPhotos[] = $failureField;
+                }
+            }
+        }
         return $reject($pdfFailureMessage, $pdfFailureCode, $pdfFailureFields, $pdfException);
     }
 
