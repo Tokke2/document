@@ -793,3 +793,16 @@ html[data-theme="dark"] .skip-link { background:#182729; color:#e6efed; }
         body :is(a,button,input,select,textarea,summary,[tabindex]):focus-visible { outline:2px solid Highlight; outline-offset:2px; }
     }
 }
+
+/* Screen sharpness and adaptive polish: crisp glyphs on HiDPI displays,
+   stable text metrics, aligned numbers and lighter per-frame work. */
+body { -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; }
+html { -webkit-text-size-adjust:100%; text-size-adjust:100%; }
+@media screen {
+    body { text-rendering:optimizeLegibility; }
+    svg { shape-rendering:geometricPrecision; }
+    .page-content :is(.arc-table td,.settings-backup-meta strong,.calendar-meta) { font-variant-numeric:tabular-nums; }
+    @media (min-resolution:1.5dppx) {
+        .tab-icon, .ui-icon, .calendar-heading-icon { stroke-width:1.7; }
+    }
+}

@@ -103,6 +103,10 @@ $csrfAvailable = csrf_token() !== '';
     .settings-logo { display:grid; align-content:center; justify-items:center; gap:8px; min-height:105px; padding:11px; border:1px solid #e3eaee; border-radius:12px; background:#fbfdfe; text-align:center; }
     .settings-logo img { display:block; width:100%; max-height:58px; object-fit:contain; }
     .settings-logo span { max-width:100%; color:#61737e; font-size:.66rem; overflow-wrap:anywhere; }
+    .settings-brand-preview { display:flex; flex-wrap:wrap; align-items:center; gap:16px; margin:0 0 16px; padding:14px; border:1px solid #e3eaee; border-radius:12px; background:#fbfdfe; }
+    .settings-brand-preview img { display:block; width:min(260px,100%); height:auto; }
+    .settings-brand-preview-copy { flex:1 1 240px; min-width:0; }
+    .settings-brand-preview-copy .settings-help { margin:0 0 10px; }
     .settings-empty { padding:14px; border:1px dashed #cad8de; border-radius:11px; color:var(--sp-muted); font-size:.77rem; text-align:center; }
     .settings-backup-list { display:grid; gap:8px; margin-top:13px; }
     .settings-backup-row { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 11px; border:1px solid #e4ebef; border-radius:11px; background:#fbfdfe; }
@@ -168,6 +172,13 @@ $csrfAvailable = csrf_token() !== '';
 
             <section class="settings-card" aria-labelledby="settings-logo-title">
                 <div class="settings-card-head"><span class="settings-card-icon" aria-hidden="true">◇</span><div><h2 id="settings-logo-title"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Branding and logos' : 'Varumärke och logotyper' ?></h2><p><?= ($portalLanguage ?? 'sv') === 'en' ? 'Upload an SVG logo. The file is sanitized before storage and can then be previewed here.' : 'Ladda upp en SVG-logotyp. Filen saneras före lagring och kan därefter förhandsvisas här.' ?></p></div></div>
+                <div class="settings-brand-preview">
+                    <img src="?view_file=assets/tadega-logo.svg" alt="Dokumentportalen" width="260" height="62" loading="lazy">
+                    <div class="settings-brand-preview-copy">
+                        <p class="settings-help"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Portal logo as an editable vector (SVG) for screen and print. Convert the text to outlines before sending to press.' : 'Portalens logotyp som redigerbar vektor (SVG) för skärm och tryck. Konvertera texten till konturer innan du skickar till tryck.' ?></p>
+                        <a class="btn btn-outline" href="?download_file=assets/tadega-logo.svg"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Download logo (SVG)' : 'Ladda ner logotyp (SVG)' ?></a>
+                    </div>
+                </div>
                 <form method="post" action="?tab=settings" enctype="multipart/form-data">
                     <input type="hidden" name="action" value="upload_logo">
                     <?= csrf_field() ?>

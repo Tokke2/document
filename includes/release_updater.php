@@ -920,6 +920,49 @@ function portal_release_remove_tree(string $path): bool
     return @rmdir($path) && $success;
 }
 
+/**
+ * Remove transaction directories (stage + backup) left behind when an install
+ * died before its finally block ran. A successful install already deletes its
+ * own transaction directory immediately; this sweep is the crash-safety net so
+ * backups never outlive the update. Only the private tadega-release-txn-*
+ * prefix in the system temp is touched, symlinks are skipped, and anything
+ * younger than one day is left alone so concurrent installs stay untouched.
+ */
+function portal_release_cleanup_stale_transactions(int $maxAgeSeconds = 86400): int
+{
+    $temporaryRoot = realpath(sys_get_temp_dir());
+    if ($temporaryRoot === false || is_link(sys_get_temp_dir())) {
+        return 0;
+    }
+    $cutoff = time() - max(600, $maxAgeSeconds);
+    $entries = @scandir($temporaryRoot);
+    if (!is_array($entries)) {
+        return 0;
+    }
+    $removed = 0;
+    foreach ($entries as $entry) {
+        if (strpos($entry, 'tadega-release-txn-') !== 0) {
+            continue;
+        }
+        $candidate = $temporaryRoot . DIRECTORY_SEPARATOR . $entry;
+        if (is_link($candidate)) {
+            continue;
+        }
+        $mtime = @filemtime($candidate);
+        if ($mtime === false || $mtime >= $cutoff) {
+            continue;
+        }
+        if (is_dir($candidate)) {
+            if (portal_release_remove_tree($candidate)) {
+                $removed++;
+            }
+        } elseif (is_file($candidate) && @unlink($candidate)) {
+            $removed++;
+        }
+    }
+    return $removed;
+}
+
 function portal_release_create_private_subdirectory(string $parent, string $name): string|false
 {
     if (!in_array($name, ['stage', 'backup'], true) || is_link($parent) || !is_dir($parent)) {
@@ -1298,6 +1341,17 @@ function portal_release_install_package(
     $keepRecoverySnapshot = false;
     $applied = [];
     try {
+        // Crash safety: clear any transaction directory (backup) an earlier
+        // install left behind when it was killed before finally could run it down.
+        portal_release_cleanup_stale_transactions();
+        // Fail early when the system temp clearly cannot hold stage + backup.
+        $temporaryRootForSpace = realpath(sys_get_temp_dir());
+        $zipBytes = is_file($zipPath) ? @filesize($zipPath) : false;
+        $neededBytes = (is_int($zipBytes) && $zipBytes > 0 ? $zipBytes * 2 : 8388608);
+        $freeBytes = $temporaryRootForSpace !== false ? @disk_free_space($temporaryRootForSpace) : false;
+        if ($freeBytes !== false && $freeBytes < $neededBytes) {
+            return $failure('temporary_storage_unavailable');
+        }
         $comparison = $mode === 'github' ? portal_github_release_compare($applicationRootReal, $zipPath, $approvedTag) : portal_release_compare_zip_files($applicationRootReal, $zipPath, $publicKeyPem);
         if (($comparison['ok'] ?? false) !== true) {
             return $failure((string) ($comparison['code'] ?? 'comparison_failed'));

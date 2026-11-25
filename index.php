@@ -251,6 +251,8 @@ $isSkadeCustomerMode = $activeTab === 'skadeblankett'
     && isset($_GET['mode']) && is_string($_GET['mode']) && $_GET['mode'] === 'customer'
     && basename($_SERVER['SCRIPT_NAME'] ?? '') === 'skadeblankett-kund.php';
 TadegaPrivacyLogger::cleanupDiagnostics(30);
+// Rotated/archived log files are removed seven days after their last write.
+TadegaPrivacyLogger::cleanupArchivedLogs(7);
 $protocolAuthUser = ($invoiceSetupState === 'configured' || $centralAdminCanAccess)
     ? ($activeTab === 'protocol'
         ? portal_protocol_auth_current_user()
@@ -2460,10 +2462,9 @@ function portal_serve_asset_route(): void
         http_response_code(404);
         exit;
     }
-    if (
-        $baseName === 'assets' &&
-        (basename($real) === 'tadega-logo-fpdf.png' || ($download && basename($real) === 'tadega-logo.svg'))
-    ) {
+    if ($baseName === 'assets' && basename($real) === 'tadega-logo-fpdf.png') {
+        // Raster print mark stays server-side; the editable vector logo is
+        // downloadable so staff can take it to a print shop.
         http_response_code(404);
         exit;
     }

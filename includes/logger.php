@@ -596,6 +596,63 @@ if (!class_exists('TadegaPrivacyLogger', false)) {
             }
         }
 
+        /**
+         * Delete rotated/archived log files (audit/diagnostics/requests
+         * *.jsonl.N) once they are older than the retention period. Live files
+         * are never touched here; they keep their own entry-level pruning.
+         * Empty archives left behind by entry pruning are removed immediately.
+         *
+         * @param string|null $directory Optional directory override (tests/maintenance).
+         */
+        public static function cleanupArchivedLogs(int $days = 7, ?string $directory = null): int
+        {
+            $dir = $directory ?? (__DIR__ . '/../logs');
+            $guard = $dir . '/.htaccess';
+            $markerPath = $dir . '/.archives-pruned';
+            $root = realpath(dirname(__DIR__));
+            $realDir = realpath($dir);
+            if (
+                is_link($dir) || !is_file($guard) || is_link($guard) || is_link($markerPath) ||
+                $root === false || $realDir === false ||
+                strpos($realDir, rtrim($root, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR) !== 0
+            ) {
+                return 0;
+            }
+            clearstatcache(true, $markerPath);
+            $markerTime = is_file($markerPath) ? @filemtime($markerPath) : false;
+            if ($markerTime !== false && $markerTime >= time() - 86400) {
+                return 0;
+            }
+            $cutoff = time() - max(1, min($days, 365)) * 86400;
+            $removed = 0;
+            $archives = glob($realDir . DIRECTORY_SEPARATOR . '*.jsonl.*') ?: [];
+            foreach ($archives as $path) {
+                if (is_link($path) || !is_file($path)) {
+                    continue;
+                }
+                if (preg_match('/\\.jsonl\\.\\d+\\z/', $path) !== 1) {
+                    continue;
+                }
+                $size = @filesize($path);
+                $mtime = @filemtime($path);
+                $isArchive = $size === 0 || ($mtime !== false && $mtime < $cutoff);
+                if ($isArchive && @unlink($path)) {
+                    $removed++;
+                }
+            }
+            if (!is_file($markerPath)) {
+                $oldUmask = umask(0077);
+                $marker = @fopen($markerPath, 'x');
+                umask($oldUmask);
+                if (is_resource($marker)) {
+                    fclose($marker);
+                }
+            }
+            @touch($markerPath);
+            @chmod($markerPath, 0600);
+            return $removed;
+        }
+
         public static function applicationError(string $code, array $fieldKeys = [], ?Throwable $exception = null): void
         {
             self::diagnostic(
