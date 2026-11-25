@@ -40,6 +40,11 @@
 
         var inkColor = typeof options.color === 'string' ? options.color : '#18385f';
         var baseWidthCssPx = Number.isFinite(Number(options.baseWidthCssPx)) ? clamp(Number(options.baseWidthCssPx), 0.5, 6) : 1.9;
+        // Speed-based width dynamics. The classic defaults keep existing forms
+        // unchanged; a wider range makes finger strokes thin out on fast
+        // sweeps like real ballpoint ink.
+        var speedThinBase = Number.isFinite(Number(options.speedThinBase)) ? clamp(Number(options.speedThinBase), 0.8, 1.4) : 1.11;
+        var speedThinRange = Number.isFinite(Number(options.speedThinRange)) ? clamp(Number(options.speedThinRange), 0, 0.6) : 0.24;
         var background = Object.prototype.hasOwnProperty.call(options, 'background') ? options.background : null;
         if (background === false) background = null;
         var basePadding = Number.isFinite(Number(options.basePadding)) ? Math.max(0, Number(options.basePadding)) : 40;
@@ -273,10 +278,10 @@
                 var penPressure = point.pressure > 0 ? point.pressure : 0.38;
                 var pressureFallback = activeStroke && activeStroke.pressureMode === 'flat';
                 targetWidth = pressureFallback
-                    ? baseWidth * (1.11 - speedFactor * 0.24) * tiltScale
+                    ? baseWidth * (speedThinBase - speedFactor * speedThinRange) * tiltScale
                     : baseWidth * (0.54 + 0.78 * shapedPressure(penPressure)) * tiltScale;
             } else if (previous) {
-                targetWidth = baseWidth * (1.11 - speedFactor * 0.24);
+                targetWidth = baseWidth * (speedThinBase - speedFactor * speedThinRange);
             } else {
                 targetWidth = baseWidth * 0.82;
             }

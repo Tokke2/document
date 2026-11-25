@@ -1765,7 +1765,7 @@ function portal_handle_skade_submission(): bool
     $submissionToken = isset($_POST['skade_submission_token']) && is_string($_POST['skade_submission_token']) ? $_POST['skade_submission_token'] : '';
     $tokenEntry = portal_skade_get_action_token($submissionToken, $tokenPurpose);
     if (!is_array($tokenEntry) || ($isEdit && ($tokenEntry['record_id'] ?? '') !== $editId)) {
-        return $reject('Säkerhetskontrollen har gått ut eller kunde inte verifieras. Öppna blanketten igen och försök.', 'skade.token_invalid');
+        return $reject('Säkerhetskontrollen har gått ut. Dina uppgifter är kvar i formuläret – tryck på Skicka igen. Om det inte går, be personalen om hjälp.', 'skade.token_invalid');
     }
     if (($tokenEntry['status'] ?? '') === 'completed') {
         portal_skade_redirect_submission_result($tokenEntry);
@@ -2594,6 +2594,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         portal_redirect('admin', 'central_admin_pin_expired');
     } elseif (
         $invoiceSetupState === 'unconfigured' && $action !== 'invoice_first_admin_setup' &&
+        !$portalIsScopedPwa &&
         !$centralAdminCanAccess &&
         !in_array($action, ['central_admin_login', 'central_admin_logout', 'central_admin_enroll', 'central_admin_change_pin'], true)
     ) {
@@ -4023,7 +4024,7 @@ $languageLink = static function (string $language): string {
         <?php endif; ?>
     <?php endif; ?>
     <div class="page-content">
-        <?php if ($portalCsrfFailed): ?>
+        <?php if ($portalCsrfFailed && $activeTab !== 'skadeblankett'): ?>
             <?= portal_ui_alert('Gå tillbaka till formuläret, ladda om sidan och försök igen.', 'error', 'Begäran kunde inte verifieras') ?>
         <?php elseif ($activeTab === 'invoice' && $invoiceSetupState === 'unconfigured' && !is_array($invoiceAuthUser)): ?>
             <section class="invoice-auth-card" aria-labelledby="invoice-first-admin-title">
@@ -4097,6 +4098,9 @@ $languageLink = static function (string $language): string {
                 <p class="invoice-auth-help" id="invoice-login-help"><?= ($portalLanguage ?? 'sv') === 'en' ? 'This six-digit PIN applies to invoice records and the customer register. Central administrator access to staff pages is managed separately in Administration. Keep the hosting provider\'s or proxy\'s access protection enabled.' : 'Den här sexsiffriga PIN-koden gäller fakturaunderlaget och Kundregistret. Central adminåtkomst till personalsidorna sköts separat via Adminpanelen, och webbhotellets/proxyns grundskydd ska vara kvar.' ?></p>
             </section>
         <?php else: ?>
+            <?php if ($portalCsrfFailed && !$isSkadeCustomerMode): ?>
+                <?= portal_ui_alert('Säkerhetskontrollen misslyckades. Dina uppgifter är kvar i formuläret – tryck på Skicka igen. Om det inte går, be personalen om hjälp.', 'error', 'Begäran kunde inte verifieras') ?>
+            <?php endif; ?>
             <?php if (in_array($activeTab, ['invoice', 'customers', 'search'], true) && is_array($invoiceAuthUser)): ?>
                 <div class="invoice-session-bar">
                     <div class="invoice-session-person">

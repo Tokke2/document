@@ -5,7 +5,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const source = fs.readFileSync('assets/signature_pad.js', 'utf8');
-function draw(options, pointerType) {
+function draw(options, pointerType, timeScale = 1) {
     const marks = [], listeners = {};
     const ctx = {
         save(){}, restore(){}, setTransform(){}, clearRect(){}, fillRect(){},
@@ -21,7 +21,7 @@ function draw(options, pointerType) {
     const window = {requestAnimationFrame(fn){fn();}, addEventListener(){}};
     vm.runInNewContext(source,{window});
     const pad = window.TadegaSignaturePad.attach(canvas, options);
-    const event = (type, x, y, time, pressure) => ({type,clientX:x,clientY:y,timeStamp:time,pressure,
+    const event = (type, x, y, time, pressure) => ({type,clientX:x,clientY:y,timeStamp:10+(time-10)*timeScale,pressure,
         pointerType,pointerId:1,isPrimary:true,button:0,cancelable:true,preventDefault(){}});
     listeners.pointerdown(event('pointerdown',20,40,10,0.45));
     listeners.pointermove(event('pointermove',60,44,35,0.5));
@@ -33,11 +33,29 @@ function draw(options, pointerType) {
     pad.clear(); assert.equal(pad.hasInk,false);
     return width;
 }
+const damageForm = {color:'#1a3f96', baseWidthCssPx:2.6, speedThinBase:1.18, speedThinRange:0.42};
 for (const pointerType of ['touch','pen']) {
     const oldWidth=draw({color:'#18385f'},pointerType);
-    const newWidth=draw({color:'#0751a6',baseWidthCssPx:2.6},pointerType);
-    assert.ok(newWidth > oldWidth * 1.3 && newWidth < oldWidth * 1.45, `${pointerType}: damage-form ink should be moderately thicker`);
+    const newWidth=draw(damageForm,pointerType);
+    assert.ok(newWidth > oldWidth * 1.25 && newWidth < oldWidth * 1.5, `${pointerType}: damage-form ink should be moderately thicker (old=${oldWidth}, new=${newWidth})`);
+}
+// Finger strokes must vary more with speed than the shared classic defaults,
+// so a drawn signature looks like real pen ink instead of a uniform marker.
+// Pen input already varies with contact pressure and is not speed-driven.
+for (const pointerType of ['touch']) {
+    const classic = {
+        slow: draw({color:'#18385f'}, pointerType, 4),
+        fast: draw({color:'#18385f'}, pointerType, 0.5),
+    };
+    const natural = {
+        slow: draw(damageForm, pointerType, 4),
+        fast: draw(damageForm, pointerType, 0.5),
+    };
+    const classicSpread = classic.slow - classic.fast;
+    const naturalSpread = natural.slow - natural.fast;
+    assert.ok(naturalSpread > classicSpread * 1.6,
+        `${pointerType}: natural dynamics should widen speed-based variation (classic=${classicSpread}, natural=${naturalSpread})`);
 }
 const form = fs.readFileSync('tabs/skadeblankett.php','utf8');
-assert.match(form,/color:\s*'#0751a6',\s*baseWidthCssPx:\s*2\.6/);
-console.log('PASS: damage-form ink is blue and moderately thicker for simulated finger and pen; shared defaults remain unchanged.');
+assert.match(form,/color:\s*'#1a3f96',\s*baseWidthCssPx:\s*2\.6,\s*speedThinBase:\s*1\.18,\s*speedThinRange:\s*0\.42/);
+console.log('PASS: damage-form ink is deep blue, moderately thicker and varies more with stroke speed; shared defaults remain unchanged.');

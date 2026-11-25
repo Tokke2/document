@@ -48,7 +48,7 @@ $skadeCustomerDone = $skadeCustomerMode && isset($_GET['done']) && is_string($_G
 $skadeCustomerError = '';
 if ($skadeCustomerMode) {
     if (!empty($portalCsrfFailed)) {
-        $skadeCustomerError = 'Säkerhetskontrollen misslyckades. Ladda om sidan eller be personalen om hjälp.';
+        $skadeCustomerError = 'Säkerhetskontrollen misslyckades. Dina uppgifter är kvar i formuläret – tryck på Skicka igen. Om det inte går, be personalen om hjälp.';
     } elseif (empty($csrfReady)) {
         $skadeCustomerError = 'Formuläret kan inte skickas just nu. Be personalen om hjälp.';
     } elseif (!$skadeTextFitConfirmationRequired && isset($portalPostError) && is_string($portalPostError) && $portalPostError !== '') {
@@ -269,6 +269,11 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
     .skade-field-error { display:block; margin:6px 0 0; color:#b42318; font-size:.74rem; font-weight:680; line-height:1.35; }
     .skade-field-error[hidden] { display:none!important; }
     .skade-field input[aria-invalid="true"], .skade-field select[aria-invalid="true"], .skade-field textarea[aria-invalid="true"] { border-color:#d92d20!important; background:#fff8f7!important; box-shadow:0 0 0 3px rgba(217,45,32,.1)!important; }
+    /* A missing or invalid field gets a red frame around the whole field
+       (label + control) so it is easy to spot, and focus moves the marker
+       into the field. Entered values are never cleared by validation. */
+    .skade-field.has-error { outline:2px solid #d92d20; outline-offset:3px; border-radius:12px; }
+    .skade-field.has-error .skade-label { color:#b42318; }
     .skade-choice input[aria-invalid="true"] { outline:2px solid #d92d20; outline-offset:2px; }
     .skade-signature.has-error { border-color:#d92d20; box-shadow:0 0 0 3px rgba(217,45,32,.1); }
     .skade-signature-canvas[aria-invalid="true"] { border-color:#d92d20; box-shadow:0 0 0 3px rgba(217,45,32,.12); }
@@ -651,7 +656,7 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
                     <?php if ($skadeCustomerMode): ?><button class="btn btn-outline" type="button" id="skade-sign-back" hidden><?= ($portalLanguage ?? 'sv') === 'en' ? 'Back to review' : 'Tillbaka till granskning' ?></button><?php endif; ?>
                     <div class="skade-signature" aria-labelledby="skade-signature-title">
                         <p class="skade-signature-title" id="skade-signature-title"><?= $skadeCustomerMode ? 'Din digitala signatur' : 'Kundens digitala signatur' ?> <?php if ($skadeCustomerMode): ?><span class="skade-required">*</span><?php else: ?><small><?= ($portalLanguage ?? 'sv') === 'en' ? '(optional)' : '(frivillig)' ?></small><?php endif; ?></p>
-                        <p class="skade-signature-copy" id="skade-signature-help"><?= $skadeCustomerMode ? 'Skriv din namnteckning med finger eller Apple Pencil och lämna lite luft till rutans kanter. Tryck på Rensa signatur om du vill börja om.' : 'Låt kunden skriva sin signatur med finger eller penna och lämna lite luft till rutans kanter. Ritytan jämnar ut små ryck och ger blått bläck med diskret breddvariation; signaturen anpassas till originalrutans storlek i PDF:en. Lämna rutan tom för utskrift och handskriven underskrift.' ?></p>
+                        <p class="skade-signature-copy" id="skade-signature-help"><?= $skadeCustomerMode ? 'Skriv din namnteckning med finger eller Apple Pencil och lämna lite luft till rutans kanter. Tryck på Rensa signatur om du vill börja om.' : 'Låt kunden skriva sin signatur med finger eller penna och lämna lite luft till rutans kanter. Ritytan jämnar ut små ryck och ger djupblått bläck med naturlig breddvariation som en riktig penna; signaturen anpassas till originalrutans storlek i PDF:en. Lämna rutan tom för utskrift och handskriven underskrift.' ?></p>
                         <canvas id="skade-signature-pad" class="skade-signature-canvas" width="1600" height="360" role="img" aria-label="<?= h($skadeCustomerMode ? 'Rita din signatur här' : 'Rita kundens signatur här') ?>" aria-describedby="skade-signature-help skade-signature-status" tabindex="0"></canvas>
                         <noscript><small class="skade-help"><?= $skadeCustomerMode ? 'Digital signering kräver JavaScript. Be personalen om hjälp.' : 'Ritning kräver JavaScript. Ni kan ändå skapa PDF:en utan digital signatur och låta kunden skriva under utskriften för hand.' ?></small></noscript>
                         <input type="hidden" name="s[signature_png]" id="skade-signature-png" value="<?= $skadeText('signature_png') ?>">
@@ -1290,8 +1295,10 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
     if (canvas && signatureInput) {
         var signaturePad = window.TadegaSignaturePad && typeof window.TadegaSignaturePad.attach === 'function'
             ? window.TadegaSignaturePad.attach(canvas, {
-                color: '#0751a6',
+                color: '#1a3f96',
                 baseWidthCssPx: 2.6,
+                speedThinBase: 1.18,
+                speedThinRange: 0.42,
                 background: null,
                 onStart: function () {
                     setSignatureStatus(<?= json_encode(($portalLanguage ?? 'sv') === 'en' ? "Draw the signature in a calm, continuous stroke." : "Skriv signaturen i ett lugnt, sammanhängande drag.", JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>);
