@@ -14,6 +14,30 @@ $messages = [
 ];
 $notice = $messages[$messageKey] ?? null;
 
+// Sub-view "Profiler": only apps that use their own profile systems are
+// offered, and only an invoice admin (the role allowed to create profiles)
+// sees the sub-tab at all. Calendar reuses invoice profiles; the kiosk,
+// archive, search and calendar apps create no profiles here.
+$settingsInvoiceSession = portal_invoice_auth_current_user();
+$settingsIsProfileAdmin = is_array($settingsInvoiceSession) && ($settingsInvoiceSession['role'] ?? '') === 'admin';
+$settingsProfileApps = [];
+if ($settingsIsProfileAdmin) {
+    if (($invoiceSetupState ?? '') === 'configured') {
+        $settingsProfileApps[] = 'invoice';
+    }
+    $settingsProfileApps[] = 'protocol';
+}
+$settingsSub = isset($_GET['sub']) && is_string($_GET['sub']) ? $_GET['sub'] : 'allmant';
+if (!in_array($settingsSub, ['allmant', 'profiler'], true) || ($settingsSub === 'profiler' && $settingsProfileApps === [])) {
+    $settingsSub = 'allmant';
+}
+$settingsInvoiceProfiles = $settingsSub === 'profiler' && in_array('invoice', $settingsProfileApps, true)
+    ? portal_invoice_auth_admin_users()
+    : [];
+$settingsProtocolProfiles = $settingsSub === 'profiler' && in_array('protocol', $settingsProfileApps, true)
+    ? portal_protocol_auth_admin_users()
+    : [];
+
 $notificationEmail = $settings['notification_email'] ?? '';
 $notificationEmail = is_string($notificationEmail) ? $notificationEmail : '';
 
@@ -107,6 +131,17 @@ $csrfAvailable = csrf_token() !== '';
     .settings-brand-preview img { display:block; width:min(260px,100%); height:auto; }
     .settings-brand-preview-copy { flex:1 1 240px; min-width:0; }
     .settings-brand-preview-copy .settings-help { margin:0 0 10px; }
+    .settings-subnav { display:flex; flex-wrap:wrap; gap:8px; margin:0 0 16px; }
+    .settings-subnav a { display:inline-flex; align-items:center; min-height:40px; padding:8px 14px; border:1px solid var(--sp-line); border-radius:11px; background:#fff; color:#34505d; font-size:.8rem; font-weight:760; text-decoration:none; }
+    .settings-subnav a[aria-current="page"] { border-color:#0d7087; background:#0d7087; color:#fff; }
+    .settings-profile-grid { display:grid; gap:16px; }
+    .settings-profile-intro { padding:16px 18px; border:1px solid var(--sp-line); border-radius:16px; background:#fff; box-shadow:var(--sp-shadow); }
+    .settings-profile-intro p { margin:6px 0 0; color:var(--sp-muted); font-size:.8rem; line-height:1.5; }
+    .settings-profile-form .settings-profile-fields { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:12px; margin-bottom:14px; }
+    .settings-profile-list { display:grid; gap:8px; margin-top:10px; }
+    .settings-profile-row { display:flex; flex-wrap:wrap; align-items:center; gap:10px; padding:10px 12px; border:1px solid var(--sp-line); border-radius:11px; background:#fbfdfe; font-size:.78rem; }
+    .settings-profile-row span { color:var(--sp-muted); }
+    .settings-profile-row .settings-profile-role { font-weight:760; color:#173747; }
     .settings-empty { padding:14px; border:1px dashed #cad8de; border-radius:11px; color:var(--sp-muted); font-size:.77rem; text-align:center; }
     .settings-backup-list { display:grid; gap:8px; margin-top:13px; }
     .settings-backup-row { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 11px; border:1px solid #e4ebef; border-radius:11px; background:#fbfdfe; }
@@ -148,6 +183,13 @@ $csrfAvailable = csrf_token() !== '';
         </div>
     <?php endif; ?>
 
+    <?php if ($settingsProfileApps !== []): ?>
+        <nav class="settings-subnav" aria-label="<?= ($portalLanguage ?? 'sv') === 'en' ? 'Settings views' : 'Inställningsvyer' ?>">
+            <a href="?tab=settings" <?= $settingsSub === 'allmant' ? 'aria-current="page"' : '' ?>><?= ($portalLanguage ?? 'sv') === 'en' ? 'General' : 'Allmänt' ?></a>
+            <a href="?tab=settings&amp;sub=profiler" <?= $settingsSub === 'profiler' ? 'aria-current="page"' : '' ?>><?= ($portalLanguage ?? 'sv') === 'en' ? 'Profiles' : 'Profiler' ?></a>
+        </nav>
+    <?php endif; ?>
+    <?php if ($settingsSub === 'allmant'): ?>
     <div class="settings-stats" aria-label="Inställningsöversikt">
         <div class="settings-stat"><span class="settings-stat-icon" aria-hidden="true">✉</span><div><span class="settings-stat-label"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Primary notification' : 'Primär avisering' ?></span><strong><?= h($notificationEmail !== '' ? $notificationEmail : 'Inte angiven') ?></strong></div></div>
         <div class="settings-stat"><span class="settings-stat-icon" aria-hidden="true">◇</span><div><span class="settings-stat-label"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Sanitized SVG logos' : 'Sanerade SVG-logotyper' ?></span><strong><?= count($svgFiles) ?> tillgängliga</strong></div></div>
@@ -238,6 +280,78 @@ $csrfAvailable = csrf_token() !== '';
             </section>
         </div>
     </div>
+    <?php else: ?>
+        <div class="settings-profile-grid">
+            <div class="settings-profile-intro">
+                <p class="settings-eyebrow"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Profiles' : 'Profiler' ?></p>
+                <p><?= ($portalLanguage ?? 'sv') === 'en' ? 'Create login profiles for the apps that use their own profile systems. The calendar reuses invoice profiles; the damage kiosk, archive and search create no profiles here. PIN and role management also exists in each app\u0027s own admin view.' : 'Skapa inloggningsprofiler för appar som använder egna profilsystem. Kalendern använder fakturaprofilerna; skadekunden, arkivet och sök skapar inga profiler här. Hantering av PIN och behörighet finns även i respektive administrationsvy.' ?></p>
+            </div>
+            <?php if (in_array('invoice', $settingsProfileApps, true)): ?>
+                <section class="settings-card" aria-labelledby="settings-profile-invoice-title">
+                    <div class="settings-card-head"><span class="settings-card-icon" aria-hidden="true">◉</span><div><h2 id="settings-profile-invoice-title"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Invoice records' : 'Fakturaunderlag' ?></h2><p><?= ($portalLanguage ?? 'sv') === 'en' ? 'The profile signs in to invoice records and is reused by the calendar.' : 'Profilen loggar in på Fakturaunderlaget och används även av Kalendern.' ?></p></div></div>
+                    <form method="post" action="?tab=invoice&amp;invoice_view=admin" class="settings-profile-form">
+                        <input type="hidden" name="action" value="invoice_admin_create_user">
+                        <?= csrf_field() ?>
+                        <div class="settings-profile-fields">
+                            <div><label class="settings-label" for="settings-profile-invoice-username"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Username' : 'Användarnamn' ?></label><input class="settings-input" id="settings-profile-invoice-username" name="user[username]" maxlength="120" autocomplete="off" required></div>
+                            <div><label class="settings-label" for="settings-profile-invoice-name"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Display name' : 'Visningsnamn' ?></label><input class="settings-input" id="settings-profile-invoice-name" name="user[name]" maxlength="120" autocomplete="name" required></div>
+                            <div><label class="settings-label" for="settings-profile-invoice-pin"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Six-digit PIN' : 'Sexsiffrig PIN' ?></label><input class="settings-input" id="settings-profile-invoice-pin" type="password" name="user[pin]" inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6" autocomplete="new-password" placeholder="6 siffror" required></div>
+                            <div><label class="settings-label" for="settings-profile-invoice-role"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Access' : 'Behörighet' ?></label><select class="settings-input" id="settings-profile-invoice-role" name="user[role]"><option value="staff" selected><?= ($portalLanguage ?? 'sv') === 'en' ? 'Staff' : 'Medarbetare' ?></option><option value="admin">Admin</option></select></div>
+                        </div>
+                        <button class="btn btn-main" type="submit"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Create profile' : 'Skapa profil' ?></button>
+                    </form>
+                    <div class="settings-divider"></div>
+                    <h3 class="settings-subheading"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Existing profiles' : 'Befintliga profiler' ?></h3>
+                    <?php if ($settingsInvoiceProfiles === []): ?>
+                        <div class="settings-empty settings-empty-spaced"><?= ($portalLanguage ?? 'sv') === 'en' ? 'No invoice profiles registered yet.' : 'Inga fakturaprofiler registrerade ännu.' ?></div>
+                    <?php else: ?>
+                        <div class="settings-profile-list">
+                            <?php foreach ($settingsInvoiceProfiles as $profile): if (!is_array($profile)) { continue; } ?>
+                                <div class="settings-profile-row">
+                                    <strong><?= h((string) ($profile['name'] ?? $profile['username'] ?? '')) ?></strong>
+                                    <span>@<?= h((string) ($profile['username'] ?? '')) ?></span>
+                                    <span class="settings-profile-role"><?= ($profile['role'] ?? '') === 'admin' ? 'Admin' : (($portalLanguage ?? 'sv') === 'en' ? 'Staff' : 'Medarbetare') ?></span>
+                                    <span><?= !empty($profile['active']) ? (($portalLanguage ?? 'sv') === 'en' ? 'Active' : 'Aktivt') : (($portalLanguage ?? 'sv') === 'en' ? 'Inactive' : 'Inaktivt') ?></span>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
+                </section>
+            <?php endif; ?>
+            <?php if (in_array('protocol', $settingsProfileApps, true)): ?>
+                <section class="settings-card" aria-labelledby="settings-profile-protocol-title">
+                    <div class="settings-card-head"><span class="settings-card-icon" aria-hidden="true">◎</span><div><h2 id="settings-profile-protocol-title"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Service reports' : 'Serviceprotokoll' ?></h2><p><?= ($portalLanguage ?? 'sv') === 'en' ? 'Separate usernames and six-digit PINs for service reports. These sessions never sign in to invoice records.' : 'Separata användarnamn och sexsiffriga PIN-koder för serviceprotokoll. Dessa konton och sessioner gäller inte Fakturaunderlaget.' ?></p></div></div>
+                    <form method="post" action="?tab=invoice&amp;invoice_view=admin" class="settings-profile-form">
+                        <input type="hidden" name="action" value="protocol_admin_create_user">
+                        <?= csrf_field() ?>
+                        <div class="settings-profile-fields">
+                            <div><label class="settings-label" for="settings-profile-protocol-username"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Username' : 'Användarnamn' ?></label><input class="settings-input" id="settings-profile-protocol-username" name="protocol_user[username]" maxlength="120" autocomplete="off" required></div>
+                            <div><label class="settings-label" for="settings-profile-protocol-name"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Display name' : 'Visningsnamn' ?></label><input class="settings-input" id="settings-profile-protocol-name" name="protocol_user[name]" maxlength="120" autocomplete="name" required></div>
+                            <div><label class="settings-label" for="settings-profile-protocol-pin"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Six-digit PIN' : 'Sexsiffrig PIN' ?></label><input class="settings-input" id="settings-profile-protocol-pin" type="password" name="protocol_user[pin]" inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6" autocomplete="new-password" placeholder="6 siffror" required></div>
+                            <div><label class="settings-label" for="settings-profile-protocol-role"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Service report access' : 'Protokollbehörighet' ?></label><select class="settings-input" id="settings-profile-protocol-role" name="protocol_user[role]"><option value="staff" selected><?= ($portalLanguage ?? 'sv') === 'en' ? 'Staff' : 'Medarbetare' ?></option><option value="admin"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Admin – may save report articles' : 'Admin – får spara protokollartiklar' ?></option></select></div>
+                        </div>
+                        <button class="btn btn-main" type="submit"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Create profile' : 'Skapa profil' ?></button>
+                    </form>
+                    <div class="settings-divider"></div>
+                    <h3 class="settings-subheading"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Existing profiles' : 'Befintliga profiler' ?></h3>
+                    <?php if ($settingsProtocolProfiles === []): ?>
+                        <div class="settings-empty settings-empty-spaced"><?= ($portalLanguage ?? 'sv') === 'en' ? 'No service report profiles registered yet.' : 'Inga protokollprofiler registrerade ännu.' ?></div>
+                    <?php else: ?>
+                        <div class="settings-profile-list">
+                            <?php foreach ($settingsProtocolProfiles as $profile): if (!is_array($profile)) { continue; } ?>
+                                <div class="settings-profile-row">
+                                    <strong><?= h((string) ($profile['name'] ?? $profile['username'] ?? '')) ?></strong>
+                                    <span>@<?= h((string) ($profile['username'] ?? '')) ?></span>
+                                    <span class="settings-profile-role"><?= ($profile['role'] ?? '') === 'admin' ? 'Admin' : (($portalLanguage ?? 'sv') === 'en' ? 'Staff' : 'Medarbetare') ?></span>
+                                    <span><?= !empty($profile['active']) ? (($portalLanguage ?? 'sv') === 'en' ? 'Active' : 'Aktivt') : (($portalLanguage ?? 'sv') === 'en' ? 'Inactive' : 'Inaktivt') ?></span>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
+                </section>
+            <?php endif; ?>
+        </div>
+    <?php endif; ?>
 
     <div class="settings-privacy-footer"><span aria-hidden="true">ⓘ</span><div>Adminpanelen använder en separat central admin-PIN för personalsidorna. Den ersätter inte Websupport/proxyns grundskydd; behåll det och testa att alla privata resurser nekas vid direkt åtkomst innan publicering.</div></div>
 </section>
