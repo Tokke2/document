@@ -3,8 +3,8 @@ declare(strict_types=1);
 function h(string $s): string { return htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); }
 function csrf_field(): string { return '<input type="hidden" name="csrf_token" value="test">'; }
 function portal_skade_new_action_token(string $kind, string $id=''): string { return str_repeat('a', 32); }
-function render_customer_skade(bool $done = false, bool $internal = false, array $post = [], bool $serverError = false, bool $csrfFailed = false, array $invalidPhotos = []): string {
-    $isSkadeCustomerMode = !$internal; $csrfReady = true; $portalLanguage = 'sv';
+function render_customer_skade(bool $done = false, bool $internal = false, array $post = [], bool $serverError = false, bool $csrfFailed = false, array $invalidPhotos = [], string $language = 'sv'): string {
+    $isSkadeCustomerMode = !$internal; $csrfReady = true; $portalLanguage = $language === 'en' ? 'en' : 'sv';
     $portalCsrfFailed = $csrfFailed;
     $portalSkadeInvalidPhotos = $invalidPhotos;
     $_POST = $post; $_GET = $done ? ['done'=>'1','mail'=>'sent'] : [];

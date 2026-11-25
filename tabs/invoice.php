@@ -1561,7 +1561,7 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
                                 <div class="invoice-register-field">
                                     <label for="invoice-customer-reference-select"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Select reference' : 'Välj referens' ?></label>
                                     <select id="invoice-customer-reference-select" data-current-reference="<?= h($invoiceCurrentReference) ?>" <?= $invoiceCustomerSelectionId === '' ? 'disabled' : '' ?>>
-                                        <option value=""><?= $invoiceCustomerSelectionId === '' ? 'Välj kund först' : 'Utan referens' ?></option>
+                                        <option value=""><?= $invoiceCustomerSelectionId === '' ? ($portalLanguage ?? 'sv') === 'en' ? 'Choose a customer first' : 'Välj kund först' : 'Utan referens' ?></option>
                                     </select>
                                 </div>
                             </div>
@@ -2443,6 +2443,8 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
                     <?php endforeach; ?>
                 </div>
                 <script>
+    var invLang = <?= json_encode(($portalLanguage ?? 'sv') === 'en' ? 'en' : 'sv') ?>;
+    function invMsg(sv, en) { return invLang === 'en' ? en : sv; }
                 (function () {
                     document.addEventListener('click', function (event) {
                         var button = event.target && event.target.closest ? event.target.closest('.invoice-debug-copy') : null;
@@ -2452,7 +2454,7 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
                         var card = button.closest('.invoice-debug-card');
                         var status = card ? card.querySelector('.invoice-debug-copy-status') : null;
                         var showResult = function (copied) {
-                            if (status) status.textContent = copied ? 'Sammanfattningen kopierades.' : 'Kopieringen misslyckades. Markera och kopiera texten manuellt.';
+                            if (status) status.textContent = copied ? 'Sammanfattningen kopierades.' : invMsg('Kopieringen misslyckades. Markera och kopiera texten manuellt.', 'Copying failed. Select and copy the text manually.');
                         };
                         var copyFallback = function () {
                             var textarea = document.createElement('textarea');
@@ -2668,6 +2670,8 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
 <script>
 (function () {
     'use strict';
+    var invLang = <?= json_encode(($portalLanguage ?? 'sv') === 'en' ? 'en' : 'sv') ?>;
+    function invMsg(sv, en) { return invLang === 'en' ? en : sv; }
 
     var form = document.getElementById('invoice-form');
     var table = document.getElementById('invoice-table');
@@ -2736,7 +2740,7 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
             return Promise.resolve(true);
         }
         if (!draftIdField || !draftIdField.value) {
-            setAutosaveMessage('Autosparning är inte tillgänglig just nu. Spara underlaget manuellt.');
+            setAutosaveMessage(invMsg('Autosparning är inte tillgänglig just nu. Spara underlaget manuellt.', 'Autosave is not available right now. Save the record manually.'));
             autosaveLastSucceeded = false;
             return Promise.resolve(false);
         }
@@ -2760,7 +2764,7 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
             if (data.deleted) {
                 draftExists = false;
                 if (autosaveResume) autosaveResume.hidden = true;
-                setAutosaveMessage('Utkastet har raderats eftersom formuläret är tomt.');
+                setAutosaveMessage(invMsg('Utkastet har raderats eftersom formuläret är tomt.', 'The draft was deleted because the form is empty.'));
                 return;
             }
             if (data.draft_id) {
@@ -2769,13 +2773,13 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
                     autosaveResume.href = '?tab=invoice&draft_id=' + encodeURIComponent(data.draft_id);
                     autosaveResume.hidden = false;
                 }
-                setAutosaveMessage('Utkastet har sparats automatiskt.');
+                setAutosaveMessage(invMsg('Utkastet har sparats automatiskt.', 'The draft has been saved automatically.'));
                 return;
             }
             setAutosaveMessage('Inga utkastuppgifter att spara ännu.');
         }).catch(function () {
             autosaveLastSucceeded = false;
-            setAutosaveMessage('Autosparning kunde inte bekräftas. Spara underlaget innan du lämnar sidan.');
+            setAutosaveMessage(invMsg('Autosparning kunde inte bekräftas. Spara underlaget innan du lämnar sidan.', 'Autosave could not be confirmed. Save the record before you leave the page.'));
         }).finally(function () {
             autosaveRequest = null;
             if (submitAfterAutosave) {
@@ -2996,10 +3000,10 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
         addRowButton.disabled = full;
         rowNote.textContent = full ? 'Max 100 rader.' : '';
         Array.prototype.forEach.call(body.rows, function (row, index) {
-            row.querySelector('.invoice-item-name').setAttribute('aria-label', 'Beskrivning, rad ' + (index + 1));
-            row.querySelector('.invoice-item-qty').setAttribute('aria-label', 'Antal, rad ' + (index + 1));
-            row.querySelector('.invoice-item-unit').setAttribute('aria-label', 'Enhet, rad ' + (index + 1));
-            row.querySelector('.invoice-item-price').setAttribute('aria-label', 'Pris per enhet i kronor, rad ' + (index + 1));
+            row.querySelector('.invoice-item-name').setAttribute('aria-label', invMsg('Beskrivning, rad ', 'Description, row ') + (index + 1));
+            row.querySelector('.invoice-item-qty').setAttribute('aria-label', invMsg('Antal, rad ', 'Quantity, row ') + (index + 1));
+            row.querySelector('.invoice-item-unit').setAttribute('aria-label', invMsg('Enhet, rad ', 'Unit, row ') + (index + 1));
+            row.querySelector('.invoice-item-price').setAttribute('aria-label', invMsg('Pris per enhet i kronor, rad ', 'Price per unit in kronor, row ') + (index + 1));
             row.querySelector('[data-remove-line]').setAttribute('aria-label', 'Ta bort rad ' + (index + 1));
         });
     }
@@ -3085,10 +3089,10 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
         var index = nextIndex++;
         var rowNumber = body.rows.length + 1;
         var row = document.createElement('tr');
-        var nameInput = createInput('invoice-item-name', 'text', 'items[' + index + '][art]', 'Beskrivning, rad ' + rowNumber, 'Ex. arbete, reservdel eller resa');
-        var quantityInput = createInput('invoice-item-qty', 'number', 'items[' + index + '][qty]', 'Antal, rad ' + rowNumber, '');
-        var unitSelect = createUnitSelect('items[' + index + '][unit]', 'Enhet, rad ' + rowNumber, unit || 'st');
-        var priceInput = createInput('invoice-item-price', 'number', 'items[' + index + '][price]', 'Pris per enhet i kronor, rad ' + rowNumber, '');
+        var nameInput = createInput('invoice-item-name', 'text', 'items[' + index + '][art]', invMsg('Beskrivning, rad ', 'Description, row ') + rowNumber, 'Ex. arbete, reservdel eller resa');
+        var quantityInput = createInput('invoice-item-qty', 'number', 'items[' + index + '][qty]', invMsg('Antal, rad ', 'Quantity, row ') + rowNumber, '');
+        var unitSelect = createUnitSelect('items[' + index + '][unit]', invMsg('Enhet, rad ', 'Unit, row ') + rowNumber, unit || 'st');
+        var priceInput = createInput('invoice-item-price', 'number', 'items[' + index + '][price]', invMsg('Pris per enhet i kronor, rad ', 'Price per unit in kronor, row ') + rowNumber, '');
         var total = document.createElement('span');
         total.className = 'invoice-line-total';
         total.textContent = money(0);
@@ -3186,14 +3190,14 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
                 function update(op) {
                     if (learningBusy) return;
                     var value = input.value.trim();
-                    if (op === 'dictionary_update' && (!value || Array.from(value).length > 200 || value === item.heard || /[\x00-\x1f\x7f]/.test(value))) { dictionaryStatus.textContent = voiceMessage('Ange en annan giltig beskrivning.', 'Enter a different valid description.'); return; }
+                    if (op === 'dictionary_update' && (!value || Array.from(value).length > 200 || value === item.heard || /[\x00-\x1f\x7f]/.test(value))) { dictionaryStatus.textContent = voiceMessage(invMsg('Ange en annan giltig beskrivning.', 'Enter another valid description.'), 'Enter a different valid description.'); return; }
                     if (op === 'dictionary_delete' && !window.confirm(voiceMessage('Ta bort denna personliga rättning?', 'Delete this personal correction?'))) return;
                     learningBusy = true; save.disabled = true; remove.disabled = true; showLearningState();
                     profileRequest(op, {heard:item.heard, old_approved:item.approved, approved:value}).then(function () {
                         dictionaryStatus.textContent = voiceMessage('Ordlistan uppdaterades.', 'Dictionary updated.');
                         if (target.value === 'row' && transcript.value.trim()) { closeArticleChoices(); transcriptNeedsParsing = true; refreshUncertainty(); status.textContent = voiceMessage('Ordlistan ändrades. Tolka texten igen.', 'Dictionary changed. Interpret the text again.'); }
                     }).catch(function () {
-                        dictionaryStatus.textContent = voiceMessage('Kunde inte spara. Rättningen kan ha ändrats i en annan flik. Ladda om innan du försöker igen.', 'Could not save. The correction may have changed in another tab. Reload before retrying.');
+                        dictionaryStatus.textContent = voiceMessage(invMsg('Kunde inte spara. Rättningen kan ha ändrats i en annan flik. Ladda om innan du försöker igen.', 'Could not save. The correction may have changed in another tab. Reload before you try again.'), 'Could not save. The correction may have changed in another tab. Reload before retrying.');
                     }).finally(function () { learningBusy = false; save.disabled = false; remove.disabled = false; showLearningState(); });
                 }
                 save.addEventListener('click', function () { update('dictionary_update'); });
@@ -3204,16 +3208,16 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
         function showLearningState() {
             if (!learningState) return;
             if (!canLearnVoice) {
-                learningState.textContent = voiceMessage('Lärande kräver ett personligt fakturakonto. Central admin är inte en personlig identitet.', 'Learning requires a personal invoice account. Central administration is not a personal identity.');
+                learningState.textContent = voiceMessage(invMsg('Lärande kräver ett personligt fakturakonto. Central admin är inte en personlig identitet.', 'Learning requires a personal invoice account. A central admin is not a personal identity.'), 'Learning requires a personal invoice account. Central administration is not a personal identity.');
             } else if (!voiceProfile) {
-                learningState.textContent = voiceMessage('Personligt lärande kunde inte läsas. Automatiken är avstängd.', 'Personal learning could not be loaded. Automatic entry is disabled.');
+                learningState.textContent = voiceMessage(invMsg('Personligt lärande kunde inte läsas. Automatiken är avstängd.', 'Personal learning could not be read. The automation is switched off.'), 'Personal learning could not be loaded. Automatic entry is disabled.');
             } else {
-                learningState.textContent = (voiceProfile.learning ? voiceMessage('Lärande på', 'Learning on') : voiceMessage('Lärande av', 'Learning off')) + ' · ' + voiceProfile.reviewed + '/50 ' + voiceMessage('manuellt granskade röstrader', 'manually reviewed voice rows') + ' · ' + (voiceProfile.auto ? voiceMessage('automatisk inmatning på', 'automatic entry on') : voiceMessage('automatisk inmatning av', 'automatic entry off')) + '.';
+                learningState.textContent = (voiceProfile.learning ? voiceMessage(invMsg('Lärande på', 'Learning on'), 'Learning on') : voiceMessage(invMsg('Lärande av', 'Learning off'), 'Learning off')) + ' · ' + voiceProfile.reviewed + '/50 ' + voiceMessage('manuellt granskade röstrader', 'manually reviewed voice rows') + ' · ' + (voiceProfile.auto ? voiceMessage('automatisk inmatning på', 'automatic entry on') : voiceMessage('automatisk inmatning av', 'automatic entry off')) + '.';
             }
-            if (learningToggle) { learningToggle.disabled = learningBusy || !voiceProfile || !canLearnVoice; learningToggle.textContent = voiceProfile && voiceProfile.learning ? voiceMessage('Pausa lärande', 'Pause learning') : voiceMessage('Starta lärande', 'Start learning'); }
+            if (learningToggle) { learningToggle.disabled = learningBusy || !voiceProfile || !canLearnVoice; learningToggle.textContent = voiceProfile && voiceProfile.learning ? voiceMessage(invMsg('Pausa lärande', 'Pause learning'), 'Pause learning') : voiceMessage(invMsg('Starta lärande', 'Start learning'), 'Start learning'); }
             if (shareToggle) { shareToggle.disabled = learningBusy || !voiceProfile || !voiceProfile.learning || !canLearnVoice; shareToggle.textContent = voiceProfile && voiceProfile.share_learning ? voiceMessage('Sluta dela rättningar', 'Stop sharing corrections') : voiceMessage('Dela rättningar för admingranskning', 'Share corrections for administrator review'); }
-            if (numericToggle) { numericToggle.disabled = learningBusy || !voiceProfile || !voiceProfile.learning; numericToggle.textContent = voiceProfile && voiceProfile.numeric_learning ? voiceMessage('Pausa lärande av antal och priser', 'Pause learning of quantities and prices') : voiceMessage('Aktivera lärande av antal och priser', 'Enable learning of quantities and prices'); }
-            if (autoToggle) { autoToggle.disabled = learningBusy || !voiceProfile || !voiceProfile.learning || voiceProfile.reviewed < 50; autoToggle.textContent = voiceProfile && voiceProfile.auto ? voiceMessage('Stäng av automatisk inmatning', 'Disable automatic entry') : voiceMessage('Aktivera automatisk inmatning', 'Enable automatic entry'); }
+            if (numericToggle) { numericToggle.disabled = learningBusy || !voiceProfile || !voiceProfile.learning; numericToggle.textContent = voiceProfile && voiceProfile.numeric_learning ? voiceMessage(invMsg('Pausa lärande av antal och priser', 'Pause learning of quantities and prices'), 'Pause learning of quantities and prices') : voiceMessage(invMsg('Aktivera lärande av antal och priser', 'Enable learning of quantities and prices'), 'Enable learning of quantities and prices'); }
+            if (autoToggle) { autoToggle.disabled = learningBusy || !voiceProfile || !voiceProfile.learning || voiceProfile.reviewed < 50; autoToggle.textContent = voiceProfile && voiceProfile.auto ? voiceMessage('Stäng av automatisk inmatning', 'Disable automatic entry') : voiceMessage(invMsg('Aktivera automatisk inmatning', 'Enable automatic entry'), 'Enable automatic entry'); }
             if (forgetLearning) forgetLearning.disabled = learningBusy || !voiceProfile || !canLearnVoice;
             renderDictionary();
         }
@@ -3304,12 +3308,12 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
                     if (row.isConnected && tokenField.value === oldToken) {
                         tokenField.value = ''; tokenField.dispatchEvent(new Event('input', { bubbles: true }));
                     }
-                    status.textContent = voiceMessage('Den här radens koppling till lärandet saknas eller har raderats.', 'This row’s learning link is missing or was erased.');
+                    status.textContent = voiceMessage(invMsg('Den här radens koppling till lärandet saknas eller har raderats.', 'This row’s link to the learning data is missing or has been deleted.'), 'This row’s learning link is missing or was erased.');
                     return;
                 }
                 voiceProfile = null; showLearningState();
                 if (retryLearning) retryLearning.hidden = false;
-                status.textContent = voiceMessage('Ändringen kunde inte läras ännu. Spara utkastet och försök synkronisera igen.', 'The change could not yet be learned. Save the draft and retry learning sync.');
+                status.textContent = voiceMessage(invMsg('Ändringen kunde inte läras ännu. Spara utkastet och försök synkronisera igen.', 'The change could not be learned yet. Save the draft and try syncing again.'), 'The change could not yet be learned. Save the draft and retry learning sync.');
             });
         }
         function syncAllAutoRows() {
@@ -3319,7 +3323,7 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
             retryLearning.disabled = true;
             profileRequest('load').then(function (profile) {
                 if (profile.learning) { retryLearning.hidden = true; syncAllAutoRows(); }
-                else status.textContent = voiceMessage('Starta lärandet innan ändringar synkroniseras.', 'Start learning before synchronizing changes.');
+                else status.textContent = voiceMessage(invMsg('Starta lärandet innan ändringar synkroniseras.', 'Start learning before changes are synced.'), 'Start learning before synchronizing changes.');
             }).catch(function () { voiceProfile = null; showLearningState(); }).finally(function () { retryLearning.disabled = false; });
         });
         body.addEventListener('input', function (event) {
@@ -3357,7 +3361,7 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
                 button.hidden = candidates.length !== 1 || input.value.trim() === '' || Number(input.value.replace(',', '.')) !== Number(candidates[0].from);
                 if (button.hidden) return;
                 var candidate = candidates[0];
-                button.textContent = (entry[0] === 'qty' ? voiceMessage('Tidigare antal: ', 'Previous quantity: ') : voiceMessage('Tidigare enhetspris: ', 'Previous unit price: ')) + candidate.from + ' → ' + candidate.to;
+                button.textContent = (entry[0] === 'qty' ? voiceMessage('Tidigare antal: ', 'Previous quantity: ') : voiceMessage(invMsg('Tidigare enhetspris: ', 'Previous unit price: '), 'Previous unit price: ')) + candidate.from + ' → ' + candidate.to;
                 button.onclick = function () {
                     var current = window.InvoiceVoice.parseRow(transcript.value);
                     if (target.value !== 'row' || transcriptNeedsParsing || numericMatches(current).indexOf(candidate) === -1 || name.value !== learnedDescription(current.name) || unit.value !== current.unit || input.value.trim() === '' || Number(input.value.replace(',', '.')) !== Number(candidate.from)) return;
@@ -3392,7 +3396,7 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
             if (raw && raw === names[0]) return voiceMessage('Exakt artikelnamn', 'Exact item name');
             if (raw && names.slice(1).indexOf(raw) !== -1) return voiceMessage('Alternativt artikelnamn', 'Alternative item name');
             if (learned && learned !== raw && names.indexOf(learned) !== -1) return voiceMessage('Personlig rättning', 'Personal correction');
-            return voiceMessage('Liknande namn – osäkert förslag', 'Similar name – uncertain suggestion');
+            return voiceMessage(invMsg('Liknande namn – osäkert förslag', 'Similar name – uncertain suggestion'), 'Similar name – uncertain suggestion');
         }
         var uncertainty = document.getElementById('voice-uncertainty');
         var uncertaintyList = document.getElementById('voice-uncertainty-list');
@@ -3405,15 +3409,15 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
             var exact = fixedNameMatches(parsed.name);
             var flags = [];
             function mark(field, label) { if (flags.indexOf(label) === -1) flags.push(label); field.classList.add('voice-needs-review'); }
-            if (!name.value.trim() || articleUncertain) mark(name, voiceMessage('Beskrivning/artikel: saknas eller kräver val.', 'Description/item: missing or requires a choice.'));
-            if (!qty.value.trim()) mark(qty, voiceMessage('Antal: saknas eller kunde inte tolkas.', 'Quantity: missing or not interpreted.'));
-            if (!unit.value || (exact.length === 1 && parsed.unit && parsed.unit !== exact[0].unit)) mark(unit, voiceMessage('Enhet: saknas eller skiljer sig från artikeln.', 'Unit: missing or differs from the item.'));
-            if (!price.value.trim() || (exact.length === 1 && exact[0].fixed_price && parsed.price && Number(parsed.price) !== Number(exact[0].price))) mark(price, voiceMessage('Pris: saknas eller skiljer sig från fastpriset.', 'Price: missing or differs from the fixed price.'));
+            if (!name.value.trim() || articleUncertain) mark(name, voiceMessage(invMsg('Beskrivning/artikel: saknas eller kräver val.', 'Description/item: missing or requires a choice.'), 'Description/item: missing or requires a choice.'));
+            if (!qty.value.trim()) mark(qty, voiceMessage(invMsg('Antal: saknas eller kunde inte tolkas.', 'Quantity: missing or could not be interpreted.'), 'Quantity: missing or not interpreted.'));
+            if (!unit.value || (exact.length === 1 && parsed.unit && parsed.unit !== exact[0].unit)) mark(unit, voiceMessage(invMsg('Enhet: saknas eller skiljer sig från artikeln.', 'Unit: missing or differs from the item.'), 'Unit: missing or differs from the item.'));
+            if (!price.value.trim() || (exact.length === 1 && exact[0].fixed_price && parsed.price && Number(parsed.price) !== Number(exact[0].price))) mark(price, voiceMessage(invMsg('Pris: saknas eller skiljer sig från fastpriset.', 'Price: missing or differs from the fixed price.'), 'Price: missing or differs from the fixed price.'));
             numericMatches(parsed).forEach(function (item) {
                 var field = item.field === 'qty' ? qty : price;
                 if (Number(field.value.trim().replace(',', '.')) === Number(item.from)) mark(field, item.field === 'qty'
-                    ? voiceMessage('Antal: en tidigare rättning finns.', 'Quantity: a previous correction exists.')
-                    : voiceMessage('Pris: en tidigare rättning finns.', 'Price: a previous correction exists.'));
+                    ? voiceMessage(invMsg('Antal: en tidigare rättning finns.', 'Quantity: a previous correction exists.'), 'Quantity: a previous correction exists.')
+                    : voiceMessage(invMsg('Pris: en tidigare rättning finns.', 'Price: a previous correction exists.'), 'Price: a previous correction exists.'));
             });
             flags.forEach(function (text) { var li=document.createElement('li'); li.textContent=text; uncertaintyList.appendChild(li); });
             uncertainty.hidden = !flags.length;
@@ -3426,9 +3430,9 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
         function showArticleChoices(row, candidates) {
             if (!articleChoices || !articleOptions) return;
             articleUncertain = true; articleOptions.textContent = '';
-            setArticleReason(candidates.length ? voiceMessage('Välj bland möjliga träffar. Orsaken visas vid varje alternativ.', 'Choose from possible matches. The reason is shown with each option.') : voiceMessage('Ingen säker katalogträff.', 'No certain catalog match.'));
+            setArticleReason(candidates.length ? voiceMessage(invMsg('Välj bland möjliga träffar. Orsaken visas vid varje alternativ.', 'Choose from possible matches. The reason is shown with each option.'), 'Choose from possible matches. The reason is shown with each option.') : voiceMessage('Ingen säker katalogträff.', 'No certain catalog match.'));
             articleChoices.hidden = false;
-            articleMessage.textContent = candidates.length ? voiceMessage('Osäker artikel. Välj en artikel eller bekräfta fritext; inget förs in automatiskt.', 'Uncertain item. Select an item or explicitly choose free text; nothing is entered automatically.') : voiceMessage('Ingen säker artikelträff. Välj fritext eller välj artikel i katalogen; kontrollera fasta priser.', 'No certain item match. Choose free text or select an item in the catalog; check fixed prices.');
+            articleMessage.textContent = candidates.length ? voiceMessage(invMsg('Osäker artikel. Välj en artikel eller bekräfta fritext; inget förs in automatiskt.', 'Uncertain item. Choose an item or confirm free text; nothing is entered automatically.'), 'Uncertain item. Select an item or explicitly choose free text; nothing is entered automatically.') : voiceMessage(invMsg('Ingen säker artikelträff. Välj fritext eller välj artikel i katalogen; kontrollera fasta priser.', 'No certain item match. Choose free text or pick an item in the catalogue; check fixed prices.'), 'No certain item match. Choose free text or select an item in the catalog; check fixed prices.');
             var initialTranscript = transcript.value;
             candidates.slice(0, 6).forEach(function (article) {
                 var button = document.createElement('button'); button.type = 'button'; button.className = 'btn btn-outline';
@@ -3442,15 +3446,15 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
                     name.value = article.name; unit.value = article.unit; price.value = Number(article.price).toFixed(2);
                     articleUncertain = false; articleNeedsReview = true; articleExact = null; articleChoices.hidden = true; previewPending = true;
                     refreshUncertainty();
-                    setArticleReason(voiceMessage('Vald artikel – ', 'Selected item – ') + matchReason + voiceMessage('. Kontrollera raden.', '. Review the line.'));
-                    status.textContent = voiceMessage('Artikeln valdes. Kontrollera antal, enhet och pris och välj Använd förslaget.', 'Item selected. Check quantity, unit and price and choose Apply suggestion.');
+                    setArticleReason(voiceMessage(invMsg('Vald artikel – ', 'Selected item – '), 'Selected item – ') + matchReason + voiceMessage(invMsg('. Kontrollera raden.', '. Check the row.'), '. Review the line.'));
+                    status.textContent = voiceMessage(invMsg('Artikeln valdes. Kontrollera antal, enhet och pris och välj Använd förslaget.', 'The item was selected. Check quantity, unit and price and choose Use suggestion.'), 'Item selected. Check quantity, unit and price and choose Apply suggestion.');
                 });
                 articleOptions.appendChild(button);
             });
             var personal = learnedDescription(row.name);
             if (suggestionKey(personal) !== suggestionKey(row.name) && !fixedNameMatches(personal).length) {
                 var learnedButton = document.createElement('button'); learnedButton.type = 'button'; learnedButton.className = 'btn btn-outline';
-                learnedButton.textContent = voiceMessage('Tidigare rättning: ', 'Previous correction: ') + personal;
+                learnedButton.textContent = voiceMessage(invMsg('Tidigare rättning: ', 'Previous correction: '), 'Previous correction: ') + personal;
                 learnedButton.addEventListener('click', function () {
                     if (recognition || target.value !== 'row' || transcript.value !== initialTranscript || transcriptNeedsParsing) return;
                     if (learningBusy || suggestionKey(learnedDescription(row.name)) !== suggestionKey(personal)) {
@@ -3459,7 +3463,7 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
                     name.value = personal; articleUncertain = false; articleNeedsReview = true; articleExact = null; articleChoices.hidden = true;
                     refreshUncertainty();
                     setArticleReason(voiceMessage('Personlig rättning vald – ingen säker koppling till katalogartikel.', 'Personal correction selected – not reliably linked to a catalog item.'));
-                    status.textContent = voiceMessage('Tidigare rättning vald. Kontrollera beskrivning och pris manuellt.', 'Previous correction selected. Check the description and price manually.');
+                    status.textContent = voiceMessage(invMsg('Tidigare rättning vald. Kontrollera beskrivning och pris manuellt.', 'Previous correction selected. Check description and price manually.'), 'Previous correction selected. Check the description and price manually.');
                 });
                 articleOptions.appendChild(learnedButton);
             }
@@ -3468,8 +3472,8 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
                 if (!window.confirm(voiceMessage('Fritext kopplas inte säkert till en katalogartikel eller dess fasta pris. Kontrollera beskrivning och pris. Använd fritext?', 'Free text is not reliably linked to a catalog item or its fixed price. Check the description and price. Use free text?'))) return;
                 articleUncertain = false; articleNeedsReview = true; articleExact = null; articleChoices.hidden = true;
                 refreshUncertainty();
-                setArticleReason(voiceMessage('Fritext vald – ingen säker katalogträff.', 'Free text selected – no certain catalog match.'));
-                status.textContent = voiceMessage('Fritext vald. Kontrollera priset och granska raden manuellt.', 'Free text selected. Check the price and review the line manually.');
+                setArticleReason(voiceMessage(invMsg('Fritext vald – ingen säker katalogträff.', 'Free text selected – no certain catalogue match.'), 'Free text selected – no certain catalog match.'));
+                status.textContent = voiceMessage(invMsg('Fritext vald. Kontrollera priset och granska raden manuellt.', 'Free text selected. Check the price and review the row manually.'), 'Free text selected. Check the price and review the line manually.');
             };
         }
         function similarNames(a, b) {
@@ -3567,29 +3571,29 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
                 if (row.price && Number(row.price) !== Number(candidate.price)) {
                     name.value = row.name;
                     showArticleChoices(row, [candidate]);
-                    articleMessage.textContent = voiceMessage('Dikterat pris ' + row.price + ' skiljer sig från fast pris ' + Number(candidate.price).toFixed(2) + '. Välj artikeln för att använda det fasta priset.', 'Dictated price ' + row.price + ' differs from fixed price ' + Number(candidate.price).toFixed(2) + '. Select the item to use its fixed price.');
+                    articleMessage.textContent = voiceMessage(invMsg('Dikterat pris ', 'Dictated price ') + row.price + ' skiljer sig från fast pris ' + Number(candidate.price).toFixed(2) + invMsg('. Välj artikeln för att använda det fasta priset.', '. Choose the item to use the fixed price.'), 'Dictated price ' + row.price + ' differs from fixed price ' + Number(candidate.price).toFixed(2) + '. Select the item to use its fixed price.');
                 } else {
                     articleExact = candidate;
-                    setArticleReason(voiceMessage('Katalogträff: ', 'Catalog match: ') + articleMatchReason(candidate, row) + voiceMessage('. Kontrollera raden.', '. Review the line.'));
+                    setArticleReason(voiceMessage('Katalogträff: ', 'Catalog match: ') + articleMatchReason(candidate, row) + voiceMessage(invMsg('. Kontrollera raden.', '. Check the row.'), '. Review the line.'));
                     name.value = candidate.name;
                     price.value = Number(candidate.price).toFixed(2);
                 }
             } else if (candidate && !candidate.fixed_price && row.unit === candidate.unit) {
                 articleExact = candidate; name.value = candidate.name;
-                setArticleReason(voiceMessage('Katalogträff: ', 'Catalog match: ') + articleMatchReason(candidate, row) + voiceMessage('. Kontrollera raden.', '. Review the line.'));
+                setArticleReason(voiceMessage('Katalogträff: ', 'Catalog match: ') + articleMatchReason(candidate, row) + voiceMessage(invMsg('. Kontrollera raden.', '. Check the row.'), '. Review the line.'));
             } else {
                 var possible = exact.length ? exact : suggestArticles(row);
                 if (possible.length || (fixedCatalog.length && row.name) || suggestionKey(learnedDescription(row.name)) !== suggestionKey(row.name)) {
                     showArticleChoices(row, possible);
-                    if (candidate && !row.price && row.unit === candidate.unit) articleMessage.textContent = voiceMessage('Pris eller enhet kunde inte tolkas säkert. Kontrollera hela dikteringen och välj artikel eller fritext.', 'Price or unit could not be interpreted safely. Check the entire dictation and select an item or free text.');
-                    if (candidate && row.unit && row.unit !== candidate.unit) articleMessage.textContent = voiceMessage('Dikterad enhet ' + row.unit + ' skiljer sig från artikelns enhet ' + candidate.unit + '. Välj artikeln eller fritext och granska.', 'Dictated unit ' + row.unit + ' differs from the item unit ' + candidate.unit + '. Select the item or free text and review.');
+                    if (candidate && !row.price && row.unit === candidate.unit) articleMessage.textContent = voiceMessage(invMsg('Pris eller enhet kunde inte tolkas säkert. Kontrollera hela dikteringen och välj artikel eller fritext.', 'Price or unit could not be interpreted with certainty. Check the whole dictation and choose an item or free text.'), 'Price or unit could not be interpreted safely. Check the entire dictation and select an item or free text.');
+                    if (candidate && row.unit && row.unit !== candidate.unit) articleMessage.textContent = voiceMessage('Dikterad enhet ' + row.unit + ' skiljer sig från artikelns enhet ' + candidate.unit + invMsg('. Välj artikeln eller fritext och granska.', '. Choose the item or free text and review.'), 'Dictated unit ' + row.unit + ' differs from the item unit ' + candidate.unit + '. Select the item or free text and review.');
                 }
             }
             showNumericSuggestions(row);
             refreshUncertainty();
             if (articleUncertain || articleNeedsReview) return;
             if (!name.value || !qty.value || !unit.value || !price.value) {
-                status.textContent = voiceMessage('Vissa uppgifter kunde inte tolkas säkert. Fyll i beskrivning, antal, enhet och pris per enhet manuellt och granska hela förslaget.', 'Some details could not be interpreted safely. Enter the description, quantity, unit and unit price manually and review the whole suggestion.');
+                status.textContent = voiceMessage(invMsg('Vissa uppgifter kunde inte tolkas säkert. Fyll i beskrivning, antal, enhet och pris per enhet manuellt och granska hela förslaget.', 'Some entries could not be interpreted with certainty. Fill in description, quantity, unit and price per unit manually and review the whole suggestion.'), 'Some details could not be interpreted safely. Enter the description, quantity, unit and unit price manually and review the whole suggestion.');
                 return;
             }
             status.textContent = <?= json_encode(($portalLanguage ?? 'sv') === 'en' ? "Review and edit the suggestion before applying it." : "Granska och ändra förslaget innan du använder det.", JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
@@ -3604,7 +3608,7 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
             }
             if (normalized === 'läs upp underlaget') { document.getElementById('voice-read').click(); return true; }
             if (normalized === 'ny rad' || normalized === 'lägg till rad') { if (target.value === 'row') nextVoiceRow(); else status.textContent = voiceMessage('Välj fakturarad först.', 'Select invoice line first.'); return true; }
-            var fieldCommand = { 'till beskrivning':name, 'till antal':qty, 'till enhet':unit, 'till pris':price };
+            var fieldCommand = { 'till beskrivning':name, 'till antal':qty, 'till enhet':unit, [invMsg('till pris', 'to price')]:price };
             if (Object.prototype.hasOwnProperty.call(fieldCommand, normalized)) {
                 if (target.value !== 'row') { status.textContent = voiceMessage('Välj fakturarad först.', 'Select invoice line first.'); return true; }
                 fieldCommand[normalized].focus();
@@ -3661,14 +3665,14 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
                 refreshUncertainty();
                 advanceAfterApproval = false;
                 previewPending = transcript.value.trim() !== '';
-                status.textContent = voiceMessage('Texten har ändrats. Välj Tolka text innan du använder förslaget.', 'Text changed. Select Interpret text before applying the suggestion.');
+                status.textContent = voiceMessage(invMsg('Texten har ändrats. Välj Tolka text innan du använder förslaget.', 'The text has changed. Choose Interpret text before you use the suggestion.'), 'Text changed. Select Interpret text before applying the suggestion.');
             }
         });
         document.getElementById('voice-parse').addEventListener('click', parse);
         [name, qty, unit, price].forEach(function (field) {
             function onPreviewEdit() {
                 previewPending = true;
-                setArticleReason(voiceMessage('Förslaget har ändrats manuellt. Kontrollera artikel, enhet och pris.', 'The proposal was edited manually. Check the item, unit and price.'));
+                setArticleReason(voiceMessage(invMsg('Förslaget har ändrats manuellt. Kontrollera artikel, enhet och pris.', 'The suggestion was changed manually. Check item, unit and price.'), 'The proposal was edited manually. Check the item, unit and price.'));
                 refreshUncertainty();
                 var original = window.InvoiceVoice.parseRow(transcript.value);
                 if (target.value === 'row' && !transcriptNeedsParsing && name.value === learnedDescription(original.name) && unit.value === original.unit) showNumericSuggestions(original);
@@ -3678,7 +3682,7 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
             field.addEventListener('change', onPreviewEdit);
         });
         document.getElementById('voice-clear').addEventListener('click', function () {
-            if (recognition) { status.textContent = voiceMessage('Avsluta eller avbryt inspelningen först.', 'Stop or cancel recording first.'); return; }
+            if (recognition) { status.textContent = voiceMessage(invMsg('Avsluta eller avbryt inspelningen först.', 'Finish or cancel the recording first.'), 'Stop or cancel recording first.'); return; }
             transcript.value = ''; name.value = ''; qty.value = ''; unit.value = ''; price.value = ''; voiceObservation = null;
             if (numericSuggestions) numericSuggestions.hidden = true;
             closeArticleChoices();
@@ -3700,7 +3704,7 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
                 var Engine = window.SpeechRecognition || window.webkitSpeechRecognition;
                 var engine;
                 try { engine = new Engine(); } catch (error) {
-                    status.textContent = voiceMessage('Röstigenkänningen kunde inte startas.', 'Speech recognition could not start.'); return;
+                    status.textContent = voiceMessage(invMsg('Röstigenkänningen kunde inte startas.', 'Speech recognition could not start.'), 'Speech recognition could not start.'); return;
                 }
                 recognition = engine;
                 var initialText = transcript.value, initialTarget = target.value;
@@ -3721,19 +3725,19 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
                     failed = true;
                     var code = event && event.error;
                     status.textContent = code === 'not-allowed' || code === 'service-not-allowed'
-                        ? voiceMessage('Mikrofonen eller rösttjänsten är blockerad. Kontrollera behörigheter i webbläsaren.', 'Microphone or speech service blocked. Check browser permissions.')
-                        : code === 'no-speech' ? voiceMessage('Inget tal uppfattades. Försök igen eller skriv manuellt.', 'No speech was detected. Try again or type manually.')
-                        : voiceMessage('Röstinmatningen misslyckades. Försök igen eller skriv manuellt.', 'Voice input failed. Try again or type manually.');
+                        ? voiceMessage(invMsg('Mikrofonen eller rösttjänsten är blockerad. Kontrollera behörigheter i webbläsaren.', 'The microphone or speech service is blocked. Check the browser permissions.'), 'Microphone or speech service blocked. Check browser permissions.')
+                        : code === 'no-speech' ? voiceMessage(invMsg('Inget tal uppfattades. Försök igen eller skriv manuellt.', 'No speech was detected. Try again or type manually.'), 'No speech was detected. Try again or type manually.')
+                        : voiceMessage(invMsg('Röstinmatningen misslyckades. Försök igen eller skriv manuellt.', 'Voice input failed. Try again or type manually.'), 'Voice input failed. Try again or type manually.');
                 };
                 engine.onend = function () {
                     if (recognition !== engine) return;
                     recognition = null; setRecording(false);
                     if (cancelled || failed) return;
                     var spoken = fragments.filter(function (part) { return typeof part === 'string' && part.trim(); }).join(' ').trim();
-                    if (!spoken) { status.textContent = voiceMessage('Inget tal uppfattades. Försök igen eller skriv manuellt.', 'No speech was detected. Try again or type manually.'); return; }
-                    if (Array.from(spoken).length > 1000) { status.textContent = voiceMessage('Dikteringen blev för lång. Dela upp den i kortare förslag; inget har använts.', 'Dictation was too long. Split it into shorter suggestions; nothing was applied.'); return; }
+                    if (!spoken) { status.textContent = voiceMessage(invMsg('Inget tal uppfattades. Försök igen eller skriv manuellt.', 'No speech was detected. Try again or type manually.'), 'No speech was detected. Try again or type manually.'); return; }
+                    if (Array.from(spoken).length > 1000) { status.textContent = voiceMessage(invMsg('Dikteringen blev för lång. Dela upp den i kortare förslag; inget har använts.', 'The dictation became too long. Split it into shorter suggestions; nothing was used.'), 'Dictation was too long. Split it into shorter suggestions; nothing was applied.'); return; }
                     if (transcript.value !== initialText || target.value !== initialTarget || initialSuggestion !== JSON.stringify([name.value, qty.value, unit.value, price.value]) || initialDestination !== destinationRow || initialActiveRow !== activeVoiceRow) {
-                        status.textContent = voiceMessage('Förslaget ändrades under inspelningen. Dikteringen användes inte; försök igen.', 'The suggestion changed during recording. Dictation was not applied; try again.'); return;
+                        status.textContent = voiceMessage(invMsg('Förslaget ändrades under inspelningen. Dikteringen användes inte; försök igen.', 'The suggestion changed during recording. The dictation was not used; try again.'), 'The suggestion changed during recording. Dictation was not applied; try again.'); return;
                     }
                     var outcome = acceptSpeech(spoken);
                     if (initialTarget !== 'row' && outcome !== true) status.textContent = voiceMessage('Granska texten innan du använder den.', 'Review the text before applying it.');
@@ -3742,7 +3746,7 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
                         var id = observationId();
                         voiceObservation = id ? { id: id, heard: original.name && original.qty && original.unit ? original.name : '', qty: original.qty, price: original.price, unit: original.unit } : null;
                         var matchingNumeric = numericMatches(original);
-                        if (matchingNumeric.length && !articleUncertain && !articleNeedsReview) status.textContent = voiceMessage('En tidigare rättning av antal eller pris finns. Granska förslaget manuellt.', 'A previous quantity or price correction exists. Review the proposal manually.');
+                        if (matchingNumeric.length && !articleUncertain && !articleNeedsReview) status.textContent = voiceMessage(invMsg('En tidigare rättning av antal eller pris finns. Granska förslaget manuellt.', 'A previous correction of quantity or price exists. Review the suggestion manually.'), 'A previous quantity or price correction exists. Review the proposal manually.');
                         // Refresh even when a local match already blocks automation, so
                         // corrections learned in another session are not shown stale.
                         if (voiceProfile && voiceProfile.learning && (matchingNumeric.length || !voiceProfile.auto || voiceProfile.reviewed < 50)) {
@@ -3750,8 +3754,8 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
                             var reviewSnapshot = JSON.stringify([transcript.value, name.value, qty.value, unit.value, price.value, target.value]);
                             profileRequest('load').then(function () {
                                 if (recognition || voiceObservation !== reviewObservation || reviewSnapshot !== JSON.stringify([transcript.value, name.value, qty.value, unit.value, price.value, target.value])) return;
-                                if (showNumericSuggestions(original).length) { refreshUncertainty(); status.textContent = voiceMessage('En tidigare rättning av antal eller pris finns. Granska förslaget manuellt.', 'A previous quantity or price correction exists. Review the proposal manually.'); }
-                            }).catch(function () { voiceProfile = null; showLearningState(); status.textContent = voiceMessage('Personliga rättningar kunde inte hämtas. Granska förslaget manuellt.', 'Personal corrections could not be loaded. Review the proposal manually.'); });
+                                if (showNumericSuggestions(original).length) { refreshUncertainty(); status.textContent = voiceMessage(invMsg('En tidigare rättning av antal eller pris finns. Granska förslaget manuellt.', 'A previous correction of quantity or price exists. Review the suggestion manually.'), 'A previous quantity or price correction exists. Review the proposal manually.'); }
+                            }).catch(function () { voiceProfile = null; showLearningState(); status.textContent = voiceMessage(invMsg('Personliga rättningar kunde inte hämtas. Granska förslaget manuellt.', 'Personal corrections could not be fetched. Review the suggestion manually.'), 'Personal corrections could not be loaded. Review the proposal manually.'); });
                         }
                         if (!matchingNumeric.length && !articleUncertain && !articleNeedsReview && voiceObservation && voiceProfile && voiceProfile.learning && voiceProfile.auto && voiceProfile.reviewed >= 50 && original.name && original.qty && original.unit && price.value) {
                             var observation = voiceObservation;
@@ -3763,20 +3767,20 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
                             profileRequest('track_auto', trackFields).then(function (current) {
                                 if (!articleExact && suggestionKey(learnedDescription(original.name)) !== suggestionKey(original.name) && snapshot === JSON.stringify([transcript.value, name.value, qty.value, unit.value, price.value, target.value]) && voiceObservation === observation && !recognition) {
                                     showArticleChoices(original, suggestArticles(original));
-                                    status.textContent = voiceMessage('En tidigare rättning finns. Välj själv och granska raden.', 'A previous correction exists. Choose and review the line yourself.');
+                                    status.textContent = voiceMessage(invMsg('En tidigare rättning finns. Välj själv och granska raden.', 'A previous correction exists. Choose yourself and review the row.'), 'A previous correction exists. Choose and review the line yourself.');
                                     return;
                                 }
-                                if (numericMatches(original).length) { showNumericSuggestions(original); status.textContent = voiceMessage('En tidigare rättning av antal eller pris finns. Granska förslaget manuellt.', 'A previous quantity or price correction exists. Review the proposal manually.'); return; }
+                                if (numericMatches(original).length) { showNumericSuggestions(original); status.textContent = voiceMessage(invMsg('En tidigare rättning av antal eller pris finns. Granska förslaget manuellt.', 'A previous correction of quantity or price exists. Review the suggestion manually.'), 'A previous quantity or price correction exists. Review the proposal manually.'); return; }
                                 if (!current.learning || !current.auto || current.reviewed < 50 || learningBusy || voiceObservation !== observation || recognition || destinationRow !== selectedDestination || activeVoiceRow !== selectedActiveRow || snapshot !== JSON.stringify([transcript.value, name.value, qty.value, unit.value, price.value, target.value]) || articleUncertain || articleNeedsReview || (!articleExact && learnedDescription(original.name) !== name.value) || typeof current._token !== 'string' || !current._token.startsWith(personalVoiceId + '.')) return;
                                 applyVoiceSuggestion(true, current._token);
-                            }).catch(function () { voiceProfile = null; showLearningState(); status.textContent = voiceMessage('Automatiken kunde inte verifieras. Granska och använd förslaget manuellt.', 'Automatic entry could not be verified. Review and apply the proposal manually.'); });
+                            }).catch(function () { voiceProfile = null; showLearningState(); status.textContent = voiceMessage(invMsg('Automatiken kunde inte verifieras. Granska och använd förslaget manuellt.', 'The automation could not be verified. Review and use the suggestion manually.'), 'Automatic entry could not be verified. Review and apply the proposal manually.'); });
                         }
                     }
                 };
                 if (stop) stop.onclick = function () {
                     if (recognition !== engine) return;
                     try { status.textContent = voiceMessage('Avslutar och väntar på resultat…', 'Stopping and waiting for the result…'); engine.stop(); }
-                    catch (error) { status.textContent = voiceMessage('Kunde inte stoppa. Avbryt inspelningen i stället.', 'Could not stop. Cancel the recording instead.'); }
+                    catch (error) { status.textContent = voiceMessage(invMsg('Kunde inte stoppa. Avbryt inspelningen i stället.', 'Could not stop. Cancel the recording instead.'), 'Could not stop. Cancel the recording instead.'); }
                 };
                 if (cancel) cancel.onclick = function () {
                     if (recognition !== engine) return;
@@ -3785,41 +3789,41 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
                     try { engine.abort(); stopped = true; }
                     catch (error) { try { engine.stop(); stopped = true; } catch (stopError) { /* Ignore any late result regardless. */ } }
                     status.textContent = stopped
-                        ? voiceMessage('Inspelningen avbröts. Inget förslag användes.', 'Recording cancelled. No suggestion was applied.')
-                        : voiceMessage('Kunde inte stoppa mikrofonen. Stäng sidan eller återkalla mikrofontillståndet. Inget förslag användes.', 'Could not stop the microphone. Close the page or revoke microphone permission. No suggestion was applied.');
+                        ? voiceMessage(invMsg('Inspelningen avbröts. Inget förslag användes.', 'The recording was cancelled. No suggestion was used.'), 'Recording cancelled. No suggestion was applied.')
+                        : voiceMessage(invMsg('Kunde inte stoppa mikrofonen. Stäng sidan eller återkalla mikrofontillståndet. Inget förslag användes.', 'Could not stop the microphone. Close the page or revoke the microphone permission. No suggestion was used.'), 'Could not stop the microphone. Close the page or revoke microphone permission. No suggestion was applied.');
                 };
                 try { setRecording(true); status.textContent = voiceMessage('Lyssnar…', 'Listening…'); engine.start(); }
-                catch (error) { recognition = null; setRecording(false); status.textContent = voiceMessage('Mikrofonen kunde inte startas.', 'The microphone could not be started.'); }
+                catch (error) { recognition = null; setRecording(false); status.textContent = voiceMessage(invMsg('Mikrofonen kunde inte startas.', 'The microphone could not start.'), 'The microphone could not be started.'); }
             });
         }
         function applyVoiceSuggestion(isAuto, provenanceToken) {
-            if (recognition) { status.textContent = voiceMessage('Avsluta eller avbryt inspelningen först.', 'Stop or cancel recording first.'); return; }
+            if (recognition) { status.textContent = voiceMessage(invMsg('Avsluta eller avbryt inspelningen först.', 'Finish or cancel the recording first.'), 'Stop or cancel recording first.'); return; }
             if (target.value === 'row') {
-                if (articleUncertain) { status.textContent = voiceMessage('Välj artikel eller bekräfta fritext innan förslaget används.', 'Select an item or confirm free text before applying the proposal.'); return; }
-                if (transcriptNeedsParsing) { status.textContent = voiceMessage('Texten har ändrats. Välj Tolka text först.', 'The text has changed. Select Interpret text first.'); return; }
+                if (articleUncertain) { status.textContent = voiceMessage(invMsg('Välj artikel eller bekräfta fritext innan förslaget används.', 'Choose an item or confirm free text before the suggestion is used.'), 'Select an item or confirm free text before applying the proposal.'); return; }
+                if (transcriptNeedsParsing) { status.textContent = voiceMessage(invMsg('Texten har ändrats. Välj Tolka text först.', 'The text has changed. Choose Interpret text first.'), 'The text has changed. Select Interpret text first.'); return; }
                 if (!name.value.trim() || !unit.value || !Object.prototype.hasOwnProperty.call(invoiceUnitOptions || {}, unit.value) || !/^\d+(?:[.,]\d{1,2})?$/.test(qty.value.trim()) || !/^\d+(?:[.,]\d{1,2})?$/.test(price.value.trim()) || Number(qty.value.replace(',', '.')) > 100000 || Number(price.value.replace(',', '.')) > 10000000) {
                     status.textContent = <?= json_encode(($portalLanguage ?? 'sv') === 'en' ? "Enter a valid description, quantity and price before adding the line." : "Ange giltig beskrivning, antal och pris innan raden läggs till.", JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>; return;
                 }
                 if (!fixedCatalogAvailable) { status.textContent = voiceMessage('Artikelkatalogen är otillgänglig. Inget röstförslag förs in förrän fasta priser kan kontrolleras.', 'The item catalog is unavailable. No voice proposal is applied until fixed prices can be checked.'); return; }
                 var fixed = fixedArticle(name.value);
                 if (fixed && (fixed.ambiguous || unit.value !== fixed.unit || Number(price.value.replace(',', '.')) !== Number(fixed.price))) {
-                    status.textContent = voiceMessage('Artikeln har fast pris. Välj den i katalogen med rätt enhet och pris; det dikterade priset används inte.', 'This item has a fixed price. Select it in the catalog with the correct unit and price; the dictated price is not used.'); return;
+                    status.textContent = voiceMessage(invMsg('Artikeln har fast pris. Välj den i katalogen med rätt enhet och pris; det dikterade priset används inte.', 'The item has a fixed price. Choose it in the catalogue with the right unit and price; the dictated price is not used.'), 'This item has a fixed price. Select it in the catalog with the correct unit and price; the dictated price is not used.'); return;
                 }
                 var fingerprint = JSON.stringify([name.value.trim().toLocaleLowerCase('sv-SE'), Number(qty.value.trim().replace(',', '.')), unit.value, Number(price.value.trim().replace(',', '.'))]);
                 var duplicateRow = Array.prototype.some.call(body.rows, function (candidate) {
                     return JSON.stringify([candidate.querySelector('.invoice-item-name').value.trim().toLocaleLowerCase('sv-SE'), Number(candidate.querySelector('.invoice-item-qty').value.trim().replace(',', '.')), candidate.querySelector('.invoice-item-unit').value, Number(candidate.querySelector('.invoice-item-price').value.trim().replace(',', '.'))]) === fingerprint;
                 });
-                if (isAuto && duplicateRow) { status.textContent = voiceMessage('Möjlig dubblett. Granska förslaget manuellt.', 'Possible duplicate. Review the proposal manually.'); return; }
-                if (fingerprint === lastRowFingerprint && (isAuto || !window.confirm(voiceMessage('Samma förslag har redan lagts till. Vill du lägga till en likadan rad igen?', 'This suggestion was already added. Add an identical line again?')))) { if (isAuto) status.textContent = voiceMessage('Möjlig dubblett. Granska förslaget manuellt.', 'Possible duplicate. Review the proposal manually.'); return; }
+                if (isAuto && duplicateRow) { status.textContent = voiceMessage(invMsg('Möjlig dubblett. Granska förslaget manuellt.', 'Possible duplicate. Review the suggestion manually.'), 'Possible duplicate. Review the proposal manually.'); return; }
+                if (fingerprint === lastRowFingerprint && (isAuto || !window.confirm(voiceMessage(invMsg('Samma förslag har redan lagts till. Vill du lägga till en likadan rad igen?', 'The same suggestion has already been added. Do you want to add an identical row again?'), 'This suggestion was already added. Add an identical line again?')))) { if (isAuto) status.textContent = voiceMessage(invMsg('Möjlig dubblett. Granska förslaget manuellt.', 'Possible duplicate. Review the suggestion manually.'), 'Possible duplicate. Review the proposal manually.'); return; }
                 if (destinationRow && !body.contains(destinationRow)) destinationRow = null;
                 var row = destinationRow;
                 if (!row) row = Array.prototype.find.call(body.rows, function (candidate) {
                     return !candidate.querySelector('.invoice-item-name').value && !candidate.querySelector('.invoice-item-qty').value && !candidate.querySelector('.invoice-item-price').value;
                 }) || null;
                 var created = false;
-                if (row && ((row.querySelector('.invoice-fixed-lock') && row.querySelector('.invoice-fixed-lock').value) || fixedArticle(row.querySelector('.invoice-item-name').value))) { status.textContent = voiceMessage('Fastprisraden kan inte ersättas med röst. Ta bort raden om den inte ska vara kvar.', 'A fixed-price line cannot be replaced by voice. Remove the line if it is no longer needed.'); return; }
+                if (row && ((row.querySelector('.invoice-fixed-lock') && row.querySelector('.invoice-fixed-lock').value) || fixedArticle(row.querySelector('.invoice-item-name').value))) { status.textContent = voiceMessage(invMsg('Fastprisraden kan inte ersättas med röst. Ta bort raden om den inte ska vara kvar.', 'A fixed-price row cannot be replaced by voice. Delete the row if it should not remain.'), 'A fixed-price line cannot be replaced by voice. Remove the line if it is no longer needed.'); return; }
                 if (row && (row.querySelector('.invoice-item-name').value || row.querySelector('.invoice-item-qty').value || row.querySelector('.invoice-item-price').value)) {
-                    if (isAuto || !window.confirm(voiceMessage('Den valda raden innehåller uppgifter. Vill du ersätta dem med det granskade förslaget?', 'The selected row contains data. Replace it with the reviewed proposal?'))) { if (isAuto) status.textContent = voiceMessage('Vald rad innehåller uppgifter. Granska förslaget manuellt.', 'The selected row contains data. Review the proposal manually.'); return; }
+                    if (isAuto || !window.confirm(voiceMessage('Den valda raden innehåller uppgifter. Vill du ersätta dem med det granskade förslaget?', 'The selected row contains data. Replace it with the reviewed proposal?'))) { if (isAuto) status.textContent = voiceMessage(invMsg('Vald rad innehåller uppgifter. Granska förslaget manuellt.', 'The selected row contains entries. Review the suggestion manually.'), 'The selected row contains data. Review the proposal manually.'); return; }
                 }
                 if (!row) { row = addRow('', '', '', unit.value); created = true; }
                 if (!row) { status.textContent = 'Maximalt antal rader har nåtts.'; return; }
@@ -3856,25 +3860,25 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
                 } };
                 row.querySelector('.invoice-item-name').dispatchEvent(new Event('input', { bubbles: true }));
                 recalculate(); activeVoiceRow = row; destinationRow = null; refreshVoiceDestination(); previewPending = false; lastRowFingerprint = fingerprint; status.textContent = <?= json_encode(($portalLanguage ?? 'sv') === 'en' ? "The line was added. Review it before saving." : "Raden är tillagd. Granska den innan du sparar.", JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
-                if (isAuto) status.textContent = voiceMessage('Raden lades till automatiskt. Kontrollera antal, enhet och pris före sparning.', 'The row was added automatically. Check quantity, unit and price before saving.');
-                if (advanceAfterApproval) { advanceAfterApproval = false; nextVoiceRow(); status.textContent = voiceMessage('Raden är tillagd. ', 'The row was added. ') + status.textContent; }
+                if (isAuto) status.textContent = voiceMessage(invMsg('Raden lades till automatiskt. Kontrollera antal, enhet och pris före sparning.', 'The row was added automatically. Check quantity, unit and price before saving.'), 'The row was added automatically. Check quantity, unit and price before saving.');
+                if (advanceAfterApproval) { advanceAfterApproval = false; nextVoiceRow(); status.textContent = voiceMessage(invMsg('Raden är tillagd. ', 'The row was added. '), 'The row was added. ') + status.textContent; }
             } else if (target.value === 'catalog') {
                 var select = document.getElementById('invoice-catalog-article');
-                if (!select) { status.textContent = 'Artikelkatalogen är tom.'; return; }
+                if (!select) { status.textContent = invMsg('Artikelkatalogen är tom.', 'The item catalogue is empty.'); return; }
                 var query = transcript.value.trim().toLocaleLowerCase('sv-SE');
                 var matches = Array.prototype.filter.call(select.options, function (option) { return option.value && query && (option.getAttribute('data-name') || '').toLocaleLowerCase('sv-SE').includes(query); });
-                if (matches.length !== 1) { status.textContent = matches.length ? 'Flera artiklar matchar. Välj artikel i katalogen.' : 'Ingen artikel matchar sökningen.'; return; }
+                if (matches.length !== 1) { status.textContent = matches.length ? invMsg('Flera artiklar matchar. Välj artikel i katalogen.', 'Several items match. Choose an item in the catalogue.') : invMsg('Ingen artikel matchar sökningen.', 'No item matches the search.'); return; }
                 select.value = matches[0].value; select.closest('details').open = true;
-                status.textContent = 'Artikeln är vald i katalogen. Kontrollera priset och välj Lägg till på fakturarad.';
+                status.textContent = invMsg('Artikeln är vald i katalogen. Kontrollera priset och välj Lägg till på fakturarad.', 'The item is selected in the catalogue. Check the price and choose Add to invoice row.');
             } else {
                 var field = document.getElementById(target.value === 'customer' ? 'invoice-customer' : 'invoice-reference');
-                if (!transcript.value.trim()) { status.textContent = 'Ange text innan den används.'; return; }
+                if (!transcript.value.trim()) { status.textContent = invMsg('Ange text innan den används.', 'Enter text before it is used.'); return; }
                 var previousValue = field.value;
                 field.value = transcript.value.trim().slice(0, field.maxLength);
                 var appliedValue = field.value;
                 lastApplied = { undo: function () { if (field.value !== appliedValue) return false; field.value = previousValue; field.dispatchEvent(new Event('input', { bubbles: true })); return true; } };
                 field.dispatchEvent(new Event('input', { bubbles: true }));
-                status.textContent = 'Fältet har uppdaterats. Kontrollera uppgiften.';
+                status.textContent = invMsg('Fältet har uppdaterats. Kontrollera uppgiften.', 'The field was updated. Check the entry.');
             }
         }
         document.getElementById('voice-apply').addEventListener('click', function () { applyVoiceSuggestion(false); });
@@ -3884,7 +3888,7 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
             speechGeneration++;
             if (window.speechSynthesis) window.speechSynthesis.cancel();
             if (readStop) readStop.hidden = true;
-            if (showMessage) status.textContent = voiceMessage('Uppläsningen stoppades.', 'Reading stopped.');
+            if (showMessage) status.textContent = voiceMessage(invMsg('Uppläsningen stoppades.', 'The read-out was stopped.'), 'Reading stopped.');
         }
         if (readStop) readStop.addEventListener('click', function () { stopReading(true); });
         window.addEventListener('pagehide', function () { stopReading(false); });
@@ -3895,39 +3899,39 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
             var generation = speechGeneration;
             function value(id) { var field=document.getElementById(id); return field ? (typeof field.value === 'string' ? field.value.trim() : field.textContent.trim()) : ''; }
             var pieces = [
-                'Fakturaunderlag. Datum: ' + (value('invoice-date') || 'saknas') + '.',
-                'Kund: ' + (value('invoice-customer') || 'saknas') + '.',
-                'Referens: ' + (value('invoice-reference') || 'saknas') + '.',
-                'Uppdrag: ' + (value('invoice-description') || 'saknas') + '.',
-                'Fortnox fakturanummer: ' + (value('invoice-fortnox-number') || 'saknas') + '.',
-                'Fakturadatum i Fortnox: ' + (value('invoice-fortnox-date') || 'saknas') + '.',
-                'Priserna är ' + (value('invoice-vat-mode') === 'inc' ? 'inklusive' : 'exklusive') + ' moms.'
+                invMsg('Fakturaunderlag. Datum: ', 'Invoice record. Date: ') + (value('invoice-date') || invMsg('saknas', 'missing')) + '.',
+                invMsg('Kund: ', 'Customer: ') + (value('invoice-customer') || invMsg('saknas', 'missing')) + '.',
+                invMsg('Referens: ', 'Reference: ') + (value('invoice-reference') || invMsg('saknas', 'missing')) + '.',
+                invMsg('Uppdrag: ', 'Assignment: ') + (value('invoice-description') || invMsg('saknas', 'missing')) + '.',
+                invMsg('Fortnox fakturanummer: ', 'Fortnox invoice number: ') + (value('invoice-fortnox-number') || invMsg('saknas', 'missing')) + '.',
+                invMsg('Fakturadatum i Fortnox: ', 'Invoice date in Fortnox: ') + (value('invoice-fortnox-date') || invMsg('saknas', 'missing')) + '.',
+                invMsg('Priserna är ', 'The prices are ') + (value('invoice-vat-mode') === 'inc' ? invMsg('inklusive', 'including') : invMsg('exklusive', 'excluding')) + invMsg(' moms.', ' VAT.')
             ];
             var count = 0, sum = 0, validSum = true;
             Array.prototype.forEach.call(body.rows, function (row, index) {
                 var itemName = row.querySelector('.invoice-item-name'), itemQty = row.querySelector('.invoice-item-qty'), itemUnit = row.querySelector('.invoice-item-unit'), itemPrice = row.querySelector('.invoice-item-price');
                 if (!itemName || !itemQty || !itemUnit || !itemPrice || (!itemName.value && !itemQty.value && !itemPrice.value)) return;
                 count++;
-                var itemUnitText = itemUnit.selectedIndex >= 0 ? itemUnit.options[itemUnit.selectedIndex].textContent : 'saknas';
-                pieces.push('Rad ' + (index + 1) + ': ' + (itemName.value || 'beskrivning saknas') + ', antal ' + (itemQty.value || 'saknas') + ', enhet ' + itemUnitText + ', pris per enhet ' + (itemPrice.value || 'saknas') + ' kronor.');
+                var itemUnitText = itemUnit.selectedIndex >= 0 ? itemUnit.options[itemUnit.selectedIndex].textContent : invMsg('saknas', 'missing');
+                pieces.push(invMsg('Rad ', 'Row ') + (index + 1) + ': ' + (itemName.value || invMsg('beskrivning saknas', 'description missing')) + invMsg(', antal ', ', quantity ') + (itemQty.value || invMsg('saknas', 'missing')) + invMsg(', enhet ', ', unit ') + itemUnitText + invMsg(', pris per enhet ', ', price per unit ') + (itemPrice.value || invMsg('saknas', 'missing')) + ' kronor.');
                 if (itemQty.value === '' || itemPrice.value === '' || !Number.isFinite(Number(itemQty.value)) || !Number.isFinite(Number(itemPrice.value))) validSum = false;
                 else sum += roundCurrency(Number(itemQty.value) * Number(itemPrice.value));
             });
             if (previewPending) pieces.push('Det aktuella röstförslaget är inte infört och ingår inte i uppläsningen.');
-            pieces.push(count ? (validSum ? 'Summa av inmatade rader: ' + sum.toFixed(2) + ' kronor. Kontrollera alltid underlaget före sparning.' : 'Summan kan inte läsas upp eftersom en rad saknar antal eller pris.') : 'Inga rader är ifyllda.');
+            pieces.push(count ? (validSum ? 'Summa av inmatade rader: ' + sum.toFixed(2) + invMsg(' kronor. Kontrollera alltid underlaget före sparning.', ' kronor. Always check the record before saving.') : invMsg('Summan kan inte läsas upp eftersom en rad saknar antal eller pris.', 'The sum cannot be read aloud because a row lacks quantity or price.')) : 'Inga rader är ifyllda.');
             // Chunk long assignment texts without dropping characters. Browsers
             // often fail silently on one very long utterance.
             var chunks = [];
             pieces.forEach(function (piece) { var chars=Array.from(piece); while (chars.length) chunks.push(chars.splice(0, 220).join('')); });
             if (readStop) readStop.hidden = false;
-            status.textContent = voiceMessage('Läser upp underlaget. Kontrollera även de synliga uppgifterna.', 'Reading the record. Also check the visible details.');
+            status.textContent = voiceMessage(invMsg('Läser upp underlaget. Kontrollera även de synliga uppgifterna.', 'Reading the record aloud. Also check the visible entries.'), 'Reading the record. Also check the visible details.');
             var index = 0;
             function speakNext() {
                 if (generation !== speechGeneration) return;
-                if (index >= chunks.length) { if (readStop) readStop.hidden = true; status.textContent = voiceMessage('Uppläsningen är klar.', 'Reading complete.'); return; }
+                if (index >= chunks.length) { if (readStop) readStop.hidden = true; status.textContent = voiceMessage(invMsg('Uppläsningen är klar.', 'The read-out is complete.'), 'Reading complete.'); return; }
                 var utterance = new window.SpeechSynthesisUtterance(chunks[index++]); utterance.lang = 'sv-SE';
                 utterance.onend = speakNext;
-                utterance.onerror = function () { if (generation === speechGeneration) { if (readStop) readStop.hidden = true; status.textContent = voiceMessage('Uppläsningen avbröts. Kontrollera underlaget visuellt.', 'Reading was interrupted. Check the record visually.'); } };
+                utterance.onerror = function () { if (generation === speechGeneration) { if (readStop) readStop.hidden = true; status.textContent = voiceMessage(invMsg('Uppläsningen avbröts. Kontrollera underlaget visuellt.', 'The read-out was cancelled. Check the record visually.'), 'Reading was interrupted. Check the record visually.'); } };
                 try { window.speechSynthesis.speak(utterance); } catch (error) { utterance.onerror(); }
             }
             speakNext();
@@ -3946,7 +3950,7 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
         var match = priorPrices.find(function (item) { return item.name.trim().toLocaleLowerCase('sv-SE') === name && item.unit === unitField.value && item.vat === vatMode.value; });
         if (!name || !match) { hint.textContent = ''; return; }
         var entered = priceField.value === '' ? null : Number(priceField.value);
-        hint.textContent = 'Tidigare sparat pris: ' + money(Number(match.price)) + ' / ' + match.unit + (match.date ? ' (underlagsdatum ' + match.date + ')' : '') + (entered !== null && Math.abs(entered - Number(match.price)) > 0.005 ? ' · Avviker från angivet pris.' : '') + ' Samma momsläge; kontrollera villkoren.';
+        hint.textContent = invMsg('Tidigare sparat pris: ', 'Previously saved price: ') + money(Number(match.price)) + ' / ' + match.unit + (match.date ? ' (underlagsdatum ' + match.date + ')' : '') + (entered !== null && Math.abs(entered - Number(match.price)) > 0.005 ? ' · Avviker från angivet pris.' : '') + invMsg(' Samma momsläge; kontrollera villkoren.', ' Same VAT mode; check the terms.');
     }
     function refreshPriceHistory() { Array.prototype.forEach.call(body.rows, updatePriceHistory); }
     body.addEventListener('input', function (event) { var row = event.target.closest('tr'); if (row) updatePriceHistory(row); });
@@ -3995,7 +3999,7 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
             var option = document.createElement('option');
             option.value = String(index);
             var formattedPrice = formatter ? formatter.format(Number(article.price)) : article.price.replace('.', ',');
-            option.textContent = 'Rad ' + (index + 1) + ': ' + article.name + ' · ' + (invoiceUnitOptions[article.unit] || article.unit) + ' · ' + formattedPrice + ' kr per enhet';
+            option.textContent = invMsg('Rad ', 'Row ') + (index + 1) + ': ' + article.name + ' · ' + (invoiceUnitOptions[article.unit] || article.unit) + ' · ' + formattedPrice + ' kr per enhet';
             catalogSourceRowSelect.appendChild(option);
             if (row === previousRow) selectedOptionValue = option.value;
         });
@@ -4025,14 +4029,14 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
             var sourceRow = selectedCatalogSourceRow;
             var article = sourceRow && sourceRow.parentNode === body ? readCatalogSourceArticle(sourceRow) : null;
             if (!article) {
-                if (catalogSaveStatus) catalogSaveStatus.textContent = 'Välj en rad med beskrivning och giltigt pris först.';
+                if (catalogSaveStatus) catalogSaveStatus.textContent = invMsg('Välj en rad med beskrivning och giltigt pris först.', 'Choose a row with a description and a valid price first.');
                 updateCatalogSourceRows();
                 catalogSourceRowSelect.focus();
                 return;
             }
             var csrfInput = form.querySelector('input[name="csrf_token"]');
             if (!csrfInput || !csrfInput.value) {
-                if (catalogSaveStatus) catalogSaveStatus.textContent = 'Säkerhetskontrollen saknas. Ladda om sidan och försök igen.';
+                if (catalogSaveStatus) catalogSaveStatus.textContent = invMsg('Säkerhetskontrollen saknas. Ladda om sidan och försök igen.', 'The security check is missing. Reload the page and try again.');
                 return;
             }
 
@@ -4064,16 +4068,16 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
                 if (catalogSaveStatus) catalogSaveStatus.textContent = 'Artikeln sparades. Den visas i artikelkatalogen efter omladdning eller när ett nytt underlag öppnas.';
             }).catch(function (error) {
                 var messages = {
-                    invalid_name: 'Artikelns beskrivning kan inte sparas. Kontrollera texten och försök igen.',
-                    invalid_unit: 'Enheten är ogiltig. Välj en av de förvalda enheterna.',
-                    invalid_price: 'Priset är ogiltigt. Ange ett belopp mellan 0 och 10 000 000 kr.',
-                    catalog_full: 'Artikelkatalogen har nått sin gräns på 500 artiklar.',
-                    storage_error: 'Artikelkatalogen kunde inte sparas. Försök igen senare.',
-                    admin_required: 'Endast administratörer kan spara en ny artikel från formuläret.',
+                    invalid_name: invMsg('Artikelns beskrivning kan inte sparas. Kontrollera texten och försök igen.', 'The item description cannot be saved. Check the text and try again.'),
+                    invalid_unit: invMsg('Enheten är ogiltig. Välj en av de förvalda enheterna.', 'The unit is invalid. Choose one of the preset units.'),
+                    invalid_price: invMsg('Priset är ogiltigt. Ange ett belopp mellan 0 och 10 000 000 kr.', 'The price is invalid. Enter an amount between 0 and 10,000,000 kronor.'),
+                    catalog_full: invMsg('Artikelkatalogen har nått sin gräns på 500 artiklar.', 'The item catalogue has reached its limit of 500 items.'),
+                    storage_error: invMsg('Artikelkatalogen kunde inte sparas. Försök igen senare.', 'The item catalogue could not be saved. Try again later.'),
+                    admin_required: invMsg('Endast administratörer kan spara en ny artikel från formuläret.', 'Only administrators can save a new item from the form.'),
                     login_required: 'Inloggningen har gått ut. Logga in igen och försök.',
-                    invalid_tab: 'Artikelkatalogen kunde inte nås från den här appvyn.'
+                    invalid_tab: invMsg('Artikelkatalogen kunde inte nås från den här appvyn.', 'The item catalogue could not be reached from this app view.')
                 };
-                if (catalogSaveStatus) catalogSaveStatus.textContent = messages[error && error.message] || 'Artikeln kunde inte sparas. Kontrollera anslutningen och försök igen.';
+                if (catalogSaveStatus) catalogSaveStatus.textContent = messages[error && error.message] || invMsg('Artikeln kunde inte sparas. Kontrollera anslutningen och försök igen.', 'The item could not be saved. Check the connection and try again.');
             }).finally(function () {
                 catalogSavePending = false;
                 updateCatalogSourceRows();
@@ -4089,7 +4093,7 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
             var price = option ? Number(option.getAttribute('data-price')) : NaN;
             if (!Object.prototype.hasOwnProperty.call(invoiceUnitOptions || {}, unit)) unit = 'st';
             if (!name || !Number.isFinite(price) || price < 0) {
-                catalogArticleStatus.textContent = 'Välj en artikel först.';
+                catalogArticleStatus.textContent = invMsg('Välj en artikel först.', 'Choose an item first.');
                 catalogArticleSelect.focus();
                 return;
             }
@@ -4120,7 +4124,7 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
             }
             if (!targetRow) return;
             updateFixedRow(targetRow, false);
-            catalogArticleStatus.textContent = 'Artikeln lades till med enhet ' + invoiceUnitOptions[unit] + ' och antal 1. Ändra vid behov.';
+            catalogArticleStatus.textContent = invMsg('Artikeln lades till med enhet ', 'The item was added with unit ') + invoiceUnitOptions[unit] + invMsg(' och antal 1. Ändra vid behov.', ' and quantity 1. Adjust it if needed.');
             catalogArticleSelect.value = '';
             targetRow.querySelector('.invoice-item-qty').focus();
             scheduleAutosave();
@@ -4185,7 +4189,7 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
             if (!customerOption || !customerOption.value) {
                 var promptOption = document.createElement('option');
                 promptOption.value = '';
-                promptOption.textContent = 'Välj kund först';
+                promptOption.textContent = invMsg('Välj kund först', 'Choose a customer first');
                 customerReferenceSelect.appendChild(promptOption);
                 customerReferenceSelect.disabled = true;
                 return;
@@ -4364,6 +4368,8 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
 <script>
 (function () {
     'use strict';
+    var invLang = <?= json_encode(($portalLanguage ?? 'sv') === 'en' ? 'en' : 'sv') ?>;
+    function invMsg(sv, en) { return invLang === 'en' ? en : sv; }
     function normalize(value) {
         return String(value || '').toLocaleLowerCase('sv-SE').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
     }

@@ -173,9 +173,9 @@ $rowCount = max(8, count($items));
  .pro-table tbody tr{display:grid;grid-template-columns:minmax(0,1fr) minmax(82px,.46fr);gap:9px 11px;padding:12px;border:1px solid #dce7e4;border-radius:13px;background:#fff;box-shadow:0 5px 15px rgba(18,54,58,.045)}
  .pro-table td{display:block;min-width:0;padding:0;border:0}
  .pro-table td[data-label]::before{display:block;margin:0 0 5px;color:#5f7377;content:attr(data-label);font-size:.65rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase}
- .pro-table td[data-label="Artikel / arbetsmoment"]{grid-column:1/-1}
- .pro-table td[data-label="Antal"]{grid-column:1}
- .pro-table td[data-label="Teknisk specifikation"]{grid-column:1/-1}
+ .pro-table td[data-label="Artikel / arbetsmoment"], .pro-table td[data-label="Article / work item"]{grid-column:1/-1}
+ .pro-table td[data-label="Antal"], .pro-table td[data-label="Quantity"]{grid-column:1}
+ .pro-table td[data-label="Teknisk specifikation"], .pro-table td[data-label="Technical specification"]{grid-column:1/-1}
  .pro-table input{min-height:46px;padding:8px;border:1px solid #dce7e4;border-radius:8px;font-size:16px}
  .pro-catalog-tools{grid-template-columns:1fr}
  .pro-catalog-tools .btn{width:100%;white-space:normal}
@@ -190,13 +190,13 @@ $rowCount = max(8, count($items));
 }
 </style>
 <?php if ($isSavedProtocolView && $isEditingProtocol && $editId === $requestedViewId): ?>
-<section class="pro-wrap pro-saved-view" aria-label="Sparat serviceprotokoll">
+<section class="pro-wrap pro-saved-view" aria-label="(($portalLanguage ?? 'sv') === 'en' ? 'Saved service report' : 'Sparat serviceprotokoll')">
     <div class="invoice-session-bar"><div class="invoice-session-person"><strong><?= h($protocolAuthUser['name'] ?? $protocolAuthUser['username'] ?? 'Inloggad') ?></strong><span class="invoice-session-role"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Service report account' : 'Protokollkonto' ?></span></div><form class="invoice-session-form" method="post" action="?tab=protocol"><input type="hidden" name="action" value="protocol_pin_logout"><?= csrf_field() ?><button class="btn btn-outline" type="submit"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Sign out of service reports' : 'Logga ut från protokoll' ?></button></form></div>
     <nav class="pro-subnav" aria-label="Serviceprotokollflikar"><a href="?tab=protocol"><?= ($portalLanguage ?? 'sv') === 'en' ? 'New report' : 'Nytt protokoll' ?></a><a href="?tab=protocol&amp;protocol_view=records" aria-current="page">Sparade protokoll (<?= count($savedProtocols) ?>)</a></nav>
     <?php $viewEmailStatus = is_array($editProtocol['internal_email_status'] ?? null) ? $editProtocol['internal_email_status'] : []; ?>
     <?php if ($viewEmailStatus): ?>
         <div class="pro-view-email" role="status">
-            <?php if (($viewEmailStatus['result'] ?? '') === 'accepted'): ?>PDF-mejlet accepterades av e-posttransporten till portalens primära interna mottagare (<?= h($viewEmailStatus['attempts'] ?? 1) ?> försök). Det bekräftar inte leverans till inkorgen. Ingen kundkopia skickades.
+            <?php if (($viewEmailStatus['result'] ?? '') === 'accepted'): ?>(($portalLanguage ?? 'sv') === 'en' ? 'The PDF email was accepted by the transport to the portal’s primary internal recipient (' : 'PDF-mejlet accepterades av e-posttransporten till portalens primära interna mottagare (')<?= h($viewEmailStatus['attempts'] ?? 1) ?> (($portalLanguage ?? 'sv') === 'en' ? 'attempt(s). This does not confirm delivery to the inbox. No customer copy was sent.' : 'försök). Det bekräftar inte leverans till inkorgen. Ingen kundkopia skickades.')
             <?php elseif (($viewEmailStatus['result'] ?? '') === 'pending'): ?>Status för PDF-mejlet kunde inte bekräftas. Kontrollera den interna inkorgen innan du försöker igen; protokollet är sparat. Ingen kundkopia skickades.
             <?php elseif (($viewEmailStatus['result'] ?? '') === 'not_configured'): ?>Ingen giltig primär intern mottagare är konfigurerad; PDF-mejl har inte skickats. Ingen kundkopia skickades.
             <?php else: ?>PDF-mejlet kunde inte accepteras av e-posttransporten. Protokollet är sparat och finns kvar i Historik. Ingen kundkopia skickades.
@@ -246,7 +246,7 @@ $rowCount = max(8, count($items));
     <div class="pro-toolbar"><div><p><?= ($portalLanguage ?? 'sv') === 'en' ? 'Record the vehicle, work performed and materials.' : 'Registrera fordon, utfört arbete och material.' ?></p></div><a class="btn btn-outline" href="?tab=protocol&amp;protocol_view=records"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Saved reports' : 'Sparade protokoll' ?></a></div>
     <div class="pro-paper">
         <div class="pro-paper-head"><div class="pro-title-group"><div><h2><?= ($portalLanguage ?? 'sv') === 'en' ? 'SERVICE REPORT' : 'SERVICEPROTOKOLL' ?></h2><p class="pro-kicker"><?= h($portalCompanyName ?? 'Dokumentportalen') ?></p></div></div><div class="pro-number"><small><?= ($portalLanguage ?? 'sv') === 'en' ? 'REPORT NO' : 'PROTOKOLL NR' ?></small><strong><?= h($protocolNumber) ?></strong></div></div>
-        <?php if ($protocolCopySourceNumber !== ''): ?><div class="pro-copy-notice" role="status">Kopia från protokoll <?= h($protocolCopySourceNumber) ?>. Dagens datum och nytt protokollnummer används. Foto och tidigare signatur följer inte med; teknikern signerar den nya posten.</div><?php endif; ?>
+        <?php if ($protocolCopySourceNumber !== ''): ?><div class="pro-copy-notice" role="status">(($portalLanguage ?? 'sv') === 'en' ? 'Copy from report' : 'Kopia från protokoll') <?= h($protocolCopySourceNumber) ?>. (($portalLanguage ?? 'sv') === 'en' ? 'Today’s date and a new report number are used. The photo and previous signature are not carried over; the technician signs the new record.' : 'Dagens datum och nytt protokollnummer används. Foto och tidigare signatur följer inte med; teknikern signerar den nya posten.')</div><?php endif; ?>
         <form method="post" action="?tab=protocol" id="protocol-form" autocomplete="on" enctype="multipart/form-data">
             <input type="hidden" name="action" value="save_protocol"><input type="hidden" name="p[id]" value="<?= h($editProtocol['id'] ?? '') ?>"><input type="hidden" name="draft_id" value="<?= h($protocolDraftId) ?>"><?= csrf_field() ?>
             <section class="pro-section" data-protocol-step="1"><div class="pro-section-title" id="protocol-step-1-title" tabindex="-1"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Customer and vehicle' : 'Kund och fordon' ?></div><div class="pro-grid">
@@ -271,23 +271,23 @@ $rowCount = max(8, count($items));
             <section class="pro-section" data-protocol-step="2">
                 <div class="pro-section-title"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Materials and details' : 'Material och detaljer' ?></div>
                 <p class="pro-row-help" id="protocol-material-help" style="margin:10px 13px 0">Artikel / arbetsmoment beskriver vad som användes eller utfördes; antal dokumenterar mängd eller arbetstid; teknisk specifikation hjälper att skilja delar och varianter åt. I en rad: tryck Enter för att gå vidare; från sista fältet fortsätter du till nästa rad.</p>
-                <div class="pro-table-wrap" role="region" aria-label="Material- och arbetsrader. Tabbning går mellan fälten." tabindex="0">
+                <div class="pro-table-wrap" role="region" aria-label="(($portalLanguage ?? 'sv') === 'en' ? 'Material and work rows. Tab moves between fields.' : 'Material- och arbetsrader. Tabbning går mellan fälten.')" tabindex="0">
                     <table class="pro-table" id="p-table" aria-describedby="protocol-material-help">
                         <caption class="pro-visually-hidden"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Materials and work in the service report' : 'Material och arbetsmoment i serviceprotokollet' ?></caption>
                         <thead><tr><th scope="col"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Item / work' : 'Artikel / arbetsmoment' ?></th><th scope="col" style="width:120px"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Quantity' : 'Antal' ?></th><th scope="col"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Technical specification' : 'Teknisk specifikation' ?></th></tr></thead>
                         <tbody>
                             <?php for ($rowIndex = 0; $rowIndex < $rowCount; $rowIndex++): $item = is_array($items[$rowIndex] ?? null) ? $items[$rowIndex] : []; ?>
                                 <tr>
-                                    <td data-label="Artikel / arbetsmoment"><input class="p-name" name="items[<?= $rowIndex ?>][art]" maxlength="200" value="<?= h($item['art'] ?? '') ?>" placeholder="Artikel / arbete" aria-label="Artikel eller arbetsmoment, rad <?= $rowIndex + 1 ?>" aria-describedby="protocol-material-help"></td>
-                                    <td data-label="Antal"><input class="p-qty" name="items[<?= $rowIndex ?>][qty]" type="number" min="0" step="0.1" value="<?= h($item['qty'] ?? '') ?>" aria-label="Antal, rad <?= $rowIndex + 1 ?>" aria-describedby="protocol-material-help"></td>
-                                    <td data-label="Teknisk specifikation"><input name="items[<?= $rowIndex ?>][spec]" maxlength="300" value="<?= h($item['spec'] ?? '') ?>" placeholder="Exempel: 5W-30 / märke" aria-label="Teknisk specifikation, rad <?= $rowIndex + 1 ?>" aria-describedby="protocol-material-help"></td>
+                                    <td data-label="(($portalLanguage ?? 'sv') === 'en' ? 'Article / work item' : 'Artikel / arbetsmoment')"><input class="p-name" name="items[<?= $rowIndex ?>][art]" maxlength="200" value="<?= h($item['art'] ?? '') ?>" placeholder="(($portalLanguage ?? 'sv') === 'en' ? 'Article / work' : 'Artikel / arbete')" aria-label="(($portalLanguage ?? 'sv') === 'en' ? 'Article or work item, row ' : 'Artikel eller arbetsmoment, rad ')<?= $rowIndex + 1 ?>" aria-describedby="protocol-material-help"></td>
+                                    <td data-label="(($portalLanguage ?? 'sv') === 'en' ? 'Quantity' : 'Antal')"><input class="p-qty" name="items[<?= $rowIndex ?>][qty]" type="number" min="0" step="0.1" value="<?= h($item['qty'] ?? '') ?>" aria-label="(($portalLanguage ?? 'sv') === 'en' ? 'Quantity, row ' : 'Antal, rad ')<?= $rowIndex + 1 ?>" aria-describedby="protocol-material-help"></td>
+                                    <td data-label="(($portalLanguage ?? 'sv') === 'en' ? 'Technical specification' : 'Teknisk specifikation')"><input name="items[<?= $rowIndex ?>][spec]" maxlength="300" value="<?= h($item['spec'] ?? '') ?>" placeholder="(($portalLanguage ?? 'sv') === 'en' ? 'Example: 5W-30 / brand' : 'Exempel: 5W-30 / märke')" aria-label="(($portalLanguage ?? 'sv') === 'en' ? 'Technical specification, row ' : 'Teknisk specifikation, rad ')<?= $rowIndex + 1 ?>" aria-describedby="protocol-material-help"></td>
                                 </tr>
                             <?php endfor; ?>
                         </tbody>
                     </table>
                 </div>
                 <div class="pro-noprint" style="border:0;background:none;padding:0;margin:8px 13px 0"><button class="btn btn-outline pro-add-row" type="button" id="p-new-row"><?= ($portalLanguage ?? 'sv') === 'en' ? '+ Add empty line' : '+ Lägg till tom rad' ?></button><p class="pro-field-help" id="p-row-status" role="status" aria-live="polite"></p></div>
-                <div class="pro-noprint pro-catalog-panel" data-protocol-step="2" aria-label="Återanvändbara artiklar för serviceprotokoll">
+                <div class="pro-noprint pro-catalog-panel" data-protocol-step="2" aria-label="(($portalLanguage ?? 'sv') === 'en' ? 'Reusable items for service reports' : 'Återanvändbara artiklar för serviceprotokoll')">
                     <p><?= ($portalLanguage ?? 'sv') === 'en' ? 'The service report item catalog is separate from the invoice catalog. Staff can select a saved item and insert it into the next empty line.' : 'Serviceprotokollets artikelkatalog är separat från fakturakatalogen. Medarbetare kan välja en sparad artikel och lägga in den i nästa tomma rad.' ?></p>
                     <?php if (!$protocolCatalogStorageReady): ?>
                         <p role="status"><?= ($portalLanguage ?? 'sv') === 'en' ? 'The private service report catalog could not be read. Continue by entering the line manually.' : 'Den privata serviceprotokollkatalogen kunde inte läsas. Fortsätt genom att skriva raden manuellt.' ?></p>
@@ -297,7 +297,7 @@ $rowCount = max(8, count($items));
                             <button class="btn btn-outline" type="button" id="p-catalog-import" <?= !$protocolCatalogArticles ? 'disabled' : '' ?>><?= ($portalLanguage ?? 'sv') === 'en' ? 'Import into next empty line' : 'Importera till nästa tomma rad' ?></button>
                         </div>
                         <p class="pro-catalog-status" id="p-catalog-import-status" role="status" aria-live="polite"></p>
-                        <?php if (!$protocolCatalogArticles): ?><p id="p-catalog-empty">Katalogen är tom ännu. En serviceprotokolladmin kan spara en ifylld rad här.</p><?php endif; ?>
+                        <?php if (!$protocolCatalogArticles): ?><p id="p-catalog-empty">(($portalLanguage ?? 'sv') === 'en' ? 'The catalogue is still empty. A service report admin can save a filled row here.' : 'Katalogen är tom ännu. En serviceprotokolladmin kan spara en ifylld rad här.')</p><?php endif; ?>
                         <?php if ($protocolIsAdmin): ?>
                             <div class="pro-catalog-tools">
                                 <div><label for="p-catalog-source-row"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Save a completed line to the catalog' : 'Spara en ifylld rad i katalogen' ?></label><select id="p-catalog-source-row"><option value=""><?= ($portalLanguage ?? 'sv') === 'en' ? 'Select material or work line…' : 'Välj material- eller arbetsrad…' ?></option></select></div>
@@ -332,34 +332,34 @@ $rowCount = max(8, count($items));
                 <div class="pro-section-title" id="protocol-media-title"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Photo and signature' : 'Foto och signatur' ?></div>
                 <div class="pro-photo-preview">
                     <img id="protocol-meter-photo-preview" alt="<?= ($portalLanguage ?? 'sv') === 'en' ? 'Odometer photo' : 'Foto av mätarställningen' ?>" <?= $protocolMeterPhotoFile !== '' ? 'src="?tab=protocol&amp;view_file=' . h(rawurlencode($protocolMeterPhotoFile)) . '"' : 'hidden' ?> data-existing-src="<?= $protocolMeterPhotoFile !== '' ? h('?tab=protocol&view_file=' . rawurlencode($protocolMeterPhotoFile)) : '' ?>">
-                    <p id="protocol-meter-photo-review-status"><?= $protocolMeterPhotoFile !== '' ? 'Fotot bifogas det sparade serviceprotokollet.' : 'Inget foto valt.' ?></p>
+                    <p id="protocol-meter-photo-review-status"><?= $protocolMeterPhotoFile !== '' ? (($portalLanguage ?? 'sv') === 'en' ? 'The photo is attached to the saved service report.' : 'Fotot bifogas det sparade serviceprotokollet.') : (($portalLanguage ?? 'sv') === 'en' ? 'No photo selected.' : 'Inget foto valt.') ?></p>
                 </div>
                 <div class="pro-signature-capture pro-noprint">
                     <label for="protocol-signature-canvas"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Technician\'s handwritten signature' : 'Teknikerns handritade signatur' ?> <span class="pro-kicker">(obligatorisk)</span></label>
                     <p class="pro-photo-status" id="protocol-signature-help">Signaturen visar vem som har utfört och godkänt protokollet. Skriv i ett lugnt, sammanhängande drag med finger, penna eller mus. Ritytan jämnar ut små ryck och ger strecket naturlig avsmalning och lätt breddvariation. Signaturen följer med utskriften och sparas först när protokollet sparas, inte i utkastet.</p>
-                    <canvas id="protocol-signature-canvas" class="pro-signature-canvas" width="1000" height="220" tabindex="0" role="img" aria-label="Rityta för teknikerns signatur" aria-describedby="protocol-signature-help"></canvas>
+                    <canvas id="protocol-signature-canvas" class="pro-signature-canvas" width="1000" height="220" tabindex="0" role="img" aria-label="(($portalLanguage ?? 'sv') === 'en' ? 'Drawing area for the technician’s signature' : 'Rityta för teknikerns signatur')" aria-describedby="protocol-signature-help"></canvas>
                     <input type="hidden" id="protocol-signature-data" name="p[signature_png]" value="" data-existing-signature="<?= $protocolSignatureFile !== '' ? '1' : '0' ?>" data-require-fresh-signature="<?= $protocolSignatureFreshRequired ? '1' : '0' ?>">
                     <input type="hidden" id="protocol-signature-remove" name="p[signature_remove]" value="0">
                     <div class="pro-signature-actions">
-                        <p class="pro-signature-status" id="protocol-signature-status" role="status" aria-live="polite"><?= $protocolSignatureFreshRequired ? 'Utkastet ändrar sparat innehåll. En ny signatur krävs innan ändringarna kan sparas.' : ($protocolSignatureFile !== '' ? 'En sparad signatur finns. Rita en ny för att ersätta den.' : 'Rita signaturen innan du sparar.') ?></p>
+                        <p class="pro-signature-status" id="protocol-signature-status" role="status" aria-live="polite"><?= $protocolSignatureFreshRequired ? (($portalLanguage ?? 'sv') === 'en' ? 'The draft changes saved content. A new signature is required before the changes can be saved.' : 'Utkastet ändrar sparat innehåll. En ny signatur krävs innan ändringarna kan sparas.') : ($protocolSignatureFile !== '' ? (($portalLanguage ?? 'sv') === 'en' ? 'A saved signature exists. Draw a new one to replace it.' : 'En sparad signatur finns. Rita en ny för att ersätta den.') : (($portalLanguage ?? 'sv') === 'en' ? 'Draw the signature before you save.' : 'Rita signaturen innan du sparar.')) ?></p>
                         <button class="btn btn-outline" type="button" id="protocol-signature-clear"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Clear' : 'Rensa' ?></button>
                     </div>
                     <p class="pro-signature-error" id="protocol-signature-error" role="alert" hidden><?= ($portalLanguage ?? 'sv') === 'en' ? 'Draw the technician\'s signature before saving the report.' : 'Rita teknikerns signatur innan du sparar protokollet.' ?></p>
                 </div>
             </section>
             <div class="pro-sign" data-protocol-step="3"><div><small><?= ($portalLanguage ?? 'sv') === 'en' ? 'Place & date' : 'Ort & datum' ?></small><div style="font-weight:700;margin-top:5px"><?= h(date('Y-m-d')) ?></div></div><div class="pro-signature-block"><small><?= ($portalLanguage ?? 'sv') === 'en' ? 'Technician signature' : 'Signatur tekniker' ?></small><img id="protocol-signature-preview" class="pro-signature-image" alt="<?= ($portalLanguage ?? 'sv') === 'en' ? 'Technician\'s handwritten signature' : 'Teknikerns handritade signatur' ?>" <?= $protocolSignatureFile !== '' ? 'src="?tab=protocol&amp;view_file=' . h(rawurlencode($protocolSignatureFile)) . '"' : 'hidden' ?> data-existing-src="<?= $protocolSignatureFile !== '' ? h('?tab=protocol&view_file=' . rawurlencode($protocolSignatureFile)) : '' ?>"><span class="pro-signature-placeholder" id="protocol-signature-placeholder" <?= $protocolSignatureFile !== '' ? 'hidden' : '' ?>><?= ($portalLanguage ?? 'sv') === 'en' ? 'Draw signature above' : 'Rita signaturen ovan' ?></span></div></div>
-            <div class="pro-actions" data-protocol-step="3"><button class="btn btn-main" type="submit"><?= $isEditingProtocol ? 'Spara ändringar' : 'Spara serviceprotokoll' ?></button><button class="btn btn-outline" type="button" id="protocol-print"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Print A4' : 'Skriv ut A4' ?></button><?php if ($isEditingProtocol): ?><a class="btn btn-outline" href="?tab=protocol"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Cancel' : 'Avbryt' ?></a><?php endif; ?></div>
+            <div class="pro-actions" data-protocol-step="3"><button class="btn btn-main" type="submit"><?= $isEditingProtocol ? (($portalLanguage ?? 'sv') === 'en' ? 'Save changes' : 'Spara ändringar') : (($portalLanguage ?? 'sv') === 'en' ? 'Save service report' : 'Spara serviceprotokoll') ?></button><button class="btn btn-outline" type="button" id="protocol-print"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Print A4' : 'Skriv ut A4' ?></button><?php if ($isEditingProtocol): ?><a class="btn btn-outline" href="?tab=protocol"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Cancel' : 'Avbryt' ?></a><?php endif; ?></div>
             <p class="pro-note" data-protocol-step="3"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Check the details before saving or printing.' : 'Kontrollera uppgifterna innan du sparar eller skriver ut.' ?></p>
             <p class="pro-note pro-noprint" id="protocol-autosave-status" role="status" aria-live="polite"><span id="protocol-autosave-message"><?= ($portalLanguage ?? 'sv') === 'en' ? 'The draft is saved automatically when you start typing.' : 'Utkastet sparas automatiskt när du börjar skriva.' ?></span> <a id="protocol-autosave-resume" href="?tab=protocol&amp;draft_id=<?= h($protocolDraftId) ?>"<?= is_array($protocolDraftData) ? '' : ' hidden' ?>><?= ($portalLanguage ?? 'sv') === 'en' ? 'Open the autosaved draft' : 'Öppna det autosparade utkastet' ?></a></p>
-            <nav class="pro-wizard-nav" id="protocol-wizard-nav" data-mobile-action-dock aria-label="Steg i serviceprotokollet">
+            <nav class="pro-wizard-nav" id="protocol-wizard-nav" data-mobile-action-dock aria-label="(($portalLanguage ?? 'sv') === 'en' ? 'Steps in the service report' : 'Steg i serviceprotokollet')">
                 <div class="pro-progress">
                     <p id="protocol-step-status" aria-live="polite"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Step 1 of 3: Customer and vehicle' : 'Steg 1 av 3: Kund och fordon' ?></p>
-                    <div class="pro-progress-track" id="protocol-step-progress" role="progressbar" aria-label="Fyll i serviceprotokollet" aria-valuemin="1" aria-valuemax="3" aria-valuenow="1"><span></span></div>
+                    <div class="pro-progress-track" id="protocol-step-progress" role="progressbar" aria-label="(($portalLanguage ?? 'sv') === 'en' ? 'Fill in the service report' : 'Fyll i serviceprotokollet')" aria-valuemin="1" aria-valuemax="3" aria-valuenow="1"><span></span></div>
                 </div>
                 <div class="pro-step-buttons">
                     <button class="btn btn-outline" type="button" id="protocol-step-back" hidden><?= ($portalLanguage ?? 'sv') === 'en' ? '← Back' : '← Tillbaka' ?></button>
                     <button class="btn btn-main" type="button" id="protocol-step-next"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Continue to work and materials →' : 'Fortsätt till arbete och material →' ?></button>
-                    <button class="btn btn-main" type="submit" id="protocol-step-save" hidden><?= $isEditingProtocol ? 'Spara ändringar' : 'Spara serviceprotokoll' ?></button>
+                    <button class="btn btn-main" type="submit" id="protocol-step-save" hidden><?= $isEditingProtocol ? (($portalLanguage ?? 'sv') === 'en' ? 'Save changes' : 'Spara ändringar') : (($portalLanguage ?? 'sv') === 'en' ? 'Save service report' : 'Spara serviceprotokoll') ?></button>
                 </div>
             </nav>
         </form>
@@ -368,6 +368,8 @@ $rowCount = max(8, count($items));
 <script>
 (function(){
  'use strict';
+ var proLang = <?= json_encode(($portalLanguage ?? 'sv') === 'en' ? 'en' : 'sv') ?>;
+ function proMsg(sv, en) { return proLang === 'en' ? en : sv; }
  var form=document.getElementById('protocol-form');
  var wrap=document.querySelector('.pro-wrap');
  var table=document.getElementById('p-table');
@@ -444,8 +446,8 @@ $rowCount = max(8, count($items));
    }
   });
  }
- if(!signaturePad&&signatureCanvas&&signatureStatus)signatureStatus.textContent='Digital signering kunde inte starta. Ladda om sidan innan du sparar.';
- if(protocolContentChanged&&signatureStatus)signatureStatus.textContent='Utkastet ändrar sparat innehåll. Rita en ny signatur innan du sparar.';
+ if(!signaturePad&&signatureCanvas&&signatureStatus)signatureStatus.textContent=proMsg('Digital signering kunde inte starta. Ladda om sidan innan du sparar.', 'Digital signing could not start. Reload the page before you save.');
+ if(protocolContentChanged&&signatureStatus)signatureStatus.textContent=proMsg('Utkastet ändrar sparat innehåll. Rita en ny signatur innan du sparar.', 'The draft changes saved content. Draw a new signature before you save.');
 
  function setAutosaveMessage(message){if(autosaveMessage)autosaveMessage.textContent=message;}
  function markProtocolContentChanged(){
@@ -454,7 +456,7 @@ $rowCount = max(8, count($items));
    clearSignature();
   }else if(signatureExisting&&signatureRemove){
    signatureRemove.value='1';
-   if(signatureStatus)signatureStatus.textContent='Protokollets innehåll har ändrats. Rita en ny signatur innan du sparar.';
+   if(signatureStatus)signatureStatus.textContent=proMsg('Protokollets innehåll har ändrats. Rita en ny signatur innan du sparar.', 'The report content has changed. Draw a new signature before you save.');
    updateSignaturePreview();
    signatureIsValid(false);
   }
@@ -494,7 +496,7 @@ $rowCount = max(8, count($items));
   signatureHasInk=false;
   if(signatureData)signatureData.value='';
   if(signatureRemove)signatureRemove.value=signatureExisting?'1':'0';
-  if(signatureStatus)signatureStatus.textContent=signatureExisting?'Ritytan rensad. Rita en ny signatur för att ersätta den sparade.':<?= json_encode(($portalLanguage ?? 'sv') === 'en' ? "Draw the signature before saving the report." : "Rita signaturen innan du sparar protokollet.", JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+  if(signatureStatus)signatureStatus.textContent=signatureExisting?proMsg('Ritytan rensad. Rita en ny signatur för att ersätta den sparade.', 'The drawing area was cleared. Draw a new signature to replace the saved one.'):<?= json_encode(($portalLanguage ?? 'sv') === 'en' ? "Draw the signature before saving the report." : "Rita signaturen innan du sparar protokollet.", JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
   if(signatureError)signatureError.hidden=true;
   updateSignaturePreview();
   signatureIsValid(false);
@@ -506,8 +508,8 @@ $rowCount = max(8, count($items));
    if(existingSrc){photoPreview.src=existingSrc;photoPreview.hidden=false;}else{photoPreview.removeAttribute('src');photoPreview.hidden=true;}
   }
   var hasExisting=!!(photoPreview&&photoPreview.getAttribute('data-existing-src'));
-  if(photoStatus)photoStatus.textContent=hasExisting?'Ett foto finns redan. Välj en ny bild om du vill ersätta det.':'Ingen bild vald. Fotot sparas när du sparar protokollet.';
-  if(photoReviewStatus)photoReviewStatus.textContent=hasExisting?'Fotot bifogas det sparade serviceprotokollet.':'Inget foto valt.';
+  if(photoStatus)photoStatus.textContent=hasExisting?proMsg('Ett foto finns redan. Välj en ny bild om du vill ersätta det.', 'A photo already exists. Choose a new image if you want to replace it.'):'Ingen bild vald. Fotot sparas när du sparar protokollet.';
+  if(photoReviewStatus)photoReviewStatus.textContent=hasExisting?proMsg('Fotot bifogas det sparade serviceprotokollet.', 'The photo is attached to the saved service report.'):proMsg('Inget foto valt.', 'No photo selected.');
  }
  function setPhotoMessage(message){if(photoStatus)photoStatus.textContent=message;if(photoReviewStatus)photoReviewStatus.textContent=message;}
  function setPhotoInputFile(file){
@@ -549,12 +551,12 @@ $rowCount = max(8, count($items));
   }).catch(function(){return file;});
  }
  function validateMeterPhoto(){
-  if(photoOptimizationPending){setPhotoMessage('Vänta tills fotooptimeringen är klar innan du fortsätter.');return false;}
+  if(photoOptimizationPending){setPhotoMessage(proMsg('Vänta tills fotooptimeringen är klar innan du fortsätter.', 'Wait for the photo optimisation to finish before you continue.'));return false;}
   var file=photoInput&&photoInput.files&&photoInput.files[0];
   if(!file)return true;
   var allowedTypes=['image/jpeg','image/png'];
   if(file.size>12582912||(file.type&&allowedTypes.indexOf(file.type)===-1)){
-   var message=file.size>12582912?'Bilden är större än 12 MB efter optimering. Välj en mindre JPEG- eller PNG-bild.':'Välj en JPEG- eller PNG-bild som kan bifogas protokollet.';
+   var message=file.size>12582912?proMsg('Bilden är större än 12 MB efter optimering. Välj en mindre JPEG- eller PNG-bild.', 'The image is larger than 12 MB after optimisation. Choose a smaller JPEG or PNG image.'):proMsg('Välj en JPEG- eller PNG-bild som kan bifogas protokollet.', 'Choose a JPEG or PNG image that can be attached to the report.');
    setPhotoMessage(message);
    if(photoInput)photoInput.focus();
    return false;
@@ -566,10 +568,10 @@ $rowCount = max(8, count($items));
   var selection=++photoSelectionVersion;
   photoOptimizationPending=false;
   if(!file){restoreMeterPhoto();return;}
-  if(file.size>41943040){setPhotoMessage('Bilden är större än 40 MB och kan inte förberedas. Välj en mindre JPEG- eller PNG-bild.');return;}
-  if(file.type&&['image/jpeg','image/png'].indexOf(file.type)===-1){setPhotoMessage('Välj en JPEG- eller PNG-bild som kan bifogas protokollet.');return;}
+  if(file.size>41943040){setPhotoMessage(proMsg('Bilden är större än 40 MB och kan inte förberedas. Välj en mindre JPEG- eller PNG-bild.', 'The image is larger than 40 MB and cannot be prepared. Choose a smaller JPEG or PNG image.'));return;}
+  if(file.type&&['image/jpeg','image/png'].indexOf(file.type)===-1){setPhotoMessage(proMsg('Välj en JPEG- eller PNG-bild som kan bifogas protokollet.', 'Choose a JPEG or PNG image that can be attached to the report.'));return;}
   photoOptimizationPending=true;
-  setPhotoMessage('Förbereder och optimerar foto för mobiluppladdning och A4…');
+  setPhotoMessage(proMsg('Förbereder och optimerar foto för mobiluppladdning och A4…', 'Preparing and optimising the photo for mobile upload and A4…'));
   optimizeMeterPhoto(file).then(function(optimized){
    if(selection!==photoSelectionVersion)return;
    photoOptimizationPending=false;
@@ -581,7 +583,7 @@ $rowCount = max(8, count($items));
    photoPreviewUrl=URL.createObjectURL(selectedFile);
    if(photoPreview){photoPreview.src=photoPreviewUrl;photoPreview.hidden=false;}
    var sizeLabel=(selectedFile.size/1048576).toFixed(1)+' MB';
-   var message=wasOptimized?'Foto optimerat till '+sizeLabel+'. Det bifogas när du sparar protokollet.':'Foto redo ('+sizeLabel+'). Det bifogas när du sparar protokollet.';
+   var message=wasOptimized?proMsg('Foto optimerat till ', 'Photo optimised to ')+sizeLabel+proMsg('. Det bifogas när du sparar protokollet.', '. It is attached when you save the report.'):proMsg('Foto redo (', 'Photo ready (')+sizeLabel+proMsg('). Det bifogas när du sparar protokollet.', '). It is attached when you save the report.');
    setPhotoMessage(message);
   }).catch(function(){
    if(selection!==photoSelectionVersion)return;
@@ -590,7 +592,7 @@ $rowCount = max(8, count($items));
    if(photoPreviewUrl)URL.revokeObjectURL(photoPreviewUrl);
    photoPreviewUrl=URL.createObjectURL(file);
    if(photoPreview){photoPreview.src=photoPreviewUrl;photoPreview.hidden=false;}
-   setPhotoMessage('Foto redo. Det bifogas när du sparar protokollet.');
+   setPhotoMessage(proMsg('Foto redo. Det bifogas när du sparar protokollet.', 'Photo ready. It is attached when you save the report.'));
   });
  }
  var signatureClearButton=document.getElementById('protocol-signature-clear');
@@ -621,8 +623,8 @@ $rowCount = max(8, count($items));
   if(!form||finalSaving)return;
   autosaveTimer=null;
   if(autosaveRequest)return;
-  if(!formHasDraftContent()&&!draftExists){savedVersion=changeVersion;setAutosaveMessage('Skriv i formuläret för att skapa ett utkast.');return;}
-  if(!draftIdField||!draftIdField.value){setAutosaveMessage('Autosparning är inte tillgänglig just nu. Spara protokollet manuellt.');return;}
+  if(!formHasDraftContent()&&!draftExists){savedVersion=changeVersion;setAutosaveMessage(proMsg('Skriv i formuläret för att skapa ett utkast.', 'Type in the form to create a draft.'));return;}
+  if(!draftIdField||!draftIdField.value){setAutosaveMessage(proMsg('Autosparning är inte tillgänglig just nu. Spara protokollet manuellt.', 'Autosave is not available right now. Save the report manually.'));return;}
   var sentVersion=changeVersion;
   var draftFormData=new FormData(form);
   draftFormData.delete('protocol_meter_photo');
@@ -635,11 +637,11 @@ $rowCount = max(8, count($items));
    .then(function(response){return response.json().then(function(data){if(!response.ok||!data||data.ok!==true)throw new Error((data&&data.code)||'autosave_failed');return data;});})
    .then(function(data){
     savedVersion=sentVersion;
-    if(data.deleted){draftExists=false;if(autosaveResume)autosaveResume.hidden=true;setAutosaveMessage('Utkastet har raderats eftersom formuläret är tomt.');return;}
-    if(data.draft_id){draftExists=true;if(autosaveResume){autosaveResume.href='?tab=protocol&draft_id='+encodeURIComponent(data.draft_id);autosaveResume.hidden=false;}setAutosaveMessage('Utkastet har sparats automatiskt.');return;}
-    setAutosaveMessage('Inga utkastuppgifter att spara ännu.');
+    if(data.deleted){draftExists=false;if(autosaveResume)autosaveResume.hidden=true;setAutosaveMessage(proMsg('Utkastet har raderats eftersom formuläret är tomt.', 'The draft was deleted because the form is empty.'));return;}
+    if(data.draft_id){draftExists=true;if(autosaveResume){autosaveResume.href='?tab=protocol&draft_id='+encodeURIComponent(data.draft_id);autosaveResume.hidden=false;}setAutosaveMessage(proMsg('Utkastet har sparats automatiskt.', 'The draft has been saved automatically.'));return;}
+    setAutosaveMessage(proMsg('Inga utkastuppgifter att spara ännu.', 'No draft data to save yet.'));
    })
-   .catch(function(){setAutosaveMessage('Autosparning kunde inte bekräftas. Spara protokollet innan du lämnar sidan.');})
+   .catch(function(){setAutosaveMessage(proMsg('Autosparning kunde inte bekräftas. Spara protokollet innan du lämnar sidan.', 'Autosave could not be confirmed. Save the report before you leave the page.'));})
    .finally(function(){
     autosaveRequest=null;
     if(submitAfterAutosave){
@@ -683,8 +685,8 @@ $rowCount = max(8, count($items));
     var qty=qtyField?qtyField.value.trim():'';
     var spec=specField?specField.value.trim():'';
     if(!name&&!qty&&!spec)return;
-    var parts=[name||'Rad utan artikel'];
-    if(qty)parts.push('Antal: '+qty);
+    var parts=[name||proMsg('Rad utan artikel', 'Row without article')];
+    if(qty)parts.push(proMsg('Antal: ', 'Quantity: ')+qty);
     if(spec)parts.push(spec);
     var item=document.createElement('li');
     item.textContent=parts.join(' · ');
@@ -728,9 +730,9 @@ $rowCount = max(8, count($items));
  function addRow(){
   if(!table||!table.tBodies.length)return null;
   var body=table.tBodies[0];
-  if(body.rows.length>=50){if(rowStatus)rowStatus.textContent='Högst 50 material- och arbetsrader får finnas i ett protokoll.';return null;}
+  if(body.rows.length>=50){if(rowStatus)rowStatus.textContent=proMsg('Högst 50 material- och arbetsrader får finnas i ett protokoll.', 'A report can contain at most 50 material and work rows.');return null;}
   var index=nextIndex++,rowNumber=body.rows.length+1,row=body.insertRow();
-  row.innerHTML='<td data-label="Artikel / arbetsmoment"><input class="p-name" maxlength="200" name="items['+index+'][art]" placeholder="Artikel / arbete" aria-label="Artikel eller arbetsmoment, rad '+rowNumber+'" aria-describedby="protocol-material-help"></td><td data-label="Antal"><input class="p-qty" type="number" min="0" step="0.1" name="items['+index+'][qty]" aria-label="Antal, rad '+rowNumber+'" aria-describedby="protocol-material-help"></td><td data-label="Teknisk specifikation"><input maxlength="300" name="items['+index+'][spec]" placeholder="Teknisk specifikation" aria-label="Teknisk specifikation, rad '+rowNumber+'" aria-describedby="protocol-material-help"></td>';
+  row.innerHTML='<td data-label="'+proMsg('Artikel / arbetsmoment', 'Article / work item')+'"><input class="p-name" maxlength="200" name="items['+index+'][art]" placeholder="'+proMsg('Artikel / arbete', 'Article / work')+'" aria-label="'+proMsg('Artikel eller arbetsmoment, rad ', 'Article or work item, row ')+rowNumber+'" aria-describedby="protocol-material-help"></td><td data-label="Antal"><input class="p-qty" type="number" min="0" step="0.1" name="items['+index+'][qty]" aria-label="'+proMsg('Antal, rad ', 'Quantity, row ')+rowNumber+'" aria-describedby="protocol-material-help"></td><td data-label="Teknisk specifikation"><input maxlength="300" name="items['+index+'][spec]" placeholder="Teknisk specifikation" aria-label="'+proMsg('Teknisk specifikation, rad ', 'Technical specification, row ')+rowNumber+'" aria-describedby="protocol-material-help"></td>';
   if(rowStatus)rowStatus.textContent='';
   updateReview();
   return row;
@@ -759,14 +761,14 @@ $rowCount = max(8, count($items));
   var option=protocolCatalogSelect&&protocolCatalogSelect.options[protocolCatalogSelect.selectedIndex];
   var name=option?option.getAttribute('data-name')||'':'';
   var spec=option?option.getAttribute('data-spec')||'':'';
-  if(!name){if(protocolCatalogImportStatus)protocolCatalogImportStatus.textContent='Välj en sparad serviceartikel först.';if(protocolCatalogSelect)protocolCatalogSelect.focus();return;}
+  if(!name){if(protocolCatalogImportStatus)protocolCatalogImportStatus.textContent=proMsg('Välj en sparad serviceartikel först.', 'Choose a saved service article first.');if(protocolCatalogSelect)protocolCatalogSelect.focus();return;}
   var targetRow=null;
   if(table&&table.tBodies.length)Array.prototype.some.call(table.tBodies[0].rows,function(row){
    var nameField=row.querySelector('.p-name'),qtyField=row.querySelector('.p-qty'),specField=row.cells[2]?row.cells[2].querySelector('input'):null;
    if(nameField&&!nameField.value.trim()&&qtyField&&!qtyField.value.trim()&&specField&&!specField.value.trim()){targetRow=row;return true;}return false;
   });
   if(!targetRow)targetRow=addRow();
-  if(!targetRow){if(protocolCatalogImportStatus)protocolCatalogImportStatus.textContent='Det går inte att lägga till fler rader. Ta bort eller använd en befintlig tom rad.';return;}
+  if(!targetRow){if(protocolCatalogImportStatus)protocolCatalogImportStatus.textContent=proMsg('Det går inte att lägga till fler rader. Ta bort eller använd en befintlig tom rad.', 'No more rows can be added. Delete one or use an existing empty row.');return;}
   var nameField=targetRow.querySelector('.p-name'),specField=targetRow.cells[2]?targetRow.cells[2].querySelector('input'):null;
   if(nameField)nameField.value=name;
   if(specField)specField.value=spec;
@@ -774,7 +776,7 @@ $rowCount = max(8, count($items));
   markProtocolContentChanged();
   updateReview();
   scheduleAutosave();
-  if(protocolCatalogImportStatus)protocolCatalogImportStatus.textContent='Artikeln har lagts in. Ange antal eller arbetstid i den nya raden.';
+  if(protocolCatalogImportStatus)protocolCatalogImportStatus.textContent=proMsg('Artikeln har lagts in. Ange antal eller arbetstid i den nya raden.', 'The article has been inserted. Enter quantity or work time in the new row.');
   var quantityField=targetRow.querySelector('.p-qty');if(quantityField)quantityField.focus();
  });
  if(protocolCatalogSaveButton)protocolCatalogSaveButton.addEventListener('click',function(){
@@ -786,9 +788,9 @@ $rowCount = max(8, count($items));
   var specField=row&&row.cells[2]?row.cells[2].querySelector('input'):null;
   var name=nameField?nameField.value.trim():'';
   var spec=specField?specField.value.trim():'';
-  if(!name){if(protocolCatalogStatus)protocolCatalogStatus.textContent='Välj en ifylld material- eller arbetsrad först.';if(protocolCatalogSourceSelect)protocolCatalogSourceSelect.focus();return;}
+  if(!name){if(protocolCatalogStatus)protocolCatalogStatus.textContent=proMsg('Välj en ifylld material- eller arbetsrad först.', 'Choose a filled-in material or work row first.');if(protocolCatalogSourceSelect)protocolCatalogSourceSelect.focus();return;}
   var csrf=form.querySelector('input[name="csrf_token"]');
-  if(!csrf||!csrf.value){if(protocolCatalogStatus)protocolCatalogStatus.textContent='Säkerhetskontrollen saknas. Ladda om sidan innan du sparar.';return;}
+  if(!csrf||!csrf.value){if(protocolCatalogStatus)protocolCatalogStatus.textContent=proMsg('Säkerhetskontrollen saknas. Ladda om sidan innan du sparar.', 'The security check is missing. Reload the page before you save.');return;}
   var body=new URLSearchParams();
   body.set('action','protocol_catalog_quick_save');
   body.set('csrf_token',csrf.value);
@@ -804,10 +806,10 @@ $rowCount = max(8, count($items));
     }
     if(protocolCatalogImportButton&&protocolCatalogSelect&&protocolCatalogSelect.options.length>1)protocolCatalogImportButton.disabled=false;
     var emptyMessage=document.getElementById('p-catalog-empty');if(emptyMessage)emptyMessage.remove();
-    if(protocolCatalogStatus)protocolCatalogStatus.textContent=data.code==='exists'?'Artikeln fanns redan i den gemensamma katalogen. Medarbetare kan importera den.':'Artikeln är sparad. Medarbetare kan nu importera den.';
+    if(protocolCatalogStatus)protocolCatalogStatus.textContent=data.code==='exists'?proMsg('Artikeln fanns redan i den gemensamma katalogen. Medarbetare kan importera den.', 'The item already exists in the shared catalogue. Colleagues can import it.'):proMsg('Artikeln är sparad. Medarbetare kan nu importera den.', 'The item is saved. Colleagues can import it now.');
    })
    .catch(function(error){
-    var message=error&&error.message==='admin_required'?'Endast serviceprotokolladmin kan spara artiklar.':error&&error.message==='storage_error'?'Katalogen kunde inte sparas. Kontrollera privat lagring och försök igen.':'Artikeln kunde inte sparas. Kontrollera fälten och försök igen.';
+    var message=error&&error.message==='admin_required'?proMsg('Endast serviceprotokolladmin kan spara artiklar.', 'Only service report admins can save articles.'):error&&error.message==='storage_error'?proMsg('Katalogen kunde inte sparas. Kontrollera privat lagring och försök igen.', 'The catalogue could not be saved. Check private storage and try again.'):proMsg('Artikeln kunde inte sparas. Kontrollera fälten och försök igen.', 'The article could not be saved. Check the fields and try again.');
     if(protocolCatalogStatus)protocolCatalogStatus.textContent=message;
    })
    .finally(function(){protocolCatalogSaveButton.disabled=false;});

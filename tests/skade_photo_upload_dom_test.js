@@ -7,13 +7,14 @@ const assert = require('node:assert/strict');
 const {execFileSync} = require('node:child_process');
 const {JSDOM, VirtualConsole} = require('jsdom');
 
-function render(post, serverError, internal, invalidPhotos) {
+function render(post, serverError, internal, invalidPhotos, language) {
     const post64 = Buffer.from(JSON.stringify(post || {})).toString('base64');
     const invalid64 = Buffer.from(JSON.stringify(invalidPhotos || [])).toString('base64');
+    const lang = language === 'en' ? 'en' : 'sv';
     const php = `require "tests/php/skade_customer_render_fixture.php";
 $post = json_decode(base64_decode('${post64}'), true);
 $invalidPhotos = json_decode(base64_decode('${invalid64}'), true);
-echo base64_encode(render_customer_skade(false, ${internal ? 'true' : 'false'}, is_array($post) ? $post : [], ${serverError ? 'true' : 'false'}, false, is_array($invalidPhotos) ? $invalidPhotos : []));`;
+echo base64_encode(render_customer_skade(false, ${internal ? 'true' : 'false'}, is_array($post) ? $post : [], ${serverError ? 'true' : 'false'}, false, is_array($invalidPhotos) ? $invalidPhotos : [], '${lang}'));`;
     const out = execFileSync('npx', ['--yes', '@php-wasm/cli', '-r', php], {encoding: 'utf8'}).trim();
     return Buffer.from(out, 'base64').toString('utf8');
 }
@@ -79,8 +80,8 @@ const set = (w, d, id, value) => {
     assert.match(html, /data-invalid-photos="/, 'form must expose data-invalid-photos');
     assert.match(html, /name="form_version" value="skade-customer-v4-photos"/, 'form_version must be v4');
     assert.match(html, /<section class="skade-card" aria-labelledby="skade-photos-heading"[^>]*data-skade-step="entry"/, 'photo section must join the customer entry step');
-    assert.match(html, /<input type="file" id="sk-photo-damage" accept="image\/\*"[^>]*data-photo-target="sk-photo-damage-value"[^>]*data-photo-key="photo_damage"/, 'damage file input must wire target and key');
-    assert.match(html, /<input type="file" id="sk-photo-front" accept="image\/\*"[^>]*data-photo-target="sk-photo-front-value"[^>]*data-photo-key="photo_front"/, 'front file input must wire target and key');
+    assert.match(html, /<input type="file" id="sk-photo-damage" accept="image\/jpeg,image\/png"[^>]*data-photo-target="sk-photo-damage-value"[^>]*data-photo-key="photo_damage"/, 'damage file input must wire target and key');
+    assert.match(html, /<input type="file" id="sk-photo-front" accept="image\/jpeg,image\/png"[^>]*data-photo-target="sk-photo-front-value"[^>]*data-photo-key="photo_front"/, 'front file input must wire target and key');
     assert.match(html, /<input type="hidden" name="s\[photo_damage\]" id="sk-photo-damage-value"/, 'damage hidden input must post s[photo_damage]');
     assert.match(html, /<input type="hidden" name="s\[photo_front\]" id="sk-photo-front-value"/, 'front hidden input must post s[photo_front]');
     assert.doesNotMatch(html, /id="sk-photo-damage"[^>]*\srequired/, 'damage file input must not be required');
@@ -187,7 +188,33 @@ const set = (w, d, id, value) => {
     assert.match(pd.getElementById('skade-progress-text').textContent, /Kontrollera valfria fält/, 'progress must hint at the optional photo');
     assert.deepEqual(progress.errors, [], 'progress checks must not raise jsdom errors');
 
-    console.log('PASS: photo markup, retention, server rejection, bad type, capture pipeline, review status and progress.');
+    // 7. English language: photo section labels, help texts, remove button,
+    //    server-rejection photo error and required-field validation render in
+    //    English; the Swedish strings must not leak into the English page.
+    const english = render({}, false, false, [], 'en');
+    assert.match(english, /Damage photo/, 'English label for the damage photo');
+    assert.match(english, /Photo of the vehicle front where the registration number is visible/, 'English label for the front photo');
+    assert.match(english, /\(optional\)/, 'English optional hint');
+    assert.match(english, /JPG or PNG, max 20 MB\. The image is scaled down and stored with the form\./, 'English help text for the damage photo');
+    assert.match(english, /JPG or PNG, max 20 MB\. The registration number must be visible in the photo\./, 'English help text for the front photo');
+    assert.match(english, /Remove photo/, 'English remove button');
+    assert.doesNotMatch(english, />Bild på skada</, 'Swedish damage label must not appear in English mode');
+    assert.doesNotMatch(english, />Ta bort bild</, 'Swedish remove button must not appear in English mode');
+    // Server rejection + empty required fields in English.
+    const engRejected = render({s: Object.assign({}, filled, {photo_damage: dataUri})}, true, false, ['photo_damage'], 'en');
+    const engDom = load(engRejected, 'https://example.test/skadeblankett-kund.php?lang=en');
+    const engPhotoError = engDom.d.getElementById('skade-error-sk-photo-damage');
+    assert.ok(engPhotoError && /The photo could not be used\. Choose a JPG or PNG of 200–4000 pixels and at most 550 kB\./.test(engPhotoError.textContent), 'English photo rejection message must show');
+    assert.deepEqual(engDom.errors, [], 'English rejection render must not raise jsdom errors');
+    // Empty required fields in English (separate render without filled data).
+    const engEmpty = render({}, true, false, [], 'en');
+    const engEmptyDom = load(engEmpty, 'https://example.test/skadeblankett-kund.php?lang=en');
+    const engNameError = engEmptyDom.d.getElementById('skade-error-sk-namn');
+    assert.ok(engNameError && /Fill in this field\./.test(engNameError.textContent), 'English required-field message must show');
+    assert.doesNotMatch(engNameError.textContent, /Fyll i det här fältet/, 'Swedish validation message must not appear in English mode');
+    assert.deepEqual(engEmptyDom.errors, [], 'English empty render must not raise jsdom errors');
+
+    console.log('PASS: photo markup, retention, server rejection, bad type, capture pipeline, review status, progress and English language.');
 })().catch((error) => {
     console.error(error);
     process.exitCode = 1;

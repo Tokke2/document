@@ -652,18 +652,18 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
                     <div class="skade-card-head"><span class="skade-step">3</span><div><h3 id="skade-photos-heading"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Photos (optional)' : 'Bilder (frivilligt)' ?></h3><p><?= ($portalLanguage ?? 'sv') === 'en' ? 'Add a photo of the damage and a photo of the front of the vehicle where the registration plate is visible. Sending without photos works too.' : 'Lägg till en bild på skadan och en bild på fordonets front där regnr syns. Det går även att skicka in utan bilder.' ?></p></div></div>
                     <div class="skade-grid">
                         <div class="skade-field">
-                            <label class="skade-label" for="sk-photo-damage">Bild på skada <small>(frivillig)</small></label>
-                            <input type="file" id="sk-photo-damage" accept="image/*" data-photo-target="sk-photo-damage-value" data-photo-key="photo_damage">
+                            <label class="skade-label" for="sk-photo-damage"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Damage photo' : 'Bild på skada' ?> <small>(<?= ($portalLanguage ?? 'sv') === 'en' ? 'optional' : 'frivillig' ?>)</small></label>
+                            <input type="file" id="sk-photo-damage" accept="image/jpeg,image/png" data-photo-target="sk-photo-damage-value" data-photo-key="photo_damage">
                             <input type="hidden" name="s[photo_damage]" id="sk-photo-damage-value" value="<?= $skadeText('photo_damage') ?>">
-                            <div class="skade-photo-preview" id="sk-photo-damage-preview" hidden><img alt="Förhandsvisning av bilden på skadan"><button class="btn btn-outline" type="button" data-photo-remove="sk-photo-damage">Ta bort bild</button></div>
-                            <small class="skade-help" id="sk-photo-damage-help">JPG eller PNG, högst 20 MB. Bilden skalas ner och sparas med blanketten.</small>
+                            <div class="skade-photo-preview" id="sk-photo-damage-preview" hidden><img alt="<?= h(($portalLanguage ?? 'sv') === 'en' ? 'Preview of the damage photo' : 'Förhandsvisning av bilden på skadan') ?>"><button class="btn btn-outline" type="button" data-photo-remove="sk-photo-damage"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Remove photo' : 'Ta bort bild' ?></button></div>
+                            <small class="skade-help" id="sk-photo-damage-help"><?= ($portalLanguage ?? 'sv') === 'en' ? 'JPG or PNG, max 20 MB. The image is scaled down and stored with the form.' : 'JPG eller PNG, högst 20 MB. Bilden skalas ner och sparas med blanketten.' ?></small>
                         </div>
                         <div class="skade-field">
-                            <label class="skade-label" for="sk-photo-front">Bild på fordonets front där regnr syns <small>(frivillig)</small></label>
-                            <input type="file" id="sk-photo-front" accept="image/*" data-photo-target="sk-photo-front-value" data-photo-key="photo_front">
+                            <label class="skade-label" for="sk-photo-front"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Photo of the vehicle front where the registration number is visible' : 'Bild på fordonets front där regnr syns' ?> <small>(<?= ($portalLanguage ?? 'sv') === 'en' ? 'optional' : 'frivillig' ?>)</small></label>
+                            <input type="file" id="sk-photo-front" accept="image/jpeg,image/png" data-photo-target="sk-photo-front-value" data-photo-key="photo_front">
                             <input type="hidden" name="s[photo_front]" id="sk-photo-front-value" value="<?= $skadeText('photo_front') ?>">
-                            <div class="skade-photo-preview" id="sk-photo-front-preview" hidden><img alt="Förhandsvisning av bilden på fordonets front"><button class="btn btn-outline" type="button" data-photo-remove="sk-photo-front">Ta bort bild</button></div>
-                            <small class="skade-help" id="sk-photo-front-help">JPG eller PNG, högst 20 MB. Registreringsnumret ska synas på bilden.</small>
+                            <div class="skade-photo-preview" id="sk-photo-front-preview" hidden><img alt="<?= h(($portalLanguage ?? 'sv') === 'en' ? 'Preview of the vehicle front photo' : 'Förhandsvisning av bilden på fordonets front') ?>"><button class="btn btn-outline" type="button" data-photo-remove="sk-photo-front"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Remove photo' : 'Ta bort bild' ?></button></div>
+                            <small class="skade-help" id="sk-photo-front-help"><?= ($portalLanguage ?? 'sv') === 'en' ? 'JPG or PNG, max 20 MB. The registration number must be visible in the photo.' : 'JPG eller PNG, högst 20 MB. Registreringsnumret ska synas på bilden.' ?></small>
                         </div>
                     </div>
                 </section>
@@ -828,6 +828,8 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
     var form = document.getElementById('skade-form');
     if (!form) return;
     form.noValidate = true;
+    var customerLang = <?= json_encode(($portalLanguage ?? 'sv') === 'en' ? 'en' : 'sv') ?>;
+    function skMsg(sv, en) { return customerLang === 'en' ? en : sv; }
     var signatureRequired = form.getAttribute('data-signature-required') === '1';
     var signatureConfirmedInput = document.getElementById('skade-signature-confirmed');
     var validationAttempted = false;
@@ -916,40 +918,40 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
     function getValidationMessage(field) {
         if (!field || field === canvas || field.type === 'hidden' || field.disabled) return '';
         var currentValue = String(field.value || '').trim();
-        if (field.required && field.type !== 'checkbox' && field.type !== 'radio' && !currentValue) return 'Fyll i det här fältet.';
+        if (field.required && field.type !== 'checkbox' && field.type !== 'radio' && !currentValue) return skMsg('Fyll i det här fältet.', 'Fill in this field.');
         if (field.type === 'file' && field.dataset && field.dataset.photoTarget) {
             if (field.dataset.photoError) return field.dataset.photoError;
             var photoHidden = document.getElementById(field.dataset.photoTarget);
             var photoValue = photoHidden ? String(photoHidden.value || '') : '';
             if (!photoValue) return '';
-            if (photoValue.length > 550000) return 'Bilden är för stor (max 550 kB). Välj en mindre bild.';
+            if (photoValue.length > 550000) return skMsg('Bilden är för stor (max 550 kB). Välj en mindre bild.', 'The photo is too large (max 550 kB). Choose a smaller photo.');
             if (photoValue.lastIndexOf('data:image/jpeg;base64,', 0) !== 0 && photoValue.lastIndexOf('data:image/png;base64,', 0) !== 0) {
-                return 'Bilden måste vara en JPG eller PNG.';
+                return skMsg('Bilden måste vara en JPG eller PNG.', 'The photo must be a JPG or PNG.');
             }
             return '';
         }
         if (field.id === 'sk-epost' && currentValue === '') return '';
         if (field.id === 'sk-datum' && currentValue !== '' && !normalizeSkadeDate(currentValue)) {
-            return 'Ange ett giltigt datum, t.ex. 2026-11-03 eller 03.11.2026.';
+            return skMsg('Ange ett giltigt datum, t.ex. 2026-11-03 eller 03.11.2026.', 'Enter a valid date, e.g. 2026-11-03 or 03.11.2026.');
         }
         if (field.id === 'sk-telefon' && currentValue !== '') {
             var phoneDigits = String(field.value).replace(/\D/g, '');
-            if (phoneDigits.length < 5) return field.required ? 'Ange minst fem siffror i telefonnumret.' : 'Ange minst fem siffror eller lämna telefonfältet tomt.';
+            if (phoneDigits.length < 5) return field.required ? skMsg('Ange minst fem siffror i telefonnumret.', 'Enter at least five digits in the phone number.') : skMsg('Ange minst fem siffror eller lämna telefonfältet tomt.', 'Enter at least five digits or leave the phone field empty.');
         }
         var validity = field.validity;
         if (!validity || validity.valid) return '';
         if (validity.valueMissing) {
-            if (field.type === 'checkbox') return 'Bekräfta uppgifterna genom att kryssa i rutan.';
-            if (field.id === 'sk-datum') return 'Ange skadedatum eller välj det i kalendern.';
-            return 'Fyll i det här fältet.';
+            if (field.type === 'checkbox') return skMsg('Bekräfta uppgifterna genom att kryssa i rutan.', 'Confirm the information by ticking the box.');
+            if (field.id === 'sk-datum') return skMsg('Ange skadedatum eller välj det i kalendern.', 'Enter the damage date or pick it in the calendar.');
+            return skMsg('Fyll i det här fältet.', 'Fill in this field.');
         }
-        if (validity.typeMismatch && field.type === 'email') return 'Skriv en giltig e-postadress.';
-        if (validity.patternMismatch && field.id === 'sk-regnr') return 'Ange 2–12 tecken med bokstäver, siffror eller bindestreck.';
-        if (validity.tooLong) return 'Värdet är för långt.';
-        if (validity.rangeUnderflow || validity.rangeOverflow) return 'Ange ett värde inom tillåtet intervall.';
-        if (validity.stepMismatch) return 'Ange ett giltigt heltal.';
-        if (validity.badInput) return 'Ange ett giltigt värde.';
-        return 'Kontrollera formatet på uppgiften.';
+        if (validity.typeMismatch && field.type === 'email') return skMsg('Skriv en giltig e-postadress.', 'Enter a valid email address.');
+        if (validity.patternMismatch && field.id === 'sk-regnr') return skMsg('Ange 2–12 tecken med bokstäver, siffror eller bindestreck.', 'Enter 2–12 characters with letters, digits or hyphens.');
+        if (validity.tooLong) return skMsg('Värdet är för långt.', 'The value is too long.');
+        if (validity.rangeUnderflow || validity.rangeOverflow) return skMsg('Ange ett värde inom tillåtet intervall.', 'Enter a value within the allowed range.');
+        if (validity.stepMismatch) return skMsg('Ange ett giltigt heltal.', 'Enter a valid integer.');
+        if (validity.badInput) return skMsg('Ange ett giltigt värde.', 'Enter a valid value.');
+        return skMsg('Kontrollera formatet på uppgiften.', 'Check the format of the entry.');
     }
     function validationContainer(field) {
         if (field.id === 'skade-signature-confirmed') return field.closest('.skade-signature');
@@ -1101,7 +1103,6 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
     var reviewBack = document.getElementById('skade-review-back');
     var reviewContinue = document.getElementById('skade-review-continue');
     var signBack = document.getElementById('skade-sign-back');
-    var customerLang = <?= json_encode(($portalLanguage ?? 'sv') === 'en' ? 'en' : 'sv') ?>;
     function showCustomerStep(step) {
         customerStep = step;
         entrySections.forEach(function (section) { section.hidden = step !== 'entry'; });
@@ -1512,7 +1513,7 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
     function finishPhotoCapture(fileInput, dataUri) {
         var hidden = photoHiddenFor(fileInput);
         if (!hidden || typeof dataUri !== 'string' || !dataUri) {
-            failPhotoCapture(fileInput, 'Bilden kunde inte sparas. Försök igen eller välj en annan bild.');
+            failPhotoCapture(fileInput, skMsg('Bilden kunde inte sparas. Försök igen eller välj en annan bild.', 'The photo could not be saved. Try again or choose another photo.'));
             return;
         }
         hidden.value = dataUri;
@@ -1525,30 +1526,30 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
         var file = fileInput.files && fileInput.files[0];
         if (!file) return;
         if (!/^image\//.test(String(file.type || ''))) {
-            failPhotoCapture(fileInput, 'Välj en bild i formatet JPG eller PNG.');
+            failPhotoCapture(fileInput, skMsg('Välj en bild i formatet JPG eller PNG.', 'Choose a photo in JPG or PNG format.'));
             return;
         }
         if (file.size > 20 * 1024 * 1024) {
-            failPhotoCapture(fileInput, 'Bilden är för stor (max 20 MB). Välj en mindre bild.');
+            failPhotoCapture(fileInput, skMsg('Bilden är för stor (max 20 MB). Välj en mindre bild.', 'The photo is too large (max 20 MB). Choose a smaller photo.'));
             return;
         }
-        fileInput.dataset.photoError = 'Bilden bearbetas…';
+        fileInput.dataset.photoError = skMsg('Bilden bearbetas…', 'Processing photo…');
         syncPhotoPreview(fileInput);
         updateProgress();
         if (validationAttempted) validateField(fileInput);
         var reader = new FileReader();
         reader.onerror = function () {
-            failPhotoCapture(fileInput, 'Bilden kunde inte läsas. Försök igen eller välj en annan bild.');
+            failPhotoCapture(fileInput, skMsg('Bilden kunde inte läsas. Försök igen eller välj en annan bild.', 'The photo could not be read. Try again or choose another photo.'));
         };
         reader.onload = function () {
             var img = new Image();
             img.onerror = function () {
-                failPhotoCapture(fileInput, 'Bilden kunde inte läsas. Välj en JPG eller PNG.');
+                failPhotoCapture(fileInput, skMsg('Bilden kunde inte läsas. Välj en JPG eller PNG.', 'The photo could not be read. Choose a JPG or PNG.'));
             };
             img.onload = function () {
                 try {
                     if (img.naturalWidth < 200 || img.naturalHeight < 200) {
-                        failPhotoCapture(fileInput, 'Bilden är för liten (minst 200×200 pixlar).');
+                        failPhotoCapture(fileInput, skMsg('Bilden är för liten (minst 200×200 pixlar).', 'The photo is too small (at least 200×200 pixels).'));
                         return;
                     }
                     var maxEdge = 1600;
@@ -1558,7 +1559,7 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
                     var workCanvas = document.createElement('canvas');
                     var workContext = workCanvas.getContext('2d');
                     if (!workContext || typeof workCanvas.toDataURL !== 'function') {
-                        failPhotoCapture(fileInput, 'Bilden kunde inte bearbetas. Försök igen eller välj en annan bild.');
+                        failPhotoCapture(fileInput, skMsg('Bilden kunde inte bearbetas. Försök igen eller välj en annan bild.', 'The photo could not be processed. Try again or choose another photo.'));
                         return;
                     }
                     var dataUri = '';
@@ -1578,12 +1579,12 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
                         if (!dataUri) edge = Math.round(edge * 0.75 * 100) / 100;
                     }
                     if (!dataUri) {
-                        failPhotoCapture(fileInput, 'Bilden kunde inte komprimeras tillräckligt. Välj en mindre bild.');
+                        failPhotoCapture(fileInput, skMsg('Bilden kunde inte komprimeras tillräckligt. Välj en mindre bild.', 'The photo could not be compressed enough. Choose a smaller photo.'));
                         return;
                     }
                     finishPhotoCapture(fileInput, dataUri);
                 } catch (error) {
-                    failPhotoCapture(fileInput, 'Bilden kunde inte bearbetas. Försök igen eller välj en annan bild.');
+                    failPhotoCapture(fileInput, skMsg('Bilden kunde inte bearbetas. Försök igen eller välj en annan bild.', 'The photo could not be processed. Try again or choose another photo.'));
                 }
             };
             img.src = String(reader.result || '');
@@ -1655,7 +1656,7 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
     invalidPhotoKeys.forEach(function (photoKey) {
         var photoInput = form.querySelector('input[type="file"][data-photo-key="' + photoKey + '"]');
         if (photoInput && !photoInput.dataset.photoError) {
-            photoInput.dataset.photoError = 'Bilden kunde inte användas. Välj en JPG eller PNG på 200–4000 pixlar och högst 550 kB.';
+            photoInput.dataset.photoError = skMsg('Bilden kunde inte användas. Välj en JPG eller PNG på 200–4000 pixlar och högst 550 kB.', 'The photo could not be used. Choose a JPG or PNG of 200–4000 pixels and at most 550 kB.');
             syncPhotoPreview(photoInput);
         }
     });
