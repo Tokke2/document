@@ -18,6 +18,21 @@ Läs denna fil **innan** du ändrar något i repot. Reglerna gäller varje sessi
 9. **Arkiverade loggar** (`logs/*.jsonl.1–3`) rensas efter **7 dagar** via `TadegaPrivacyLogger::cleanupArchivedLogs(7)`. Levande loggfiler rörs inte.
 10. **Logotyp och ikoner** byggs från mästrarna `assets/tadega-icon.svg` och `assets/tadega-logo.svg` (platta färger – filrutten sanerar bort gradienter/`defs`; ordmärket är banor utan fontberoende). Raster: `npm run build:icons`, logotyp: `npm run build:logo`. Använd mästarna överallt, även för tryck.
 11. **REQ-K4:** användarens kravreferens. Texten finns ännu inte i detta repo – komplettera den här raden när användaren lämnar kravtexten; tysta gissningar om innehållet är förbjudna.
+12. **Komplett fellogg som töms vid åtgärd:** `storage/active_errors.json` är den aktiva felloggen (fylls av `TadegaPrivacyLogger::diagnostic()`). Den innehåller alla aktiva fel tills admin markerar dem som åtgärdade i Fakturaunderlag → Felsökning – då tas de bort ur både den listan och råloggen (`resolve_active_errors`-flödet). Glöm aldrig bort `upsertActiveError`-kopplingen i `diagnostic()`.
+13. **Gårdagens loggar arkiveras:** `TadegaPrivacyLogger::archiveYesterdayLogs()` roterar audit/diagnostics/requests till `.1–.3` en gång per dygn; arkiven raderas efter 7 dagar (regel 9).
+14. **Inga synliga terminalfönster:** startskript och verktyg ska alltid köra minimerat/i bakgrunden utan uppstartat terminalfönster (gäller lokal desktop-start; portalen själv körs i webbläsare).
+15. **Kolumner ska kunna sorteras** där appen har tabeller (arkivet har klickbara rubriker via `assets/table_sort.js`). Ny tabellfunktion = test + dokumentation; flytt av kolumner (drag) kräver användarens kravspec före bygge.
+16. **Anpassa efter varje app:** reglerna gäller alla appar i monorepot (portalen, skadekunden, faktura-/protokoll-/kalender-PWA:erna) – kontrollera alltid vilken app en ändring rör innan du rör gränssnitt, åtgärder eller lagring (se avsnittet *Per app* nedan).
+
+## Per app
+
+| App | Entry | Särskilt |
+|---|---|---|
+| Portalen (personal) | `index.php` | Endast plattform för alla flikar; central admin-styr release och inställningar. |
+| Skadekund (kiosk) | `skadeblankett-kund.php` | Kundläge, ingen inloggning, validering utan dataförlust, signaturkrav. |
+| Faktura-PWA | `pwa-underlag.php` + `manifest-underlag` | Scoped: bara `pwaAllowedActions`-åtgärder; ingen navigering ut. |
+| Protokoll-PWA | `pwa-protokoll.php` + `manifest-protokoll` | Egen session och konton. |
+| Kalender-PWA | `pwa-kalender.php` + `manifest-kalender` | Egna åtgärder och inloggning. |
 
 ## Verktyg och tester
 

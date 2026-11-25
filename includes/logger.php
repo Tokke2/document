@@ -653,6 +653,368 @@ if (!class_exists('TadegaPrivacyLogger', false)) {
             return $removed;
         }
 
+        /**
+         * Archive every log whose last write belongs to a previous day so
+         * "yesterday's logs" always end up in *.jsonl.1–.3, where the
+         * seven-day archive cleanup removes them. Runs at most once per day.
+         *
+         * @param string|null $directory Optional directory override (tests/maintenance).
+         */
+        public static function archiveYesterdayLogs(?string $directory = null): int
+        {
+            $dir = $directory ?? (__DIR__ . '/../logs');
+            $guard = $dir . '/.htaccess';
+            $markerPath = $dir . '/.daily-rotated';
+            $root = realpath(dirname(__DIR__));
+            $realDir = realpath($dir);
+            if (
+                is_link($dir) || !is_file($guard) || is_link($guard) || is_link($markerPath) ||
+                $root === false || $realDir === false ||
+                strpos($realDir, rtrim($root, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR) !== 0
+            ) {
+                return 0;
+            }
+            $todayStart = strtotime('today');
+            if ($todayStart === false) {
+                return 0;
+            }
+            clearstatcache(true, $markerPath);
+            $markerTime = is_file($markerPath) ? @filemtime($markerPath) : false;
+            if ($markerTime !== false && $markerTime >= $todayStart) {
+                return 0;
+            }
+            $rotated = 0;
+            foreach (['audit', 'diagnostics', 'requests'] as $name) {
+                $path = $realDir . DIRECTORY_SEPARATOR . $name . '.jsonl';
+                $lockPath = $path . '.lock';
+                if (is_link($path) || !is_file($path) || is_link($lockPath)) {
+                    continue;
+                }
+                clearstatcache(true, $path);
+                $mtime = @filemtime($path);
+                if ($mtime === false || $mtime >= $todayStart || @filesize($path) === 0) {
+                    continue;
+                }
+                $oldUmask = umask(0077);
+                $lock = @fopen($lockPath, 'c');
+                umask($oldUmask);
+                if (!is_resource($lock) || !@flock($lock, LOCK_EX)) {
+                    if (is_resource($lock)) {
+                        fclose($lock);
+                    }
+                    continue;
+                }
+                @chmod($lockPath, 0600);
+                try {
+                    clearstatcache(true, $path);
+                    $mtime = @filemtime($path);
+                    if ($mtime === false || $mtime >= $todayStart || @filesize($path) === 0) {
+                        continue;
+                    }
+                    $shift = static function (string $from, string $to): bool {
+                        if (!is_file($from)) {
+                            return true;
+                        }
+                        if (!@rename($from, $to)) {
+                            return false;
+                        }
+                        @chmod($to, 0600);
+                        return true;
+                    };
+                    $level3 = $path . '.3';
+                    $level2 = $path . '.2';
+                    $level1 = $path . '.1';
+                    if (is_file($level3) && !@unlink($level3)) {
+                        continue;
+                    }
+                    if (!$shift($level2, $level3) || !$shift($level1, $level2) || !$shift($path, $level1)) {
+                        continue;
+                    }
+                    $rotated++;
+                } finally {
+                    @flock($lock, LOCK_UN);
+                    fclose($lock);
+                }
+            }
+            if (!is_file($markerPath)) {
+                $oldUmask = umask(0077);
+                $marker = @fopen($markerPath, 'x');
+                umask($oldUmask);
+                if (is_resource($marker)) {
+                    fclose($marker);
+                }
+            }
+            @touch($markerPath);
+            @chmod($markerPath, 0600);
+            return $rotated;
+        }
+
+        /** Grouping key for the active-error list (type+code+location). */
+        private static function diagnosticSignature(array $entry): string
+        {
+            return substr(hash('sha256', implode('|', [
+                (string) ($entry['type'] ?? ''),
+                (string) ($entry['code'] ?? ''),
+                (string) ($entry['file'] ?? ''),
+                (string) ($entry['line'] ?? ''),
+                (string) ($entry['exception_class'] ?? ''),
+            ])), 0, 32);
+        }
+
+        /** @return array{0:string,1:string}|null Storage file and lock path, or null when unsafe. */
+        private static function activeErrorPaths(?string $storageDirectory): ?array
+        {
+            $dir = $storageDirectory ?? (__DIR__ . '/../storage');
+            $guard = $dir . '/.htaccess';
+            $root = realpath(dirname(__DIR__));
+            $realDir = realpath($dir);
+            if (
+                is_link($dir) || !is_file($guard) || is_link($guard) ||
+                $root === false || $realDir === false ||
+                strpos($realDir, rtrim($root, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR) !== 0
+            ) {
+                return null;
+            }
+            $file = $realDir . '/active_errors.json';
+            $lock = $realDir . '/active_errors.json.lock';
+            if (is_link($file) || is_link($lock)) {
+                return null;
+            }
+            return [$file, $lock];
+        }
+
+        /**
+         * Upsert one diagnostic record into the persistent active-error list.
+         * The list is the complete fellogg: it survives log rotation and only
+         * shrinks when an error is marked resolved (or exceeds the cap).
+         */
+        public static function upsertActiveError(array $entry, ?string $storageDirectory = null): void
+        {
+            $paths = self::activeErrorPaths($storageDirectory);
+            if ($paths === null) {
+                return;
+            }
+            [$file, $lockPath] = $paths;
+            $oldUmask = umask(0077);
+            $lock = @fopen($lockPath, 'c');
+            umask($oldUmask);
+            if (!is_resource($lock) || !@flock($lock, LOCK_EX)) {
+                if (is_resource($lock)) {
+                    fclose($lock);
+                }
+                return;
+            }
+            @chmod($lockPath, 0600);
+            try {
+                $active = [];
+                if (is_file($file)) {
+                    $raw = @file_get_contents($file);
+                    $decoded = is_string($raw) ? json_decode($raw, true) : null;
+                    if (is_array($decoded)) {
+                        $active = $decoded;
+                    }
+                }
+                $signature = self::diagnosticSignature($entry);
+                $timestamp = is_string($entry['timestamp_utc'] ?? null) ? $entry['timestamp_utc'] : gmdate('Y-m-d\TH:i:s\Z');
+                $existing = isset($active[$signature]) && is_array($active[$signature]) ? $active[$signature] : [];
+                $active[$signature] = [
+                    'type' => substr((string) ($entry['type'] ?? ''), 0, 40),
+                    'code' => substr((string) ($entry['code'] ?? ''), 0, 120),
+                    'file' => substr((string) ($entry['file'] ?? ''), 0, 120),
+                    'line' => max(0, min((int) ($entry['line'] ?? 0), 999999)),
+                    'exception_class' => substr((string) ($entry['exception_class'] ?? ''), 0, 120),
+                    'page' => substr((string) ($entry['page'] ?? ''), 0, 40),
+                    'count' => (int) ($existing['count'] ?? 0) + 1,
+                    'first_seen' => (string) ($existing['first_seen'] ?? $timestamp),
+                    'last_seen' => $timestamp,
+                ];
+                if (count($active) > 200) {
+                    uasort($active, static function (array $a, array $b): int {
+                        return strcmp((string) ($a['last_seen'] ?? ''), (string) ($b['last_seen'] ?? ''));
+                    });
+                    $active = array_slice($active, -200, null, true);
+                }
+                $json = json_encode($active, JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
+                if (!is_string($json)) {
+                    return;
+                }
+                $temp = @tempnam(dirname($file), '.active-errors-');
+                if (!is_string($temp) || $temp === '') {
+                    return;
+                }
+                $written = @file_put_contents($temp, $json, LOCK_EX);
+                if ($written === false || $written !== strlen($json)) {
+                    @unlink($temp);
+                    return;
+                }
+                @chmod($temp, 0600);
+                if (!@rename($temp, $file)) {
+                    @unlink($temp);
+                }
+            } finally {
+                @flock($lock, LOCK_UN);
+                fclose($lock);
+            }
+        }
+
+        /** Read the persistent active-error list, newest occurrence first. */
+        public static function readActiveErrors(?string $storageDirectory = null): array
+        {
+            $paths = self::activeErrorPaths($storageDirectory);
+            if ($paths === null) {
+                return [];
+            }
+            $raw = @file_get_contents($paths[0]);
+            $decoded = is_string($raw) ? json_decode($raw, true) : null;
+            if (!is_array($decoded)) {
+                return [];
+            }
+            $list = [];
+            foreach ($decoded as $signature => $entry) {
+                if (!is_string($signature) || !is_array($entry)) {
+                    continue;
+                }
+                $list[] = array_merge(['signature' => $signature], $entry);
+            }
+            usort($list, static function (array $a, array $b): int {
+                return strcmp((string) ($b['last_seen'] ?? ''), (string) ($a['last_seen'] ?? ''));
+            });
+            return $list;
+        }
+
+        /**
+         * Mark errors as resolved: remove them from the active list and delete
+         * their raw entries from the diagnostics fellogg (live + archives).
+         * Returns how many active errors were removed.
+         *
+         * @param string[] $signatures
+         * @param string|null $storageDirectory Override for tests.
+         * @param string|null $logsDirectory Override for tests.
+         */
+        public static function resolveActiveErrors(array $signatures, ?string $storageDirectory = null, ?string $logsDirectory = null): int
+        {
+            $signatures = array_values(array_unique(array_filter($signatures, static function (string $signature): bool {
+                return preg_match('/\\A[a-f0-9]{32}\\z/D', $signature) === 1;
+            })));
+            if ($signatures === []) {
+                return 0;
+            }
+            $wanted = array_flip($signatures);
+            $removedActive = 0;
+            $paths = self::activeErrorPaths($storageDirectory);
+            if ($paths !== null) {
+                [$file, $lockPath] = $paths;
+                $oldUmask = umask(0077);
+                $lock = @fopen($lockPath, 'c');
+                umask($oldUmask);
+                if (is_resource($lock) && @flock($lock, LOCK_EX)) {
+                    @chmod($lockPath, 0600);
+                    try {
+                        $raw = is_file($file) ? @file_get_contents($file) : '';
+                        $active = is_string($raw) ? json_decode($raw, true) : null;
+                        if (is_array($active)) {
+                            foreach (array_keys($active) as $signature) {
+                                if (is_string($signature) && isset($wanted[$signature])) {
+                                    unset($active[$signature]);
+                                    $removedActive++;
+                                }
+                            }
+                            $json = json_encode($active, JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
+                            if (is_string($json)) {
+                                $temp = @tempnam(dirname($file), '.active-errors-');
+                                if (is_string($temp) && $temp !== '') {
+                                    $written = @file_put_contents($temp, $json, LOCK_EX);
+                                    if ($written !== false && $written === strlen($json)) {
+                                        @chmod($temp, 0600);
+                                        if (!@rename($temp, $file)) {
+                                            @unlink($temp);
+                                        }
+                                    } else {
+                                        @unlink($temp);
+                                    }
+                                }
+                            }
+                        }
+                    } finally {
+                        @flock($lock, LOCK_UN);
+                        fclose($lock);
+                    }
+                }
+            }
+            // Remove the matching raw records from the fellogg and its archives.
+            $dir = $logsDirectory ?? (__DIR__ . '/../logs');
+            $root = realpath(dirname(__DIR__));
+            $realDir = realpath($dir);
+            if (
+                !is_link($dir) && is_file($dir . '/.htaccess') && !is_link($dir . '/.htaccess') &&
+                $root !== false && $realDir !== false &&
+                strpos($realDir, rtrim($root, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR) === 0
+            ) {
+                foreach (['diagnostics.jsonl', 'diagnostics.jsonl.1', 'diagnostics.jsonl.2', 'diagnostics.jsonl.3'] as $name) {
+                    $path = $realDir . DIRECTORY_SEPARATOR . $name;
+                    if (is_link($path) || !is_file($path) || !is_readable($path)) {
+                        continue;
+                    }
+                    $contents = @file_get_contents($path);
+                    if (!is_string($contents) || $contents === '') {
+                        continue;
+                    }
+                    $kept = [];
+                    foreach (preg_split('/\\r?\\n/', $contents) ?: [] as $line) {
+                        if ($line === '') {
+                            continue;
+                        }
+                        try {
+                            $entry = json_decode($line, true, 64, JSON_THROW_ON_ERROR);
+                        } catch (JsonException) {
+                            $kept[] = $line;
+                            continue;
+                        }
+                        $signature = is_array($entry) ? self::diagnosticSignature($entry) : '';
+                        if ($signature === '' || !isset($wanted[$signature])) {
+                            $kept[] = $line;
+                        }
+                    }
+                    $newContents = $kept ? implode(PHP_EOL, $kept) . PHP_EOL : '';
+                    if ($newContents === $contents) {
+                        continue;
+                    }
+                    $lockPath = $path . '.lock';
+                    $oldUmask = umask(0077);
+                    $lock = @fopen($lockPath, 'c');
+                    umask($oldUmask);
+                    if (!is_resource($lock) || !@flock($lock, LOCK_EX)) {
+                        if (is_resource($lock)) {
+                            fclose($lock);
+                        }
+                        continue;
+                    }
+                    @chmod($lockPath, 0600);
+                    try {
+                        $temp = @tempnam($realDir, '.diagnostic-resolve-');
+                        if (!is_string($temp) || $temp === '') {
+                            continue;
+                        }
+                        $written = @file_put_contents($temp, $newContents, LOCK_EX);
+                        if ($written === false || $written !== strlen($newContents)) {
+                            @unlink($temp);
+                            continue;
+                        }
+                        @chmod($temp, 0600);
+                        if (!@rename($temp, $path)) {
+                            @unlink($temp);
+                            continue;
+                        }
+                        @chmod($path, 0600);
+                    } finally {
+                        @flock($lock, LOCK_UN);
+                        fclose($lock);
+                    }
+                }
+            }
+            return $removedActive;
+        }
+
         public static function applicationError(string $code, array $fieldKeys = [], ?Throwable $exception = null): void
         {
             self::diagnostic(
@@ -803,6 +1165,9 @@ if (!class_exists('TadegaPrivacyLogger', false)) {
                             error_log('Tadega diagnostic logger write failed.');
                         }
                     }
+                    // Keep the persistent active-error list complete even when
+                    // the raw fellogg is rotated or later cleaned up.
+                    self::upsertActiveError($record);
                     fclose($handle);
                 } finally {
                     @flock($lock, LOCK_UN);

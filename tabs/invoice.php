@@ -310,6 +310,7 @@ if (is_array($selectedInvoiceCustomer) && $selectedInvoiceCustomer['name'] === $
     }
 }
 $diagnosticEntries = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPrivacyLogger::readDiagnostics(30, 200) : null;
+$activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPrivacyLogger::readActiveErrors() : null;
 ?>
 <style>
     .invoice-page {
@@ -737,6 +738,13 @@ $diagnosticEntries = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPrivacy
     .invoice-debug-grid dd { margin:3px 0 0; color:var(--inv-ink); font-size:.88rem; overflow-wrap:anywhere; }
     .invoice-debug-mono { font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:.82rem!important; }
     .invoice-debug-empty { margin:16px 0 0; padding:16px; border:1px dashed #c7d8dd; border-radius:12px; background:#fff; color:var(--inv-muted); }
+    .invoice-debug-active { margin:16px 0 0; padding:16px; border:1px solid #c7d8dd; border-radius:12px; background:#f7fbfc; }
+    .invoice-debug-active h3 { margin:0; color:var(--inv-ink); font-size:.98rem; letter-spacing:-.01em; }
+    .invoice-debug-active-intro { margin:6px 0 0; color:var(--inv-muted); font-size:.78rem; line-height:1.45; }
+    .invoice-debug-active-item { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; margin-top:9px; padding:10px 12px; border:1px solid #e2ecef; border-radius:10px; background:#fff; }
+    .invoice-debug-active-item strong { display:block; color:var(--inv-ink); font-size:.85rem; }
+    .invoice-debug-active-item small { display:block; margin-top:3px; color:var(--inv-muted); font-size:.72rem; overflow-wrap:anywhere; }
+    .invoice-debug-active-item form { flex:0 0 auto; }
     .invoice-debug-actions { display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; margin-top:12px; }
     .invoice-debug-copy-status { color:var(--inv-muted); font-size:.84rem; }
     .invoice-debug-guidance { margin-top:12px; padding:11px 13px; border:1px solid #d5e5e9; border-radius:11px; background:#f5fafb; color:#344957; }
@@ -2238,14 +2246,55 @@ $diagnosticEntries = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPrivacy
                 <div>
                     <p class="invoice-admin-eyebrow">ADMINPORTAL</p>
                     <h2 id="invoice-debug-heading">Felsökning · tekniska fel</h2>
-                    <p>Visar PHP-/JavaScriptfel och skadeblankettens validerings-, signatur-, PDF- och lagringsfel. Loggen innehåller bara säkra felkoder, fältidentifierare och tekniska metadata — aldrig formulärvärden, kunduppgifter, innehåll eller autentiserings-/CSRF-token. Konton identifieras med ett stabilt pseudonymiserat ID. Poster rensas efter 30 dagar; vyn visar de senaste 200. Skadeblankettens felkoder har en förklaring och föreslagna kontroller. Varje post visar releaseetikett och ett kort SHA-256-byggfingeravtryck; etiketten är ”oversionerad” tills releaseetiketten konfigureras. Ingen information skickas automatiskt till en AI-chatt. Kopiera vid behov en teknisk sammanfattning och granska den innan du delar den.</p>
+                    <p>Visar PHP-/JavaScriptfel och skadeblankettens validerings-, signatur-, PDF- och lagringsfel. Loggen innehåller bara säkra felkoder, fältidentifierare och tekniska metadata — aldrig formulärvärden, kunduppgifter, innehåll eller autentiserings-/CSRF-token. Konton identifieras med ett stabilt pseudonymiserat ID. <strong>Aktiva fel</strong> listas först och bevaras tills de markeras som åtgärdade; då tas de bort ur felloggen. Råposter arkiveras dagligen, arkiven rensas efter 7 dagar och vyn visar de senaste 200. Skadeblankettens felkoder har en förklaring och föreslagna kontroller. Varje post visar releaseetikett och ett kort SHA-256-byggfingeravtryck; etiketten är ”oversionerad” tills releaseetiketten konfigureras. Ingen information skickas automatiskt till en AI-chatt. Kopiera vid behov en teknisk sammanfattning och granska den innan du delar den.</p>
                 </div>
                 <span class="invoice-admin-badge">Admin</span>
             </header>
+            <?php if (is_array($activeDiagnosticErrors)): ?>
+                <section class="invoice-debug-active" aria-label="Aktiva fel">
+                    <h3>Aktiva fel</h3>
+                    <?php if ($activeDiagnosticErrors === []): ?>
+                        <p class="invoice-debug-empty">Inga aktiva fel. Nya fel dyker upp här automatiskt och tas bort när de markeras som åtgärdade.</p>
+                    <?php else: ?>
+                        <p class="invoice-debug-active-intro">Komplett fellogg över fel som ännu inte åtgärdats. När felet är åtgärdat trycker du på <strong>Markera som åtgärdad</strong> – då försvinner det ur både den aktiva listan och råloggen.</p>
+                        <?php foreach ($activeDiagnosticErrors as $activeError): ?>
+                            <?php
+                            $activeType = (string) ($activeError['type'] ?? '');
+                            $activeTitle = match ($activeType) {
+                                'php_error' => 'PHP-fel',
+                                'php_fatal' => 'Allvarligt PHP-fel',
+                                'uncaught_exception' => 'Ohanterat PHP-undantag',
+                                'js_error' => 'JavaScriptfel',
+                                'js_unhandled_rejection' => 'Ohanterat JavaScriptfel',
+                                'app_error' => 'Skadeblankettfel',
+                                default => 'Tekniskt fel',
+                            };
+                            $activeCode = (string) ($activeError['code'] ?? '');
+                            $activeFile = (string) ($activeError['file'] ?? 'unknown');
+                            $activeLine = (int) ($activeError['line'] ?? 0);
+                            $activeCount = (int) ($activeError['count'] ?? 1);
+                            $activeLast = strtotime((string) ($activeError['last_seen'] ?? ''));
+                            ?>
+                            <div class="invoice-debug-active-item">
+                                <div>
+                                    <strong><?= h($activeTitle) ?><?= $activeCode !== '' ? ' · ' . h($activeCode) : '' ?></strong>
+                                    <small><?= h($activeFile) ?><?= $activeLine > 0 ? ':' . $activeLine : '' ?> · <?= $activeCount ?> förekomst<?= $activeCount === 1 ? '' : 'er' ?><?= $activeLast !== false ? ' · senast ' . h(date('Y-m-d H:i', $activeLast)) : '' ?></small>
+                                </div>
+                                <form method="post" action="?tab=invoice&amp;invoice_view=debug" onsubmit="return confirm('Ta bort detta fel ur felloggen? Det kan dyka upp igen om felet inte är åtgärdat.')">
+                                    <?= csrf_field() ?>
+                                    <input type="hidden" name="action" value="resolve_diagnostic">
+                                    <input type="hidden" name="signature" value="<?= h((string) ($activeError['signature'] ?? '')) ?>">
+                                    <button class="btn btn-outline" type="submit">Markera som åtgärdad</button>
+                                </form>
+                            </div>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </section>
+            <?php endif; ?>
             <?php if (!is_array($diagnosticEntries)): ?>
                 <div class="app-alert app-alert-error invoice-email-warning" role="alert">Felsökningsloggen kunde inte läsas säkert. Kontrollera att logs-mappen och logs/.htaccess finns och att lagringen är åtkomlig.</div>
             <?php elseif (!$diagnosticEntries): ?>
-                <p class="invoice-debug-empty">Inga tekniska fel har registrerats under de senaste 30 dagarna.</p>
+                <p class="invoice-debug-empty">Inga nya tekniska fel i råloggen de senaste 30 dagarna.</p>
             <?php else: ?>
                 <?php
                 $diagnosticTypeLabels = [

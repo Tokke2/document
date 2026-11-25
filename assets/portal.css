@@ -794,6 +794,14 @@ html[data-theme="dark"] .skip-link { background:#182729; color:#e6efed; }
     }
 }
 
+/* Sortable table headers (assets/table_sort.js). */
+.file-table th[data-sort-key] { padding:0; }
+.file-sort-button { display:inline-flex; align-items:center; gap:6px; padding:9px 8px; border:0; border-radius:8px; background:transparent; color:inherit; font:inherit; font-weight:740; cursor:pointer; touch-action:manipulation; }
+.file-sort-button:hover { background:#eef7f8; color:var(--brand-dark); }
+.file-table th[aria-sort="ascending"] .file-sort-button::after { content:"▲"; font-size:.6em; }
+.file-table th[aria-sort="descending"] .file-sort-button::after { content:"▼"; font-size:.6em; }
+@media (pointer:coarse) { .file-sort-button { min-height:44px; } }
+
 /* Screen sharpness and adaptive polish: crisp glyphs on HiDPI displays,
    stable text metrics, aligned numbers and lighter per-frame work. */
 body { -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; }

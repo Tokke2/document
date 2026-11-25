@@ -253,6 +253,8 @@ $isSkadeCustomerMode = $activeTab === 'skadeblankett'
 TadegaPrivacyLogger::cleanupDiagnostics(30);
 // Rotated/archived log files are removed seven days after their last write.
 TadegaPrivacyLogger::cleanupArchivedLogs(7);
+// Yesterday's log writes are archived (audit/diagnostics/requests → .1–.3).
+TadegaPrivacyLogger::archiveYesterdayLogs();
 $protocolAuthUser = ($invoiceSetupState === 'configured' || $centralAdminCanAccess)
     ? ($activeTab === 'protocol'
         ? portal_protocol_auth_current_user()
@@ -2456,7 +2458,7 @@ function portal_serve_asset_route(): void
     if (
         $baseName === 'assets' &&
         (($extension === 'css' && basename($real) !== 'portal.css') ||
-            ($extension === 'js' && !in_array(basename($real), ['signature_pad.js', 'invoice_voice.js'], true)) ||
+            ($extension === 'js' && !in_array(basename($real), ['signature_pad.js', 'invoice_voice.js', 'table_sort.js'], true)) ||
             ($extension === 'svg' && !in_array(basename($real), ['tadega-icon.svg', 'tadega-logo.svg'], true)))
     ) {
         http_response_code(404);
@@ -2825,6 +2827,24 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             header('Content-Type: application/json; charset=UTF-8');
             echo json_encode($draftResult, JSON_INVALID_UTF8_SUBSTITUTE);
             exit;
+        }
+        if ($action === 'resolve_diagnostic') {
+            // Admin-only: mark active errors as resolved and remove them from
+            // the fellogg (active list + raw diagnostics entries).
+            $diagnosticResolver = portal_invoice_auth_current_user();
+            if (
+                $activeTab !== 'invoice' || ($_GET['invoice_view'] ?? '') !== 'debug' ||
+                !is_array($diagnosticResolver) || ($diagnosticResolver['role'] ?? '') !== 'admin'
+            ) {
+                http_response_code(403);
+                $portalPostError = 'Åtkomst nekad.';
+            } else {
+                $resolveSignatures = isset($_POST['signature']) && is_string($_POST['signature'])
+                    ? explode(',', $_POST['signature'])
+                    : [];
+                $resolvedCount = TadegaPrivacyLogger::resolveActiveErrors($resolveSignatures);
+                portal_redirect('invoice', $resolvedCount > 0 ? 'diagnostic_resolved' : 'diagnostic_resolve_nothing');
+            }
         }
         if ($action === 'delete_autosaved_draft') {
             if (!in_array($activeTab, ['invoice', 'protocol'], true)) {
@@ -3485,6 +3505,8 @@ $noticeMessages = [
     'protocol_email_status_storage_error' => 'Serviceprotokollet har sparats, men mejlets status kunde inte sparas. Kontrollera om PDF-mejlet kom fram innan du försöker skicka igen. Protokollet är kvar i Historik.',
     'protocol_email_status_storage_and_draft_cleanup_error' => 'Serviceprotokollet har sparats, men mejlets status kunde inte sparas och det autosparade utkastet kunde inte tas bort. Kontrollera inkorgen innan nytt mejlförsök och ta vid behov bort utkastet manuellt.',
     'draft_deleted' => 'Utkastet har raderats.',
+    'diagnostic_resolved' => 'Felen är markerade som åtgärdade och borttagna ur felloggen.',
+    'diagnostic_resolve_nothing' => 'Inga fel valdes bort – loggen är oförändrad.',
     'draft_delete_error' => 'Utkastet kunde inte raderas. Ladda om sidan och försök igen.',
     'saved_email_sent' => 'Underlaget har sparats och e-posttransporten accepterade den interna aviseringen till portalens primära mottagaradress. Det bekräftar inte leverans till mottagarens inkorg. Ingen kundkopia skickades.',
     'saved_email_failed' => 'Underlaget har sparats, men e-posttransporten kunde inte acceptera aviseringen. Kontrollera primär mottagaradress och webbhotellets e-postfunktion. Ingen kundkopia skickades.',
@@ -3601,6 +3623,8 @@ if ($portalLanguage === 'en') {
         'protocol_email_failed' => 'The service report was saved, but the PDF email was not accepted. Check the primary recipient address and email transport. No customer copy was sent.',
         'protocol_email_not_configured' => 'The service report was saved, but no valid primary internal recipient is configured. No email or customer copy was sent.',
         'draft_deleted' => 'Draft deleted.',
+        'diagnostic_resolved' => 'The errors were marked resolved and removed from the error log.',
+        'diagnostic_resolve_nothing' => 'No errors were selected – the log is unchanged.',
         'draft_delete_error' => 'Draft could not be deleted. Reload the page and try again.',
         'saved_email_sent' => 'The record was saved and the email transport accepted the internal notification to the primary recipient. This does not confirm inbox delivery. No customer copy was sent.',
         'saved_email_failed' => 'The record was saved, but the email transport did not accept the notification. Check the primary recipient and email function. No customer copy was sent.',
