@@ -797,6 +797,9 @@ html[data-theme="dark"] .skip-link { background:#182729; color:#e6efed; }
 /* Screen sharpness and adaptive polish: crisp glyphs on HiDPI displays,
    stable text metrics, aligned numbers and lighter per-frame work. */
 body { -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; }
+/* Full-height start on every screen: dynamic viewport height follows the
+   browser chrome instead of leaving a dead band under the content. */
+body { min-height:100vh; min-height:100dvh; }
 html { -webkit-text-size-adjust:100%; text-size-adjust:100%; }
 @media screen {
     body { text-rendering:optimizeLegibility; }
