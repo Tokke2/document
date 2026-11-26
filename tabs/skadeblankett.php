@@ -284,7 +284,7 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
     body.skade-kiosk-mode .skade-signature { margin-top:20px; padding:18px; }
     body.skade-kiosk-mode .skade-signature-title { font-size:1.05rem; }
     body.skade-kiosk-mode .skade-signature-copy { font-size:1rem; line-height:1.5; }
-    body.skade-kiosk-mode .skade-signature-canvas { height:190px; min-height:190px; }
+    body.skade-kiosk-mode .skade-signature-canvas { height:240px; min-height:240px; }
     body.skade-kiosk-mode .skade-signature-tools .btn { min-height:58px; font-size:1rem; }
     body.skade-kiosk-mode .skade-signature-status { font-size:.95rem; line-height:1.4; }
     body.skade-kiosk-mode .skade-signature-disclaimer, body.skade-kiosk-mode .skade-sign-note { font-size:.9rem; line-height:1.5; }
@@ -384,7 +384,7 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
     .skade-signature { margin-top:16px; padding:15px; border:1px solid #d6e5e9; border-radius:12px; background:#fbfdfe; }
     .skade-signature-title { display:block; margin:0 0 4px; color:#344957; font-size:.83rem; font-weight:780; }
     .skade-signature-copy { margin:0 0 10px; color:#687985; font-size:.75rem; }
-    .skade-signature-canvas { display:block; width:100%; height:auto; min-height:70px; border:1px solid #bdcbd1; border-radius:9px; background:#fff; cursor:crosshair; touch-action:none; user-select:none; }
+    .skade-signature-canvas { display:block; width:100%; height:auto; min-height:180px; border:1px solid #bdcbd1; border-radius:9px; background-color:#fff; background-image:linear-gradient(to bottom, transparent calc(100% - 44px), #c6d4da calc(100% - 43px), #c6d4da calc(100% - 41px), transparent calc(100% - 40px)); background-repeat:no-repeat; cursor:crosshair; touch-action:none; user-select:none; }
     .skade-signature-canvas:focus-visible { outline:3px solid rgba(17,113,138,.2); outline-offset:2px; }
     .skade-signature-tools { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:8px; }
     .skade-signature-status { color:#687985; font-size:.73rem; }
@@ -508,7 +508,7 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
     .skade-original-note { background:#f0f6f3; }
     body.skade-kiosk-mode { background:linear-gradient(180deg,#f6faf7,#edf5f1); }
     body.skade-kiosk-mode .skade-hero { border-color:#cfe3dc; }
-    body.skade-kiosk-mode .skade-signature-canvas { min-height:190px; }
+    body.skade-kiosk-mode .skade-signature-canvas { min-height:240px; }
     @media(max-width:680px) {
         .skade-hero { border-radius:18px; }
         .skade-card { border-radius:16px; }
@@ -676,7 +676,7 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
                         </div>
                         <div class="skade-field">
                             <div class="skade-label-row"><label class="skade-label" for="sk-personnr"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Personal / company identification number' : 'Personnummer / organisationsnummer' ?> <span class="skade-required">*</span></label><?= $skadeWhyBtn('sk-personnr') ?></div><?= $skadeWhyPanel('sk-personnr') ?>
-                            <input id="sk-personnr" name="s[person_orgnr]" inputmode="text" maxlength="40" autocomplete="off" required value="<?= $skadeText('person_orgnr') ?>">
+                            <input id="sk-personnr" name="s[person_orgnr]" inputmode="numeric" maxlength="40" autocomplete="off" required value="<?= $skadeText('person_orgnr') ?>">
                             <small class="skade-help"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Enter the customer\'s personal identification number or the company\'s registration number.' : 'Ange kundens personnummer eller företagets organisationsnummer.' ?></small>
                         </div>
                         <div class="skade-field">
@@ -764,7 +764,7 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
                     <div class="skade-signature" aria-labelledby="skade-signature-title">
                         <p class="skade-signature-title" id="skade-signature-title"><?= $skadeCustomerMode ? 'Din digitala signatur' : 'Kundens digitala signatur' ?> <?php if ($skadeCustomerMode): ?><span class="skade-required">*</span><?php else: ?><small><?= ($portalLanguage ?? 'sv') === 'en' ? '(optional)' : '(frivillig)' ?></small><?php endif; ?></p>
                         <p class="skade-signature-copy" id="skade-signature-help"><?= $skadeCustomerMode ? 'Skriv din namnteckning med finger eller Apple Pencil och lämna lite luft till rutans kanter. Tryck på Rensa signatur om du vill börja om.' : 'Låt kunden skriva sin signatur med finger eller penna och lämna lite luft till rutans kanter. Ritytan jämnar ut små ryck och ger djupblått bläck med naturlig breddvariation som en riktig penna; signaturen anpassas till originalrutans storlek i PDF:en. Lämna rutan tom för utskrift och handskriven underskrift.' ?></p>
-                        <canvas id="skade-signature-pad" class="skade-signature-canvas" width="1600" height="360" role="img" aria-label="<?= h($skadeCustomerMode ? 'Rita din signatur här' : 'Rita kundens signatur här') ?>" aria-describedby="skade-signature-help skade-signature-status" tabindex="0"></canvas>
+                        <canvas id="skade-signature-pad" class="skade-signature-canvas" width="1600" height="460" role="img" aria-label="<?= h($skadeCustomerMode ? 'Rita din signatur här' : 'Rita kundens signatur här') ?>" aria-describedby="skade-signature-help skade-signature-status" tabindex="0"></canvas>
                         <noscript><small class="skade-help"><?= $skadeCustomerMode ? 'Digital signering kräver JavaScript. Be personalen om hjälp.' : 'Ritning kräver JavaScript. Ni kan ändå skapa PDF:en utan digital signatur och låta kunden skriva under utskriften för hand.' ?></small></noscript>
                         <input type="hidden" name="s[signature_png]" id="skade-signature-png" value="<?= $skadeText('signature_png') ?>">
                         <div class="skade-signature-tools">
@@ -1760,6 +1760,37 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
         btn.setAttribute('aria-expanded', open ? 'false' : 'true');
         panel.hidden = open;
     });
+    <?php if ($skadeCustomerMode): ?>
+    /* Enter in a field moves focus to the next required field instead of
+       submitting; when no required field remains it moves to the next step
+       action (review/continue/submit). */
+    form.addEventListener('keydown', function (event) {
+        if (event.key !== 'Enter' || event.isComposing) return;
+        var target = event.target;
+        if (!target || !form.contains(target)) return;
+        if (target.tagName !== 'INPUT' && target.tagName !== 'TEXTAREA' && target.tagName !== 'SELECT') return;
+        var targetType = (target.type || '').toLowerCase();
+        if (target.tagName === 'INPUT' && ['checkbox', 'radio', 'button', 'submit', 'image', 'reset', 'color', 'range'].indexOf(targetType) !== -1) return;
+        event.preventDefault();
+        var fields = Array.prototype.slice.call(form.querySelectorAll('input, textarea, select')).filter(function (field) {
+            if (field.disabled || !form.contains(field)) return false;
+            var fieldType = (field.type || '').toLowerCase();
+            if (fieldType === 'hidden' || fieldType === 'submit' || fieldType === 'button' || fieldType === 'checkbox' || fieldType === 'radio') return false;
+            return !field.closest('[hidden]');
+        });
+        var start = fields.indexOf(target);
+        var next = null;
+        for (var i = start + 1; i < fields.length; i++) {
+            if (fields[i].required) { next = fields[i]; break; }
+        }
+        if (next) { focusInvalidField(next); return; }
+        var actionTarget = null;
+        if (customerStep === 'entry' && reviewOpen && !reviewOpen.hidden) actionTarget = reviewOpen;
+        else if (customerStep === 'review' && reviewContinue && !reviewContinue.hidden) actionTarget = reviewContinue;
+        else actionTarget = form.querySelector('.skade-form-actions button[type="submit"]');
+        if (actionTarget) focusInvalidField(actionTarget);
+    });
+    <?php endif; ?>
     form.addEventListener('keydown', function (event) {
         if (event.key !== 'Escape') return;
         var openBtn = form.querySelector('.skade-help-btn[aria-expanded="true"]');
@@ -1769,5 +1800,26 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
         if (openPanel) openPanel.hidden = true;
         openBtn.focus();
     });
+    /* Personal number and phone accept digits only while typing: letters are
+       stripped, separators (+, spaces, dashes, parentheses) stay. */
+    (function () {
+        var digitOnlyIds = ['sk-personnr', 'sk-telefon'];
+        digitOnlyIds.forEach(function (id) {
+            var input = document.getElementById(id);
+            if (!input) return;
+            input.addEventListener('input', function () {
+                var cleaned = String(input.value).replace(/[A-Za-z\u00c0-\u024f]/g, '');
+                if (cleaned === input.value) return;
+                var start = null;
+                var end = null;
+                try { start = input.selectionStart; end = input.selectionEnd; } catch (ignored) {}
+                input.value = cleaned;
+                if (start !== null && start === end && typeof input.setSelectionRange === 'function') {
+                    var position = Math.min(start, cleaned.length);
+                    try { input.setSelectionRange(position, position); } catch (ignored) {}
+                }
+            });
+        });
+    }());
 }());
 </script>
