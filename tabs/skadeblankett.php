@@ -54,7 +54,7 @@ if ($skadeCustomerMode) {
     } elseif (!$skadeTextFitConfirmationRequired && isset($portalPostError) && is_string($portalPostError) && $portalPostError !== '') {
         $skadeCustomerError = str_starts_with($portalPostError, 'Den här blanketten')
             ? 'Blanketten kan redan vara under behandling. Skicka inte in den igen; be personalen kontrollera statusen.'
-            : $portalPostError;
+            : $portalPostError . ' Dina övriga uppgifter är kvar i formuläret – rätta det markerade fältet och skicka igen.';
     }
 }
 $skadeSubmissionBlocked = $skadeCustomerMode && isset($portalPostError) && is_string($portalPostError) && str_starts_with($portalPostError, 'Den här blanketten');
@@ -1759,6 +1759,22 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
             syncPhotoPreview(photoInput);
         }
     });
+    // A server-side validation error (e.g. a missed required field) re-renders the
+    // form with every entered value still in the inputs, but the photo previews and
+    // the drawn signature are rebuilt from their hidden values on load. Re-sync them
+    // explicitly here so the customer can see at a glance that nothing was lost.
+    Array.prototype.forEach.call(form.querySelectorAll('input[type="file"][data-photo-target]'), function (photoInput) {
+        syncPhotoPreview(photoInput);
+    });
+    if (signaturePad && context && signatureInput && signatureInput.value.indexOf('data:image/png;base64,') === 0) {
+        var keepSignatureImage = new Image();
+        keepSignatureImage.onload = function () {
+            signaturePad.setBaseImage(keepSignatureImage);
+            syncSignatureConfirmationRequirement();
+            updateProgress();
+        };
+        keepSignatureImage.src = signatureInput.value;
+    }
     if (form.getAttribute('data-validation-error') === '1') {
         validationAttempted = true;
         var serverFirstInvalid = validateForm();
