@@ -76,6 +76,75 @@ $skadeChecked = static function (string $key, string $value = '1') use ($skadeIn
     $current = $skadeInput[$key] ?? null;
     return is_string($current) ? $current === $value : (is_array($current) && in_array($value, $current, true));
 };
+$skadeFieldWhy = [
+    'sk-namn' => [
+        'sv' => '<strong>Vad:</strong> Kundens namn och adress som ska stå på blanketten. <strong>Varför:</strong> Identifierar vem skaden gäller.',
+        'en' => '<strong>What:</strong> The customer’s name and address as they should appear on the form. <strong>Why:</strong> Identifies who the damage concerns.',
+    ],
+    'sk-personnr' => [
+        'sv' => '<strong>Vad:</strong> Personnummer eller organisationsnummer. <strong>Varför:</strong> Används för att matcha rätt försäkring i ärendet. Företagskund skriver organisationsnumret.',
+        'en' => '<strong>What:</strong> Personal or company identification number. <strong>Why:</strong> Used to match the right insurance in the claim. Business customers enter the registration number.',
+    ],
+    'sk-telefon' => [
+        'sv' => '<strong>Vad:</strong> Ett telefonnummer där vi kan nå dig. <strong>Varför:</strong> Vi ringer om vi har frågor om skaden eller behöver kompletterande uppgifter.',
+        'en' => '<strong>What:</strong> A phone number where we can reach you. <strong>Why:</strong> We call if we have questions about the damage or need more details.',
+    ],
+    'sk-epost' => [
+        'sv' => '<strong>Vad:</strong> Din e-postadress. <strong>Varför:</strong> Adressen skrivs i blanketten om du anger den. Lämna fältet tomt om du inte vill ange någon.',
+        'en' => '<strong>What:</strong> Your email address. <strong>Why:</strong> The address is written on the form if you provide one. Leave the field empty if you do not want to give one.',
+    ],
+    'sk-regnr' => [
+        'sv' => '<strong>Vad:</strong> Fordonets registreringsnummer, till exempel ABC123. <strong>Varför:</strong> Identifierar fordonet och används för att spara blanketten och bilderna rätt i arkivet.',
+        'en' => '<strong>What:</strong> The vehicle’s registration number, for example ABC123. <strong>Why:</strong> Identifies the vehicle and is used to save the form and photos in the right place in the archive.',
+    ],
+    'sk-modell' => [
+        'sv' => '<strong>Vad:</strong> Bilens fabrikat och modell. <strong>Varför:</strong> Behövs för att fordonet ska bli rätt identifierat på blanketten.',
+        'en' => '<strong>What:</strong> The car’s make and model. <strong>Why:</strong> Needed so the vehicle is identified correctly on the form.',
+    ],
+    'sk-matarstallning' => [
+        'sv' => '<strong>Vad:</strong> Antalet kilometer bilen visar. <strong>Varför:</strong> Ange det om du vet det; fältet är frivilligt.',
+        'en' => '<strong>What:</strong> The number of kilometers the car shows. <strong>Why:</strong> Enter it if you know it; the field is optional.',
+    ],
+    'sk-forsakring' => [
+        'sv' => '<strong>Vad:</strong> Namnet på bilens försäkringsbolag. <strong>Varför:</strong> Behövs för att veta vilket bolag ärendet ska handläggas hos.',
+        'en' => '<strong>What:</strong> The name of the vehicle insurance company. <strong>Why:</strong> Needed to know which company should handle the claim.',
+    ],
+    'sk-datum' => [
+        'sv' => '<strong>Vad:</strong> När skadan skedde. <strong>Varför:</strong> Datumet behövs för ärendet. Skriv sex eller åtta siffror, eller välj i kalendern.',
+        'en' => '<strong>What:</strong> When the damage happened. <strong>Why:</strong> The date is needed for the claim. Enter six or eight digits, or pick a date in the calendar.',
+    ],
+    'sk-plats' => [
+        'sv' => '<strong>Vad:</strong> Var skadan skedde, till exempel gata eller parkering. <strong>Varför:</strong> Ange det om du vet det; fältet är frivilligt.',
+        'en' => '<strong>What:</strong> Where the damage happened, for example a street or a car park. <strong>Why:</strong> Enter it if you know it; the field is optional.',
+    ],
+    'sk-skadenr' => [
+        'sv' => '<strong>Vad:</strong> Ärendenumret från ditt försäkringsbolag. <strong>Varför:</strong> Om du redan har ett nummer skriver du det här för att koppla ihop uppgifterna.',
+        'en' => '<strong>What:</strong> The claim number from your insurer. <strong>Why:</strong> If you already have one, enter it here so the records can be linked.',
+    ],
+    'sk-photo-damage' => [
+        'sv' => '<strong>Vad:</strong> En bild på skadan. <strong>Varför:</strong> Bilden sparas med blanketten och hjälper oss att se skadan. Du kan skicka in utan bild.',
+        'en' => '<strong>What:</strong> A photo of the damage. <strong>Why:</strong> The photo is saved with the form and helps us see the damage. You can submit without a photo.',
+    ],
+    'sk-photo-front' => [
+        'sv' => '<strong>Vad:</strong> En bild på fordonets front där registreringsnumret syns. <strong>Varför:</strong> Hjälper oss att styrka att rätt fordon avses. Bilden är frivillig.',
+        'en' => '<strong>What:</strong> A photo of the vehicle front with the registration number visible. <strong>Why:</strong> Helps confirm that the correct vehicle is involved. The photo is optional.',
+    ],
+];
+$skadeWhyBtn = static function (string $fieldId) use ($skadeFieldWhy, $skadeCustomerMode, $portalLanguage): string {
+    if (!$skadeCustomerMode || !isset($skadeFieldWhy[$fieldId])) {
+        return '';
+    }
+    $label = ($portalLanguage ?? 'sv') === 'en' ? 'Why this field' : 'Varför detta fält';
+    return '<button type="button" class="skade-help-btn" id="' . h($fieldId) . '-why-btn" aria-expanded="false" aria-controls="' . h($fieldId) . '-why" aria-label="' . h($label) . '">?</button>';
+};
+$skadeWhyPanel = static function (string $fieldId) use ($skadeFieldWhy, $skadeCustomerMode, $portalLanguage): string {
+    if (!$skadeCustomerMode || !isset($skadeFieldWhy[$fieldId])) {
+        return '';
+    }
+    $why = $skadeFieldWhy[$fieldId];
+    $text = ($portalLanguage ?? 'sv') === 'en' ? $why['en'] : $why['sv'];
+    return '<small class="skade-why" id="' . h($fieldId) . '-why" hidden>' . $text . '</small>';
+};
 $skadeTemplateName = 'Bilrutan Skadeblankett.pdf';
 $skadeTemplatePath = __DIR__ . '/../pdf/' . $skadeTemplateName;
 if ((!is_file($skadeTemplatePath) || is_link($skadeTemplatePath)) && is_file(__DIR__ . '/../pdf/Bilrutan_Skadeblankett.pdf') && !is_link(__DIR__ . '/../pdf/Bilrutan_Skadeblankett.pdf')) {
@@ -176,6 +245,8 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
     body.skade-kiosk-mode .skade-card-head p { font-size:1rem; line-height:1.5; }
     body.skade-kiosk-mode .skade-label { margin-bottom:8px; font-size:1rem; line-height:1.4; }
     body.skade-kiosk-mode .skade-label small { color:#526774; font-size:.95rem; font-weight:650; }
+    body.skade-kiosk-mode .skade-help-btn { width:36px; height:36px; font-size:1.05rem; }
+    body.skade-kiosk-mode .skade-why { font-size:.95rem; line-height:1.55; padding:11px 13px; }
     body.skade-kiosk-mode .skade-field input:not([type=checkbox]):not([type=radio]), body.skade-kiosk-mode .skade-field select, body.skade-kiosk-mode .skade-field textarea { min-height:60px; padding:14px 15px; font-size:1.15rem!important; line-height:1.4; }
     body.skade-kiosk-mode .skade-field textarea { min-height:145px; }
     body.skade-kiosk-mode [data-skade-step][hidden], body.skade-kiosk-mode #skade-review-open[hidden], body.skade-kiosk-mode .skade-customer-tools[hidden], body.skade-kiosk-mode #skade-speech-stop[hidden], body.skade-kiosk-mode #skade-speech-note[hidden], body.skade-kiosk-mode #skade-sign-back[hidden] { display:none!important; }
@@ -194,7 +265,7 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
     body.skade-kiosk-mode .skade-review-actions .btn { min-height:54px; }
     body.skade-kiosk-mode :is(button,input,select,textarea,a,summary,canvas,#skade-review-heading,#skade-sign-heading):focus-visible { outline:3px solid #075c59; outline-offset:3px; }
     body.skade-kiosk-mode.skade-large-text .skade-page { font-size:1.25rem; line-height:1.65; }
-    body.skade-kiosk-mode.skade-large-text :is(.skade-label,.skade-help,.skade-choice,.skade-card-head p,.skade-signature-copy,.skade-signature-disclaimer,.skade-customer-declaration,.skade-speech-note,.skade-read-field,.skade-review-list,.skade-form-actions p) { font-size:1.2rem; line-height:1.6; }
+    body.skade-kiosk-mode.skade-large-text :is(.skade-label,.skade-why,.skade-help,.skade-choice,.skade-card-head p,.skade-signature-copy,.skade-signature-disclaimer,.skade-customer-declaration,.skade-speech-note,.skade-read-field,.skade-review-list,.skade-form-actions p) { font-size:1.2rem; line-height:1.6; }
     body.skade-kiosk-mode.skade-large-text .skade-field :is(input:not([type=checkbox]):not([type=radio]),select,textarea) { font-size:1.3rem!important; }
     body.skade-kiosk-mode.skade-large-text :is(.skade-card-head h3,.skade-review-item dt) { font-size:1.35rem; }
     body.skade-kiosk-mode.skade-large-text :is(.skade-review-actions .btn,.skade-customer-tools button,.skade-submit,#skade-review-open) { font-size:1.15rem; }
@@ -268,6 +339,15 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
     .skade-help { display:block; margin:6px 0 0; color:#75838c; font-size:.73rem; }
     .skade-field-error { display:block; margin:6px 0 0; color:#b42318; font-size:.74rem; font-weight:680; line-height:1.35; }
     .skade-field-error[hidden] { display:none!important; }
+    .skade-label-row { display:flex; align-items:center; justify-content:space-between; gap:8px; margin:0 0 6px; }
+    .skade-label-row .skade-label { margin:0; }
+    .skade-help-btn { flex:0 0 auto; width:26px; height:26px; border:1px solid #b5d8e0; border-radius:50%; background:#f0f8fa; color:#0f6d84; font-size:.8rem; font-weight:800; line-height:1; padding:0; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; }
+    .skade-help-btn:hover { background:#dff1f6; border-color:#8fc7d4; }
+    .skade-help-btn:focus-visible { outline:3px solid rgba(17,113,138,.28); outline-offset:2px; }
+    .skade-help-btn[aria-expanded="true"] { background:#0f6d84; border-color:#0f6d84; color:#fff; }
+    .skade-why { display:block; margin:-1px 0 7px; padding:9px 11px; border:1px solid #d5e7ec; border-radius:9px; background:#f6fbfc; color:#3d5661; font-size:.76rem; line-height:1.5; }
+    .skade-why[hidden] { display:none!important; }
+    .skade-why strong { color:#172d3a; font-weight:760; }
     .skade-field input[aria-invalid="true"], .skade-field select[aria-invalid="true"], .skade-field textarea[aria-invalid="true"] { border-color:#d92d20!important; background:#fff8f7!important; box-shadow:0 0 0 3px rgba(217,45,32,.1)!important; }
     /* A missing or invalid field gets a red frame around the whole field
        (label + control) so it is easy to spot, and focus moves the marker
@@ -590,22 +670,22 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
                             <label class="skade-choice skade-company-choice" style="width:100%"><input id="sk-foretag" type="checkbox" name="s[foretag]" value="1" <?= $skadeChecked('foretag') ? 'checked' : '' ?>><span><strong><?= ($portalLanguage ?? 'sv') === 'en' ? 'Business customer' : 'Företagskund' ?></strong><br><small><?= ($portalLanguage ?? 'sv') === 'en' ? 'Select if the customer is a business.' : 'Markera om kunden är ett företag.' ?></small></span></label>
                         </div>
                         <div class="skade-field skade-field-wide">
-                            <label class="skade-label" for="sk-namn"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Name, address, postal code and city' : 'Namn, adress, postnummer och ort' ?> <span class="skade-required">*</span></label>
+                            <div class="skade-label-row"><label class="skade-label" for="sk-namn"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Name, address, postal code and city' : 'Namn, adress, postnummer och ort' ?> <span class="skade-required">*</span></label><?= $skadeWhyBtn('sk-namn') ?></div><?= $skadeWhyPanel('sk-namn') ?>
                             <textarea id="sk-namn" name="s[namn_adress]"<?= $skadeCustomerMode ? ' aria-describedby="sk-namn-help"' : '' ?> maxlength="250" autocomplete="<?= $skadeCustomerMode ? 'off' : 'street-address' ?>" required><?= $skadeText('namn_adress') ?></textarea>
                             <?php if ($skadeCustomerMode): ?><small class="skade-help" id="sk-namn-help"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Enter your full name, street address, postal code and city.' : 'Skriv för- och efternamn, gatuadress, postnummer och ort.' ?></small><?php endif; ?>
                         </div>
                         <div class="skade-field">
-                            <label class="skade-label" for="sk-personnr"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Personal / company identification number' : 'Personnummer / organisationsnummer' ?> <span class="skade-required">*</span></label>
+                            <div class="skade-label-row"><label class="skade-label" for="sk-personnr"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Personal / company identification number' : 'Personnummer / organisationsnummer' ?> <span class="skade-required">*</span></label><?= $skadeWhyBtn('sk-personnr') ?></div><?= $skadeWhyPanel('sk-personnr') ?>
                             <input id="sk-personnr" name="s[person_orgnr]" inputmode="text" maxlength="40" autocomplete="off" required value="<?= $skadeText('person_orgnr') ?>">
                             <small class="skade-help"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Enter the customer\'s personal identification number or the company\'s registration number.' : 'Ange kundens personnummer eller företagets organisationsnummer.' ?></small>
                         </div>
                         <div class="skade-field">
-                            <label class="skade-label" for="sk-telefon">Telefonnummer <?php if ($skadeCustomerMode): ?><span class="skade-required">*</span><?php else: ?><small><?= ($portalLanguage ?? 'sv') === 'en' ? '(optional)' : '(frivilligt)' ?></small><?php endif; ?></label>
+                            <div class="skade-label-row"><label class="skade-label" for="sk-telefon">Telefonnummer <?php if ($skadeCustomerMode): ?><span class="skade-required">*</span><?php else: ?><small><?= ($portalLanguage ?? 'sv') === 'en' ? '(optional)' : '(frivilligt)' ?></small><?php endif; ?></label><?= $skadeWhyBtn('sk-telefon') ?></div><?= $skadeWhyPanel('sk-telefon') ?>
                             <input id="sk-telefon" name="s[telefon]" type="tel" inputmode="numeric" maxlength="40" autocomplete="<?= $skadeCustomerMode ? 'off' : 'tel' ?>" <?= $skadeCustomerMode ? 'required' : '' ?> value="<?= $skadeText('telefon') ?>">
                             <?php if ($skadeCustomerMode): ?><small class="skade-help"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Enter a phone number where we can reach you.' : 'Skriv ett telefonnummer där vi kan nå dig.' ?></small><?php endif; ?>
                         </div>
                         <div class="skade-field skade-field-wide">
-                            <label class="skade-label" for="sk-epost"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Email address' : 'E-postadress' ?> <small><?= ($portalLanguage ?? 'sv') === 'en' ? '(optional)' : '(frivillig)' ?></small></label>
+                            <div class="skade-label-row"><label class="skade-label" for="sk-epost"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Email address' : 'E-postadress' ?> <small><?= ($portalLanguage ?? 'sv') === 'en' ? '(optional)' : '(frivillig)' ?></small></label><?= $skadeWhyBtn('sk-epost') ?></div><?= $skadeWhyPanel('sk-epost') ?>
                             <input id="sk-epost" name="s[epost]" type="email" inputmode="email" maxlength="254" autocomplete="<?= $skadeCustomerMode ? 'off' : 'email' ?>" value="<?= $skadeText('epost') ?>">
                             <?php if ($skadeCustomerMode): ?>
                                 <small class="skade-help"><?= ($portalLanguage ?? 'sv') === 'en' ? 'If you enter an email address, it is included on the form.' : 'Om du anger e-postadress skrivs den i blanketten.' ?></small>
@@ -620,19 +700,19 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
                     <div class="skade-card-head"><span class="skade-step">2</span><div><h3 id="skade-fordon-heading"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Vehicle and insurance' : 'Fordon och försäkring' ?></h3><p><?= ($portalLanguage ?? 'sv') === 'en' ? 'The details are copied to the vehicle fields on the Bilrutan form.' : 'Uppgifterna förs över till fordonets fält på Bilrutan-blanketten.' ?></p></div></div>
                     <div class="skade-grid">
                         <div class="skade-field">
-                            <label class="skade-label" for="sk-regnr"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Registration number' : 'Registreringsnummer' ?> <span class="skade-required">*</span></label>
+                            <div class="skade-label-row"><label class="skade-label" for="sk-regnr"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Registration number' : 'Registreringsnummer' ?> <span class="skade-required">*</span></label><?= $skadeWhyBtn('sk-regnr') ?></div><?= $skadeWhyPanel('sk-regnr') ?>
                             <input id="sk-regnr" name="s[regnr]" type="text" maxlength="12" pattern="[A-Za-z0-9 -]{2,12}" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" aria-describedby="sk-regnr-help" required value="<?= $skadeText('regnr') ?>">
                             <small class="skade-help" id="sk-regnr-help"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Example: ABC123. Letters are capitalized and spaces are removed automatically.' : 'Exempel: ABC123. Bokstäver blir versaler och mellanslag tas bort automatiskt.' ?></small>
                         </div>
                         <div class="skade-field">
-                            <label class="skade-label" for="sk-modell"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Make and model' : 'Fabrikat och modell' ?> <span class="skade-required">*</span></label>
+                            <div class="skade-label-row"><label class="skade-label" for="sk-modell"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Make and model' : 'Fabrikat och modell' ?> <span class="skade-required">*</span></label><?= $skadeWhyBtn('sk-modell') ?></div><?= $skadeWhyPanel('sk-modell') ?>
                             <input id="sk-modell" name="s[modell]" maxlength="70" required value="<?= $skadeText('modell') ?>">
                             <small class="skade-help"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Enter the vehicle\'s make and model.' : 'Ange bilens märke och modell.' ?></small>
                         </div>
-                        <div class="skade-field"><label class="skade-label" for="sk-matarstallning"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Current odometer reading in kilometers' : 'Aktuell mätarställning i kilometer' ?> <small><?= ($portalLanguage ?? 'sv') === 'en' ? '(optional)' : '(valfritt)' ?></small></label><input id="sk-matarstallning" name="s[matarstallning]" type="number" inputmode="numeric" min="0" max="99999999" step="1" value="<?= $skadeText('matarstallning') ?>"><?php if ($skadeCustomerMode): ?><small class="skade-help"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Enter the whole number of kilometers shown in the car, if known.' : 'Skriv antalet kilometer som bilen visar, om du vet.' ?></small><?php endif; ?></div>
-                        <div class="skade-field"><label class="skade-label" for="sk-forsakring"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Insurance company' : 'Försäkringsbolag' ?> <span class="skade-required">*</span></label><input id="sk-forsakring" name="s[forsakringsbolag]" maxlength="70" required value="<?= $skadeText('forsakringsbolag') ?>"><?php if ($skadeCustomerMode): ?><small class="skade-help"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Enter the name of the vehicle insurance company.' : 'Skriv namnet på bilens försäkringsbolag.' ?></small><?php endif; ?></div>
+                        <div class="skade-field"><div class="skade-label-row"><label class="skade-label" for="sk-matarstallning"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Current odometer reading in kilometers' : 'Aktuell mätarställning i kilometer' ?> <small><?= ($portalLanguage ?? 'sv') === 'en' ? '(optional)' : '(valfritt)' ?></small></label><?= $skadeWhyBtn('sk-matarstallning') ?></div><?= $skadeWhyPanel('sk-matarstallning') ?><input id="sk-matarstallning" name="s[matarstallning]" type="number" inputmode="numeric" min="0" max="99999999" step="1" value="<?= $skadeText('matarstallning') ?>"><?php if ($skadeCustomerMode): ?><small class="skade-help"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Enter the whole number of kilometers shown in the car, if known.' : 'Skriv antalet kilometer som bilen visar, om du vet.' ?></small><?php endif; ?></div>
+                        <div class="skade-field"><div class="skade-label-row"><label class="skade-label" for="sk-forsakring"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Insurance company' : 'Försäkringsbolag' ?> <span class="skade-required">*</span></label><?= $skadeWhyBtn('sk-forsakring') ?></div><?= $skadeWhyPanel('sk-forsakring') ?><input id="sk-forsakring" name="s[forsakringsbolag]" maxlength="70" required value="<?= $skadeText('forsakringsbolag') ?>"><?php if ($skadeCustomerMode): ?><small class="skade-help"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Enter the name of the vehicle insurance company.' : 'Skriv namnet på bilens försäkringsbolag.' ?></small><?php endif; ?></div>
                         <div class="skade-field">
-                            <label class="skade-label" for="sk-datum">Skadedatum <?php if ($skadeAdminCanOmitAccidentDate): ?><small>(frivilligt för admin)</small><?php else: ?><span class="skade-required">*</span><?php endif; ?></label>
+                            <div class="skade-label-row"><label class="skade-label" for="sk-datum">Skadedatum <?php if ($skadeAdminCanOmitAccidentDate): ?><small>(frivilligt för admin)</small><?php else: ?><span class="skade-required">*</span><?php endif; ?></label><?= $skadeWhyBtn('sk-datum') ?></div><?= $skadeWhyPanel('sk-datum') ?>
                             <div class="skade-date-control">
                                 <input id="sk-datum" name="s[skadedatum]" type="text" inputmode="<?= $skadeCustomerMode ? 'numeric' : 'text' ?>" maxlength="32" autocomplete="off" placeholder="2026-03-21, 21.03.2026 eller 260321" aria-describedby="sk-datum-help" <?= $skadeAdminCanOmitAccidentDate ? '' : 'required' ?> value="<?= $skadeText('skadedatum') ?>">
                                 <div class="skade-calendar-trigger">
@@ -642,8 +722,8 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
                             </div>
                             <small class="skade-help" id="sk-datum-help"><?php if ($skadeAdminCanOmitAccidentDate): ?>Skriv t.ex. 2026-03-21 eller 21.03.2026. Admin kan lämna fältet tomt när skadedatum saknas; PDF:en sparas och skickas som vanligt. Om datum anges måste det vara giltigt.<?php elseif ($skadeCustomerMode): ?>Skriv sex siffror, till exempel 260321 för 21 mars 2026, eller åtta siffror som 20260321. Du kan också välja i kalendern. År 00–49 tolkas som 2000–2049 och 50–99 som 1950–1999.<?php else: ?>Skriv t.ex. 2026-03-21 eller 21.03.2026. Sex siffror tolkas som ÅÅMMDD: 260321 blir 2026-03-21 (00–49 = 2000–2049, 50–99 = 1950–1999). Du kan även välja datum i kalendern.<?php endif; ?></small>
                         </div>
-                        <div class="skade-field"><label class="skade-label" for="sk-plats"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Place of damage' : 'Skadeplats' ?> <small><?= ($portalLanguage ?? 'sv') === 'en' ? '(optional)' : '(frivillig)' ?></small></label><input id="sk-plats" name="s[skadeplats]" maxlength="80" value="<?= $skadeText('skadeplats') ?>"><?php if ($skadeCustomerMode): ?><small class="skade-help"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Enter where the damage happened, if known.' : 'Skriv var skadan inträffade, om du vet.' ?></small><?php endif; ?></div>
-                        <div class="skade-field"><label class="skade-label" for="sk-skadenr"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Insurance / claim number' : 'Försäkrings- / skadenummer' ?> <small><?= ($portalLanguage ?? 'sv') === 'en' ? '(optional)' : '(valfritt)' ?></small></label><input id="sk-skadenr" name="s[skadenummer]" maxlength="80" value="<?= $skadeText('skadenummer') ?>"><?php if ($skadeCustomerMode): ?><small class="skade-help"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Enter the claim number from your insurer, if you have one.' : 'Skriv skadenumret från försäkringsbolaget om du har ett.' ?></small><?php endif; ?></div>
+                        <div class="skade-field"><div class="skade-label-row"><label class="skade-label" for="sk-plats"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Place of damage' : 'Skadeplats' ?> <small><?= ($portalLanguage ?? 'sv') === 'en' ? '(optional)' : '(frivillig)' ?></small></label><?= $skadeWhyBtn('sk-plats') ?></div><?= $skadeWhyPanel('sk-plats') ?><input id="sk-plats" name="s[skadeplats]" maxlength="80" value="<?= $skadeText('skadeplats') ?>"><?php if ($skadeCustomerMode): ?><small class="skade-help"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Enter where the damage happened, if known.' : 'Skriv var skadan inträffade, om du vet.' ?></small><?php endif; ?></div>
+                        <div class="skade-field"><div class="skade-label-row"><label class="skade-label" for="sk-skadenr"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Insurance / claim number' : 'Försäkrings- / skadenummer' ?> <small><?= ($portalLanguage ?? 'sv') === 'en' ? '(optional)' : '(valfritt)' ?></small></label><?= $skadeWhyBtn('sk-skadenr') ?></div><?= $skadeWhyPanel('sk-skadenr') ?><input id="sk-skadenr" name="s[skadenummer]" maxlength="80" value="<?= $skadeText('skadenummer') ?>"><?php if ($skadeCustomerMode): ?><small class="skade-help"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Enter the claim number from your insurer, if you have one.' : 'Skriv skadenumret från försäkringsbolaget om du har ett.' ?></small><?php endif; ?></div>
                         <div class="skade-field" style="display:flex;align-items:end;padding-bottom:3px"><label class="skade-choice" style="width:100%"><input id="sk-wiper-request" type="checkbox" name="s[nya_torkarblad_bestalls]" value="1" <?= $skadeChecked('nya_torkarblad_bestalls') ? 'checked' : '' ?>><span><strong><?= ($portalLanguage ?? 'sv') === 'en' ? 'Order new wiper blades' : 'Beställ nya torkarblad' ?></strong><br><small><?= ($portalLanguage ?? 'sv') === 'en' ? 'An additional charge applies if selected.' : 'Kostnad tillkommer om rutan markeras.' ?></small></span></label></div>
                     </div>
                 </section>
@@ -652,14 +732,14 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
                     <div class="skade-card-head"><span class="skade-step">3</span><div><h3 id="skade-photos-heading"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Photos (optional)' : 'Bilder (frivilligt)' ?></h3><p><?= ($portalLanguage ?? 'sv') === 'en' ? 'Add a photo of the damage and a photo of the front of the vehicle where the registration plate is visible. Sending without photos works too.' : 'Lägg till en bild på skadan och en bild på fordonets front där regnr syns. Det går även att skicka in utan bilder.' ?></p></div></div>
                     <div class="skade-grid">
                         <div class="skade-field">
-                            <label class="skade-label" for="sk-photo-damage"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Damage photo' : 'Bild på skada' ?> <small>(<?= ($portalLanguage ?? 'sv') === 'en' ? 'optional' : 'frivillig' ?>)</small></label>
+                            <div class="skade-label-row"><label class="skade-label" for="sk-photo-damage"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Damage photo' : 'Bild på skada' ?> <small>(<?= ($portalLanguage ?? 'sv') === 'en' ? 'optional' : 'frivillig' ?>)</small></label><?= $skadeWhyBtn('sk-photo-damage') ?></div><?= $skadeWhyPanel('sk-photo-damage') ?>
                             <input type="file" id="sk-photo-damage" accept="image/jpeg,image/png" data-photo-target="sk-photo-damage-value" data-photo-key="photo_damage">
                             <input type="hidden" name="s[photo_damage]" id="sk-photo-damage-value" value="<?= $skadeText('photo_damage') ?>">
                             <div class="skade-photo-preview" id="sk-photo-damage-preview" hidden><img alt="<?= h(($portalLanguage ?? 'sv') === 'en' ? 'Preview of the damage photo' : 'Förhandsvisning av bilden på skadan') ?>"><button class="btn btn-outline" type="button" data-photo-remove="sk-photo-damage"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Remove photo' : 'Ta bort bild' ?></button></div>
                             <small class="skade-help" id="sk-photo-damage-help"><?= ($portalLanguage ?? 'sv') === 'en' ? 'JPG or PNG, max 20 MB. The image is scaled down and stored with the form.' : 'JPG eller PNG, högst 20 MB. Bilden skalas ner och sparas med blanketten.' ?></small>
                         </div>
                         <div class="skade-field">
-                            <label class="skade-label" for="sk-photo-front"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Photo of the vehicle front where the registration number is visible' : 'Bild på fordonets front där regnr syns' ?> <small>(<?= ($portalLanguage ?? 'sv') === 'en' ? 'optional' : 'frivillig' ?>)</small></label>
+                            <div class="skade-label-row"><label class="skade-label" for="sk-photo-front"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Photo of the vehicle front where the registration number is visible' : 'Bild på fordonets front där regnr syns' ?> <small>(<?= ($portalLanguage ?? 'sv') === 'en' ? 'optional' : 'frivillig' ?>)</small></label><?= $skadeWhyBtn('sk-photo-front') ?></div><?= $skadeWhyPanel('sk-photo-front') ?>
                             <input type="file" id="sk-photo-front" accept="image/jpeg,image/png" data-photo-target="sk-photo-front-value" data-photo-key="photo_front">
                             <input type="hidden" name="s[photo_front]" id="sk-photo-front-value" value="<?= $skadeText('photo_front') ?>">
                             <div class="skade-photo-preview" id="sk-photo-front-preview" hidden><img alt="<?= h(($portalLanguage ?? 'sv') === 'en' ? 'Preview of the vehicle front photo' : 'Förhandsvisning av bilden på fordonets front') ?>"><button class="btn btn-outline" type="button" data-photo-remove="sk-photo-front"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Remove photo' : 'Ta bort bild' ?></button></div>
@@ -1670,5 +1750,24 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
             focusInvalidField(serverFirstInvalid);
         }
     }
+
+    form.addEventListener('click', function (event) {
+        var btn = event.target && event.target.closest ? event.target.closest('.skade-help-btn') : null;
+        if (!btn || !form.contains(btn)) return;
+        var panel = document.getElementById(btn.getAttribute('aria-controls') || '');
+        if (!panel) return;
+        var open = btn.getAttribute('aria-expanded') === 'true';
+        btn.setAttribute('aria-expanded', open ? 'false' : 'true');
+        panel.hidden = open;
+    });
+    form.addEventListener('keydown', function (event) {
+        if (event.key !== 'Escape') return;
+        var openBtn = form.querySelector('.skade-help-btn[aria-expanded="true"]');
+        if (!openBtn) return;
+        openBtn.setAttribute('aria-expanded', 'false');
+        var openPanel = document.getElementById(openBtn.getAttribute('aria-controls') || '');
+        if (openPanel) openPanel.hidden = true;
+        openBtn.focus();
+    });
 }());
 </script>
