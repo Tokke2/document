@@ -34,6 +34,10 @@ if ($requestedProtocolView === 'records') {
     require __DIR__ . '/protocol_records.php';
     return;
 }
+if ($requestedProtocolView === 'articles') {
+    require __DIR__ . '/protocol_articles.php';
+    return;
+}
 $protocolOwnerId = (string) ($protocolAuthUser['id'] ?? '');
 $protocolDrafts = $protocolOwnerId !== '' ? portal_autosaved_drafts_list('protocol', $protocolOwnerId) : [];
 $protocolDraftId = portal_autosaved_drafts_new_id();
@@ -192,7 +196,7 @@ $rowCount = max(8, count($items));
 <?php if ($isSavedProtocolView && $isEditingProtocol && $editId === $requestedViewId): ?>
 <section class="pro-wrap pro-saved-view" aria-label="(($portalLanguage ?? 'sv') === 'en' ? 'Saved service report' : 'Sparat serviceprotokoll')">
     <div class="invoice-session-bar"><div class="invoice-session-person"><strong><?= h($protocolAuthUser['name'] ?? $protocolAuthUser['username'] ?? 'Inloggad') ?></strong><span class="invoice-session-role"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Service report account' : 'Protokollkonto' ?></span></div><form class="invoice-session-form" method="post" action="?tab=protocol"><input type="hidden" name="action" value="protocol_pin_logout"><?= csrf_field() ?><button class="btn btn-outline" type="submit"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Sign out of service reports' : 'Logga ut från protokoll' ?></button></form></div>
-    <nav class="pro-subnav" aria-label="Serviceprotokollflikar"><a href="?tab=protocol"><?= ($portalLanguage ?? 'sv') === 'en' ? 'New report' : 'Nytt protokoll' ?></a><a href="?tab=protocol&amp;protocol_view=records" aria-current="page">Sparade protokoll (<?= count($savedProtocols) ?>)</a></nav>
+    <nav class="pro-subnav" aria-label="Serviceprotokollflikar"><a href="?tab=protocol"><?= ($portalLanguage ?? 'sv') === 'en' ? 'New report' : 'Nytt protokoll' ?></a><a href="?tab=protocol&amp;protocol_view=records" aria-current="page">Sparade protokoll (<?= count($savedProtocols) ?>)</a><a href="?tab=protocol&amp;protocol_view=articles"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Item register' : 'Artikelregister' ?></a></nav>
     <?php $viewEmailStatus = is_array($editProtocol['internal_email_status'] ?? null) ? $editProtocol['internal_email_status'] : []; ?>
     <?php if ($viewEmailStatus): ?>
         <div class="pro-view-email" role="status">
@@ -230,7 +234,7 @@ $rowCount = max(8, count($items));
 <?php return; endif; ?>
 <section class="pro-wrap" aria-label="<?= ($portalLanguage ?? 'sv') === 'en' ? 'Service reports' : 'Serviceprotokoll' ?>">
     <div class="invoice-session-bar"><div class="invoice-session-person"><strong><?= h($protocolAuthUser['name'] ?? $protocolAuthUser['username'] ?? 'Inloggad') ?></strong><span class="invoice-session-role"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Service report account' : 'Protokollkonto' ?></span></div><form class="invoice-session-form" method="post" action="?tab=protocol"><input type="hidden" name="action" value="protocol_pin_logout"><?= csrf_field() ?><button class="btn btn-outline" type="submit"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Sign out of service reports' : 'Logga ut från protokoll' ?></button></form></div>
-    <nav class="pro-subnav" aria-label="Serviceprotokollflikar"><a href="?tab=protocol" aria-current="page"><?= ($portalLanguage ?? 'sv') === 'en' ? 'New report' : 'Nytt protokoll' ?></a><a href="?tab=protocol&amp;protocol_view=records">Sparade protokoll (<?= count($savedProtocols) ?>)</a></nav>
+    <nav class="pro-subnav" aria-label="Serviceprotokollflikar"><a href="?tab=protocol" aria-current="page"><?= ($portalLanguage ?? 'sv') === 'en' ? 'New report' : 'Nytt protokoll' ?></a><a href="?tab=protocol&amp;protocol_view=records">Sparade protokoll (<?= count($savedProtocols) ?>)</a><a href="?tab=protocol&amp;protocol_view=articles"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Item register' : 'Artikelregister' ?></a></nav>
     <section class="pro-noprint" aria-labelledby="protocol-drafts-title" style="margin-top:14px">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap"><div><h2 id="protocol-drafts-title" style="margin:0 0 4px;font-size:1rem"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Draft' : 'Utkast' ?></h2><p style="margin:0;color:#667085;font-size:.82rem"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Forms are autosaved for three days. The draft is removed when you save the report.' : 'Formulär sparas automatiskt i tre dagar. När du sparar protokollet tas utkastet bort.' ?></p></div><a class="btn btn-outline" href="?tab=protocol"><?= ($portalLanguage ?? 'sv') === 'en' ? 'New report' : 'Nytt protokoll' ?></a></div>
         <?php if ($protocolDrafts): ?>

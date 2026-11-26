@@ -176,4 +176,23 @@ $assert(str_contains($settingsSource, 'tadega-logo-tryck.svg'), 'Settings offers
 $assert(str_contains($printLogoSource, '<text id="namn"') && str_contains($printLogoSource, 'Palett:'), 'Print original keeps editable text objects and a palette note.');
 $assert(str_contains($indexSource, '\'tadega-logo-tryck.svg\''), 'Print original passes the asset allowlist.');
 
+// Customer register is an invoice sub-view; the standalone tab is gone.
+$invoiceTabSource = (string) file_get_contents(__DIR__ . '/../../tabs/invoice.php');
+$assert(!str_contains($indexSource, "'customers' => ['Kundregister'"), 'Kundregister is no longer a top-level tab.');
+$assert(str_contains($indexSource, "if (\$activeTab === 'customers')") && str_contains($indexSource, "\$_GET['invoice_view'] = 'customers'"), 'Legacy ?tab=customers links rewrite to the invoice sub-view.');
+$assert(str_contains($invoiceTabSource, "require __DIR__ . '/customers.php';"), 'The Kunder sub-view renders the full customer register.');
+$assert(str_contains($invoiceTabSource, 'Customer register') && str_contains($invoiceTabSource, 'invoice_view=customers'), 'Invoice sub-tab is labelled Kundregister and links to itself.');
+
+// Service report item register: own sub-view, own storage file, admin-gated.
+$protocolSource = (string) file_get_contents(__DIR__ . '/../../tabs/protocol.php');
+$protocolArticlesSource = (string) file_get_contents(__DIR__ . '/../../tabs/protocol_articles.php');
+$protocolCatalogSource = (string) file_get_contents(__DIR__ . '/../../includes/protocol_catalog.php');
+$invoiceCatalogSource = (string) file_get_contents(__DIR__ . '/../../includes/invoice_catalog.php');
+$assert(str_contains($protocolSource, "requestedProtocolView === 'articles'") && str_contains($protocolSource, 'protocol_articles.php'), 'Service reports expose an Artikelregister sub-view.');
+$assert(substr_count($protocolSource, 'protocol_view=articles') >= 2, 'Both service report sub-navs link the item register.');
+$assert(str_contains($protocolArticlesSource, 'protocol_catalog_add') && str_contains($protocolArticlesSource, 'protocol_catalog_delete'), 'Item register uses the add and delete form actions.');
+$assert(str_contains($indexSource, '$action === \'protocol_catalog_add\'') && str_contains($indexSource, 'protocol_catalog_admin_required'), 'Item register writes require a service report administrator.');
+$assert(str_contains($protocolCatalogSource, 'protocol_articles.json') && str_contains($invoiceCatalogSource, 'invoice_articles.json'), 'The two item registers store articles separately.');
+$assert(str_contains($indexSource, 'protocol_catalog_saved') && str_contains($indexSource, 'protocol_catalog_deleted'), 'Item register notices exist in Swedish and English.');
+
 fwrite(STDOUT, 'PASS: ' . $checks . ' Adminpanel render checks.' . PHP_EOL);

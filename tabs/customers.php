@@ -714,7 +714,7 @@ $tc_actions_ready = $tc_data_ready && $tc_csrf_ready;
                                     $tc_duplicate_fields = is_array($tc_duplicate_match['fields'] ?? null) ? $tc_duplicate_match['fields'] : [];
                                 ?>
                                 <li>
-                                    <a href="index.php?tab=customers&amp;edit_id=<?= rawurlencode($tc_duplicate_match['id']) ?>#tc-customer-form" target="_blank" rel="noopener"><?= $tc_escape($tc_duplicate_name !== '' ? $tc_duplicate_name : 'Kund utan namn') ?></a>
+                                    <a href="index.php?tab=invoice&amp;invoice_view=customers&amp;edit_id=<?= rawurlencode($tc_duplicate_match['id']) ?>#tc-customer-form" target="_blank" rel="noopener"><?= $tc_escape($tc_duplicate_name !== '' ? $tc_duplicate_name : 'Kund utan namn') ?></a>
                                     <span>— match på <?= $tc_escape(implode(', ', $tc_duplicate_fields)) ?></span>
                                 </li>
                             <?php endforeach; ?>
@@ -792,7 +792,7 @@ $tc_actions_ready = $tc_data_ready && $tc_csrf_ready;
                     <button class="tc-btn tc-btn-primary" type="submit" name="confirm_possible_duplicates" value="1" data-mobile-action-dock <?= !$tc_actions_ready ? 'disabled' : '' ?>><?= ($portalLanguage ?? 'sv') === 'en' ? 'Save anyway' : 'Spara ändå' ?></button>
                 <?php endif; ?>
                 <?php if ($tc_form_is_edit): ?>
-                    <a class="tc-btn tc-btn-secondary" href="index.php?tab=customers"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Cancel' : 'Avbryt' ?></a>
+                    <a class="tc-btn tc-btn-secondary" href="index.php?tab=invoice&amp;invoice_view=customers"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Cancel' : 'Avbryt' ?></a>
                 <?php endif; ?>
             </div>
         </form>
@@ -861,7 +861,7 @@ $tc_actions_ready = $tc_data_ready && $tc_csrf_ready;
                         <?php endif; ?>
                     </div>
                     <div class="tc-card-actions">
-                        <a class="tc-link-btn" href="index.php?tab=customers&amp;edit_id=<?= rawurlencode($tc_customer['id']) ?>"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Edit' : 'Redigera' ?></a>
+                        <a class="tc-link-btn" href="index.php?tab=invoice&amp;invoice_view=customers&amp;edit_id=<?= rawurlencode($tc_customer['id']) ?>"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Edit' : 'Redigera' ?></a>
                         <?php if ($tc_can_delete): ?><form class="tc-delete-form" method="post" onsubmit="return confirm('Vill du verkligen radera den här kunden?');">
                             <input type="hidden" name="action" value="delete_customer">
                             <input type="hidden" name="id" value="<?= $tc_escape($tc_customer['id']) ?>">

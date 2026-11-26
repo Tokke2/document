@@ -1332,7 +1332,7 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
         </a>
         <a class="invoice-subtab" data-invoice-nav href="?tab=invoice&amp;invoice_view=customers<?= $invoiceContextHtml ?>" <?= $invoiceView === 'customers' ? 'aria-current="page"' : '' ?>>
             <svg class="invoice-subtab-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="9" cy="8" r="3"/><path d="M3 19c.6-3.2 2.5-5 6-5s5.4 1.8 6 5M17 8a3 3 0 0 1 0 6M17 15c2.3.4 3.6 1.7 4 4"/></svg>
-            <?= ($portalLanguage ?? 'sv') === 'en' ? 'Customers' : 'Kunder' ?>
+            <?= ($portalLanguage ?? 'sv') === 'en' ? 'Customer register' : 'Kundregister' ?>
         </a>
         <?php if ($isInvoiceAdmin): ?>
             <a class="invoice-subtab" data-invoice-nav href="?tab=invoice&amp;invoice_view=admin<?= $invoiceContextHtml ?>" <?= $invoiceView === 'admin' ? 'aria-current="page"' : '' ?>>
@@ -1569,7 +1569,7 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
                         </details>
                     <?php else: ?>
                         <div class="invoice-register invoice-register-empty">
-                            <p>Inga kunder finns i Kundregistret ännu. <?= empty($portalIsScopedPwa) ? '<a href="?tab=customers">Öppna Kundregistret</a> för att lägga till en kund.' : 'Lägg till kunden i Kundregistret via portalens vanliga kundvy.' ?></p>
+                            <p>Inga kunder finns i Kundregistret ännu. <?= empty($portalIsScopedPwa) ? '<a href="?tab=invoice&amp;invoice_view=customers">Öppna Kundregistret</a> för att lägga till en kund.' : 'Lägg till kunden i Kundregistret via portalens vanliga kundvy.' ?></p>
                         </div>
                     <?php endif; ?>
                 </section>
@@ -2056,53 +2056,7 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
             <?php endif; ?>
         </section>
     <?php elseif ($invoiceView === 'customers'): ?>
-        <section class="invoice-admin-panel invoice-customer-panel" aria-labelledby="invoice-customers-heading">
-            <header class="invoice-admin-header">
-                <div>
-                    <p class="invoice-admin-eyebrow"><?= ($portalLanguage ?? 'sv') === 'en' ? 'EXISTING CUSTOMER REGISTER' : 'BEFINTLIGT KUNDREGISTER' ?></p>
-                    <h2 id="invoice-customers-heading"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Customers' : 'Kunder' ?></h2>
-                    <p><?= ($portalLanguage ?? 'sv') === 'en' ? 'Select a customer to fill into the invoice record. Customer details are managed in the customer register.' : 'Välj en kund att fylla in i fakturaunderlaget. Kunduppgifter hanteras i det vanliga Kundregistret.' ?></p>
-                </div>
-                <?php if (empty($portalIsScopedPwa)): ?><a class="btn btn-outline" href="?tab=customers"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Open customer register' : 'Öppna Kundregistret' ?></a><?php endif; ?>
-            </header>
-            <?php if (!$invoiceCustomerOptions): ?>
-                <div class="invoice-catalog-empty"><strong><?= ($portalLanguage ?? 'sv') === 'en' ? 'No customers found.' : 'Inga kunder hittades.' ?></strong><p>Lägg till kunder i Kundregistret och kom sedan tillbaka hit.</p><?php if (empty($portalIsScopedPwa)): ?><a class="btn btn-main" href="?tab=customers"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Go to customer register' : 'Gå till Kundregistret' ?></a><?php endif; ?></div>
-            <?php else: ?>
-                <div class="invoice-catalog-toolbar">
-                    <label for="invoice-customer-search"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Search customers' : 'Sök kunder' ?></label>
-                    <input id="invoice-customer-search" type="search" placeholder="Skriv ett kundnamn…" autocomplete="off">
-                    <span><?= count($invoiceCustomerOptions) ?> kunder</span>
-                </div>
-                <div class="invoice-customer-list" id="invoice-customer-list">
-                    <?php foreach ($invoiceCustomerOptions as $invoiceCustomerIndex => $invoiceCustomer): ?>
-                        <article class="invoice-customer-card" data-invoice-customer-card data-search="<?= h($invoiceCustomer['name'] . ' ' . implode(' ', $invoiceCustomer['references'])) ?>">
-                            <div class="invoice-customer-card-heading">
-                                <h3><?= h($invoiceCustomer['name']) ?></h3>
-                                <span><?= count($invoiceCustomer['references']) ?> referenser</span>
-                            </div>
-                            <form method="get" action="?tab=invoice" class="invoice-customer-select-form">
-                                <input type="hidden" name="invoice_view" value="form">
-                                <input type="hidden" name="customer_id" value="<?= h($invoiceCustomer['id']) ?>">
-                                <?php foreach ($invoiceContextParams as $invoiceContextKey => $invoiceContextValue): ?>
-                                    <input type="hidden" name="<?= h($invoiceContextKey) ?>" value="<?= h($invoiceContextValue) ?>">
-                                <?php endforeach; ?>
-                                <div class="invoice-field">
-                                    <label for="invoice-customer-ref-<?= (int) $invoiceCustomerIndex ?>"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Customer reference' : 'Kundens referens' ?></label>
-                                    <select id="invoice-customer-ref-<?= (int) $invoiceCustomerIndex ?>" name="customer_ref">
-                                        <option value=""><?= ($portalLanguage ?? 'sv') === 'en' ? 'Without reference' : 'Utan referens' ?></option>
-                                        <?php foreach ($invoiceCustomer['references'] as $invoiceCustomerReference): ?>
-                                            <option value="<?= h($invoiceCustomerReference) ?>"><?= h($invoiceCustomerReference) ?></option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                </div>
-                                <button class="btn btn-main" type="submit"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Fill in invoice record' : 'Fyll i fakturaunderlaget' ?></button>
-                            </form>
-                        </article>
-                    <?php endforeach; ?>
-                </div>
-                <p class="invoice-catalog-no-results" id="invoice-customer-no-results" hidden><?= ($portalLanguage ?? 'sv') === 'en' ? 'No customers match the search.' : 'Inga kunder matchar sökningen.' ?></p>
-            <?php endif; ?>
-        </section>
+        <?php require __DIR__ . '/customers.php'; ?>
     <?php elseif ($invoiceView === 'email'): ?>
         <section class="invoice-admin-panel" aria-labelledby="invoice-email-heading">
             <header class="invoice-admin-header">

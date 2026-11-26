@@ -219,16 +219,20 @@ $portalTabs = [
     'skadeblankett' => ['Skadeblankett', 'Fyll i skadeunderlag och skapa PDF.'],
     'files' => ['PDF-arkiv', 'Hitta och hantera arkiverade dokument.'],
     'archive' => ['Historik', 'Överblick över sparade dokument och filer.'],
-    'customers' => ['Kundregister', 'Hitta och hantera kunduppgifter.'],
     'settings' => ['Inställningar', 'E-post och företagsinställningar.'],
     'admin' => ['Adminpanel', 'Central behörighet och åtkomst till portalens personalsidor.'],
 ];
 
 if ($portalLanguage === 'en') {
-    $englishTabs = ['calendar'=>['Calendar','Your schedule and daily overview.'], 'protocol'=>['Service report','Create and save service reports.'], 'search'=>['Search','Search authorized documents and registers.'], 'invoice'=>['Invoice basis','Collect time, materials and amounts.'], 'skadeblankett'=>['Damage form','Complete the damage form and create a PDF.'], 'files'=>['PDF archive','Find and manage archived documents.'], 'archive'=>['History','Overview of saved documents and files.'], 'customers'=>['Customers','Find and manage customers.'], 'settings'=>['Settings','Email and company settings.'], 'admin'=>['Administration','Central access and administration.']];
+    $englishTabs = ['calendar'=>['Calendar','Your schedule and daily overview.'], 'protocol'=>['Service report','Create and save service reports.'], 'search'=>['Search','Search authorized documents and registers.'], 'invoice'=>['Invoice basis','Collect time, materials and amounts.'], 'skadeblankett'=>['Damage form','Complete the damage form and create a PDF.'], 'files'=>['PDF archive','Find and manage archived documents.'], 'archive'=>['History','Overview of saved documents and files.'], 'settings'=>['Settings','Email and company settings.'], 'admin'=>['Administration','Central access and administration.']];
     $portalTabs = $englishTabs;
 }
 $activeTab = isset($_GET['tab']) && is_string($_GET['tab']) ? $_GET['tab'] : 'protocol';
+if ($activeTab === 'customers') {
+    // The customer register is the "Kunder" sub-view of the invoice tab now.
+    $activeTab = 'invoice';
+    $_GET['invoice_view'] = 'customers';
+}
 if (!isset($portalTabs[$activeTab])) {
     $activeTab = 'protocol';
 }
@@ -3263,6 +3267,33 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 ['ok' => false, 'code' => $quickProtocolCode],
                 $quickProtocolCode === 'storage_error' ? 503 : 422
             );
+        } elseif ($action === 'protocol_catalog_add' || $action === 'protocol_catalog_delete') {
+            if ($activeTab !== 'protocol') {
+                http_response_code(403);
+                $portalPostError = 'Åtkomst nekad.';
+            } else {
+                $protocolCatalogActor = portal_protocol_auth_current_user();
+                if (!is_array($protocolCatalogActor)) {
+                    portal_redirect('protocol', 'protocol_login_required');
+                }
+                if (($protocolCatalogActor['role'] ?? '') !== 'admin') {
+                    portal_redirect('protocol', 'protocol_catalog_admin_required');
+                }
+                if ($action === 'protocol_catalog_add') {
+                    $protocolCatalogAddResult = portal_protocol_catalog_save($_POST);
+                    $protocolCatalogAddCode = (string) ($protocolCatalogAddResult['code'] ?? 'error');
+                    portal_redirect('protocol', ($protocolCatalogAddResult['ok'] ?? false) !== true
+                        ? 'protocol_catalog_error'
+                        : ($protocolCatalogAddCode === 'exists' ? 'protocol_catalog_exists' : 'protocol_catalog_saved'));
+                }
+                $protocolCatalogDeleteId = $_POST['id'] ?? '';
+                $protocolCatalogDeleteResult = is_string($protocolCatalogDeleteId)
+                    ? portal_protocol_catalog_delete($protocolCatalogDeleteId)
+                    : ['ok' => false];
+                portal_redirect('protocol', ($protocolCatalogDeleteResult['ok'] ?? false) === true
+                    ? 'protocol_catalog_deleted'
+                    : 'protocol_catalog_error');
+            }
         } elseif ($action === 'invoice_shared_approve') {
             $sharedAdmin = $activeTab === 'invoice' ? portal_invoice_auth_current_user() : null;
             if ($activeTab !== 'invoice' || ($_GET['invoice_view'] ?? '') !== 'articles' || !portal_voice_shared_is_admin($sharedAdmin)) {
@@ -3621,6 +3652,11 @@ $noticeMessages = [
     'invoice_setup_closed' => 'Första adminkontot är redan skapat. Logga in med ditt konto.',
     'invoice_setup_storage_error' => 'Kontot kunde inte skapas eftersom privat lagring inte kunde läsas eller skrivas. Kontrollera filrättigheterna eller kontakta administratören.',
     'invoice_login_required' => 'Logga in med din personliga PIN för att använda fakturaunderlaget och Kundregistret.',
+    'protocol_catalog_saved' => 'Artikeln sparades i Serviceprotokollets artikelregister.',
+    'protocol_catalog_exists' => 'Artikeln finns redan i Serviceprotokollets artikelregister.',
+    'protocol_catalog_deleted' => 'Artikeln togs bort från Serviceprotokollets artikelregister.',
+    'protocol_catalog_admin_required' => 'Endast serviceprotokolladmin kan ändra artikelregistret.',
+    'protocol_catalog_error' => 'Artikelregistret kunde inte uppdateras. Försök igen.',
     'protocol_login_success' => 'Du är inloggad för serviceprotokoll.',
     'protocol_logout' => 'Du är utloggad från serviceprotokoll.',
     'protocol_login_failed' => 'Fel användarnamn eller PIN för serviceprotokoll. Kontrollera uppgifterna och försök igen.',
@@ -3727,6 +3763,11 @@ if ($portalLanguage === 'en') {
         'invoice_login_success' => 'You are signed in to invoice records.',
         'invoice_login_remembered' => 'You are signed in. This device stays signed in until you sign out.',
         'invoice_logout' => 'You are signed out of invoice records.',
+        'protocol_catalog_saved' => 'The item was saved to the service report item register.',
+        'protocol_catalog_exists' => 'That item already exists in the service report item register.',
+        'protocol_catalog_deleted' => 'The item was removed from the service report item register.',
+        'protocol_catalog_admin_required' => 'Only a service report administrator can change the item register.',
+        'protocol_catalog_error' => 'The item register could not be updated. Try again.',
         'invoice_login_failed' => 'Incorrect username or PIN. Check your credentials and try again.',
         'invoice_login_locked' => 'Too many failed attempts. Sign-in is temporarily locked; try again later.',
         'invoice_setup_success' => 'The first administrator account was created. Sign in with your chosen username and PIN.',
@@ -3865,7 +3906,7 @@ if (!$isSkadeCustomerMode) {
             'processing' => 'Under behandling',
             'invoice_history' => 'Historik',
             'articles' => 'Artikelkatalog',
-            'customers' => 'Kunder',
+            'customers' => 'Kundregister',
             'admin' => 'Konton',
             'email' => 'E-poststatus',
             'debug' => 'Diagnostik',
@@ -3921,7 +3962,6 @@ $languageLink = static function (string $language): string {
             'skadeblankett' => '<svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="4.5" y="4" width="15" height="16" rx="2.5"/><path d="M12 8.5v4.5M9.8 10.3l2.6 2.2M14.2 10.3l-2.6 2.2M12 14.5v1.5"/></svg>',
             'files' => '<svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5.5 4.5A1.5 1.5 0 0 1 7 3h6.5L18.5 8v11.5A1.5 1.5 0 0 1 17 21H7a1.5 1.5 0 0 1-1.5-1.5z"/><path d="M13.5 3v5h5"/><path d="M8.5 15.5l6-6M12 17.5l4.5-4.5"/></svg>',
             'archive' => '<svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3 2"/></svg>',
-            'customers' => '<svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="9" cy="8" r="3"/><path d="M3.5 20v-1.5a5.5 5.5 0 0 1 11 0V20M16 5.5a3 3 0 0 1 0 5.8M17 15.5a5 5 0 0 1 3.5 4.5"/></svg>',
             'calendar' => '<svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M7.5 3v4M16.5 3v4M3.5 9h17M8 13h2M14 13h2M8 17h2"/></svg>',
             'settings' => '<svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-1.8 3.1-.2-.1a1.7 1.7 0 0 0-1.9.1l-.2.1h-3.6l-.1-.2a1.7 1.7 0 0 0-1.7-1l-.2.1-3.1-1.8.1-.2a1.7 1.7 0 0 0-.1-1.9L7 15v-3.6l.2-.1a1.7 1.7 0 0 0 1-1.7l-.1-.2 1.8-3.1.2.1a1.7 1.7 0 0 0 1.9-.1l.2-.1h3.6l.1.2a1.7 1.7 0 0 0 1.7 1l.2-.1 3.1 1.8-.1.2a1.7 1.7 0 0 0 .1 1.9l.1.2V15z"/></svg>',
             'admin' => '<svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3 5 6v5c0 4.6 2.8 7.7 7 10 4.2-2.3 7-5.4 7-10V6z"/><path d="m9.2 12.2 1.8 1.8 3.9-4"/></svg>',

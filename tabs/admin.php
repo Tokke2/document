@@ -241,7 +241,7 @@ $adminPages = [
     ['skadeblankett', 'Skadeblankett', 'Skapa och hantera skadeblanketter i personalvyn.'],
     ['files', 'PDF-arkiv', 'Hantera arkiverade PDF-dokument.'],
     ['archive', 'Historik', 'Öppna portalens sparade dokumenthistorik.'],
-    ['customers', 'Kundregister', 'Visa och hantera kunder med fakturabehörighet.'],
+    ['customers', 'Kundregister', 'Visa och hantera kunder med fakturabehörighet.', '?tab=invoice&invoice_view=customers'],
     ['settings', 'Inställningar', 'Hantera portalinställningar och driftverktyg.'],
 ];
 $releaseResultAction = is_string($releaseUpdateResult['action'] ?? null) ? $releaseUpdateResult['action'] : '';

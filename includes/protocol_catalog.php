@@ -81,6 +81,60 @@ function portal_protocol_catalog_normalize(array $records): array
 }
 
 /** @return array<int, array{id:string,name:string,spec:string}> */
+/** Remove one article by id from the service report register. It never
+ * touches the invoice catalogue: storage/protocol_articles.json stays separate
+ * from storage/invoice_articles.json. */
+function portal_protocol_catalog_delete(string $id): array
+{
+    if (preg_match('/\\A[a-f0-9]{32}\\z/D', $id) !== 1) {
+        return ['ok' => false, 'code' => 'invalid_input'];
+    }
+    if (!portal_protocol_catalog_storage_is_safe()) {
+        return ['ok' => false, 'code' => 'storage_error'];
+    }
+    $path = portal_protocol_catalog_path();
+    $guardPath = $path . '.guard.lock';
+    if (is_link($path) || is_link($path . '.lock') || is_link($guardPath)) {
+        return ['ok' => false, 'code' => 'storage_error'];
+    }
+    $oldUmask = umask(0077);
+    $guard = @fopen($guardPath, 'c');
+    umask($oldUmask);
+    if (!is_resource($guard)) {
+        return ['ok' => false, 'code' => 'storage_error'];
+    }
+    @chmod($guardPath, 0600);
+    if (!@flock($guard, LOCK_EX)) {
+        fclose($guard);
+        return ['ok' => false, 'code' => 'storage_error'];
+    }
+    try {
+        $records = portal_protocol_catalog_read();
+        if (!is_array($records)) {
+            return ['ok' => false, 'code' => 'storage_error'];
+        }
+        $kept = [];
+        $removed = false;
+        foreach ($records as $record) {
+            if (is_array($record) && ($record['id'] ?? null) === $id) {
+                $removed = true;
+                continue;
+            }
+            $kept[] = $record;
+        }
+        if (!$removed) {
+            return ['ok' => false, 'code' => 'not_found'];
+        }
+        if (!function_exists('save_data') || !save_data($path, array_values($kept))) {
+            return ['ok' => false, 'code' => 'storage_error'];
+        }
+        return ['ok' => true, 'code' => 'deleted'];
+    } finally {
+        @flock($guard, LOCK_UN);
+        fclose($guard);
+    }
+}
+
 function portal_protocol_catalog_list(): array
 {
     $records = portal_protocol_catalog_read();

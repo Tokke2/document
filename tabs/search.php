@@ -127,7 +127,7 @@ if ($searchCanRun) {
                     <?php if ($searchCustomerResults): ?>
                         <ul class="portal-global-search-list">
                             <?php foreach ($searchCustomerResults as $result): ?>
-                                <li><article class="portal-global-search-hit"><div><h3><?= h($result['title']) ?></h3><p><?= h($result['subtitle']) ?></p></div><a class="btn btn-outline" href="?tab=customers&amp;edit_id=<?= h(rawurlencode($result['id'])) ?>" aria-label="Öppna kund <?= h($result['title']) ?>"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Open' : 'Öppna' ?></a></article></li>
+                                <li><article class="portal-global-search-hit"><div><h3><?= h($result['title']) ?></h3><p><?= h($result['subtitle']) ?></p></div><a class="btn btn-outline" href="?tab=invoice&amp;invoice_view=customers&amp;edit_id=<?= h(rawurlencode($result['id'])) ?>" aria-label="Öppna kund <?= h($result['title']) ?>"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Open' : 'Öppna' ?></a></article></li>
                             <?php endforeach; ?>
                         </ul>
                     <?php else: ?>
