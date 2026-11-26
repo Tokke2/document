@@ -473,9 +473,9 @@ if (is_array($releaseUpdateResult)) {
         <section class="central-admin-card central-admin-release" aria-labelledby="central-admin-release-title">
             <div class="central-admin-health-heading">
                 <div>
-                    <span class="central-admin-release-kicker">Endast central admin · manuell installation</span>
+                    <span class="central-admin-release-kicker">Endast central admin · uppdatera nu</span>
                     <h2 id="central-admin-release-title"><?= ($portalLanguage ?? 'sv') === 'en' ? 'GitHub release check' : 'GitHub-releasekontroll' ?></h2>
-                    <p><?= ($portalLanguage ?? 'sv') === 'en' ? 'One press checks and installs the latest stable release. Nothing is installed automatically.' : 'Ett knapptryck kontrollerar och installerar senaste stabila releasen direkt. Ingenting installeras automatiskt.' ?></p>
+                    <p><?= ($portalLanguage ?? 'sv') === 'en' ? 'One press checks and installs the latest stable release right away. The portal also updates itself from git at most once per hour, so this button only removes the wait.' : 'Ett knapptryck kontrollerar och installerar senaste stabila releasen direkt. Portalen uppdaterar sig dessutom själv från git högst en gång i timmen – knappen tar bara bort väntan.' ?></p>
                 </div>
                 <span class="central-admin-status <?= ($releaseUpdateConfiguration['ok'] ?? false) === true ? '' : 'central-admin-status-warning' ?>">
                     <?= ($releaseUpdateConfiguration['ok'] ?? false) === true ? 'Aktiv' : 'Avstängd' ?>
@@ -506,7 +506,7 @@ if (is_array($releaseUpdateResult)) {
                     <form class="central-admin-actions central-admin-release-one-click" method="post" action="?tab=admin">
                         <input type="hidden" name="action" value="portal_release_install_latest">
                         <?= csrf_field() ?>
-                        <button class="btn btn-main" type="submit" <?= !$csrfReady ? 'disabled' : '' ?>><?= ($portalLanguage ?? 'sv') === 'en' ? 'Update to latest release' : 'Uppdatera till senaste release' ?></button>
+                        <button class="btn btn-main" type="submit" <?= !$csrfReady ? 'disabled' : '' ?>><?= ($portalLanguage ?? 'sv') === 'en' ? 'Update the app now' : 'Uppdatera appen nu' ?></button>
                     </form>
                 <?php endif; ?>
             <?php endif; ?>

@@ -15,14 +15,20 @@
     <path d="M136 274l38-47c4-5 9-8 15-8h64v55z" fill="#7fd6c8"/>
     <path d="M266 219h72c6 0 11 2 15 7l30 34-117 4z" fill="#7fd6c8"/>
     <path d="M400 244l24 28 34 8v10l-58-14z" fill="#7fd6c8"/>
-    <g stroke="#0f9b8e" stroke-width="3.5" stroke-linecap="round">
-      <path d="M320 232v14"/>
-      <path d="M313 238l7 6"/>
-      <path d="M327 238l-7 6"/>
-      <path d="M320 246v8"/>
-      <path d="M320 240l-9 5"/>
-      <path d="M320 241l8 6"/>
+    <g stroke="#ffffff" stroke-width="4" stroke-linecap="round" opacity="0.75">
+      <path d="M276 228l34 12"/>
+      <path d="M352 264l22 8"/>
     </g>
+    <g stroke="#0f9b8e" stroke-width="3.5" stroke-linecap="round">
+      <path d="M322 228v22"/>
+      <path d="M313 234l9 7"/>
+      <path d="M331 234l-9 7"/>
+      <path d="M316 244l-12 8"/>
+      <path d="M328 244l12 8"/>
+      <path d="M317 252l-8 9"/>
+      <path d="M327 252l8 9"/>
+    </g>
+    <circle cx="322" cy="240" r="3.5" fill="#0f9b8e"/>
     <path d="M74 344h366" stroke="#0f9b8e" stroke-width="7" stroke-linecap="round"/>
     <circle cx="132" cy="400" r="44" fill="#07172d" stroke="#ffffff" stroke-width="10"/>
     <circle cx="420" cy="400" r="44" fill="#07172d" stroke="#ffffff" stroke-width="10"/>

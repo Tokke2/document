@@ -1515,7 +1515,8 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
                         </div>
                         <div class="invoice-field">
                             <label for="invoice-customer"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Customer / company' : 'Kund / företag' ?></label>
-                            <input id="invoice-customer" name="i[customer]" maxlength="180" autocomplete="organization" placeholder="Företags- eller kundnamn" aria-describedby="invoice-customer-help" value="<?= h($editInvoice['customer'] ?? '') ?>">
+                            <input id="invoice-customer" name="i[customer]" maxlength="180" autocomplete="organization" placeholder="<?= ($portalLanguage ?? 'sv') === 'en' ? 'Company or customer name — suggestions from the register' : 'Företags- eller kundnamn – förslag från Kundregistret' ?>" aria-describedby="invoice-customer-help" value="<?= h($editInvoice['customer'] ?? '') ?>"<?= $invoiceCustomerOptions ? ' list="invoice-customer-options"' : '' ?>>
+                            <?php if ($invoiceCustomerOptions): ?><datalist id="invoice-customer-options"><?php foreach ($invoiceCustomerOptions as $invoiceCustomerOption): ?><option value="<?= h($invoiceCustomerOption['name']) ?>"></option><?php endforeach; ?></datalist><?php endif; ?>
                             <p class="invoice-help" id="invoice-customer-help">Identifierar kunden som underlaget avser och som den manuella fakturan ska gälla.</p>
                         </div>
                         <div class="invoice-field invoice-field--wide">
@@ -2919,7 +2920,7 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
             stepNextButton.hidden = currentStep === 3;
             stepNextButton.textContent = currentStep === 1 ? <?= json_encode(($portalLanguage ?? 'sv') === 'en' ? "Continue to work lines →" : "Fortsätt till arbetsrader →", JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?> : <?= json_encode(($portalLanguage ?? 'sv') === 'en' ? "Review record →" : "Granska underlaget →", JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
         }
-        if (stepSaveButton) stepSaveButton.hidden = currentStep !== 3;
+        if (stepSaveButton) stepSaveButton.hidden = currentStep === 1;
         if (stepStatus) stepStatus.textContent = <?= json_encode(($portalLanguage ?? 'sv') === 'en' ? "Step " : "Steg ", JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?> + currentStep + <?= json_encode(($portalLanguage ?? 'sv') === 'en' ? " of 3: " : " av 3: ", JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?> + stepNames[currentStep - 1];
         if (stepProgress) {
             stepProgress.setAttribute('aria-valuenow', String(currentStep));
@@ -4238,6 +4239,14 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
     if (stepNextButton) {
         stepNextButton.addEventListener('click', function () {
             if (!mobileStepQuery || !mobileStepQuery.matches) return;
+            if (currentStep === 1) {
+                var wizardCustomerField = document.getElementById('invoice-customer');
+                if (wizardCustomerField && wizardCustomerField.value.trim() === '') {
+                    showFormError(invMsg('Ange kund eller företag innan du går vidare.', 'Enter a customer or company before continuing.'));
+                    wizardCustomerField.focus();
+                    return;
+                }
+            }
             if (currentStep === 2) {
                 var validationMessage = getInvoiceRowValidationMessage();
                 if (validationMessage) {
@@ -4248,6 +4257,15 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
             errorBox.hidden = true;
             errorBox.textContent = '';
             activateStep(currentStep + 1, true);
+        });
+
+        form.addEventListener('keydown', function (event) {
+            if (event.key !== 'Enter' || currentStep !== 1) return;
+            var target = event.target;
+            var tagName = target && target.tagName;
+            if (tagName === 'TEXTAREA' || tagName === 'BUTTON' || (target && target.type === 'submit')) return;
+            event.preventDefault();
+            stepNextButton.click();
         });
     }
 

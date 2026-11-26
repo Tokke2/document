@@ -195,4 +195,17 @@ $assert(str_contains($indexSource, '$action === \'protocol_catalog_add\'') && st
 $assert(str_contains($protocolCatalogSource, 'protocol_articles.json') && str_contains($invoiceCatalogSource, 'invoice_articles.json'), 'The two item registers store articles separately.');
 $assert(str_contains($indexSource, 'protocol_catalog_saved') && str_contains($indexSource, 'protocol_catalog_deleted'), 'Item register notices exist in Swedish and English.');
 
+// One clear "update the app" button, with copy that matches hourly auto-update.
+$adminTabSource = (string) file_get_contents(__DIR__ . '/../../tabs/admin.php');
+$assert(str_contains($adminTabSource, 'Uppdatera appen nu') && str_contains($adminTabSource, 'Update the app now'), 'Adminpanel offers a clear update-the-app button.');
+$assert(str_contains($adminTabSource, 'högst en gång i timmen') && !str_contains($adminTabSource, 'Ingenting installeras automatiskt'), 'Updater copy matches the hourly auto-update rule.');
+
+// Simpler invoice records: register suggestions in the customer field, the
+// mobile wizard requires a customer in step 1, Enter continues, and the save
+// button appears from step 2 so review is optional.
+$assert(str_contains($invoiceTabSource, 'list="invoice-customer-options"') && str_contains($invoiceTabSource, '<datalist id="invoice-customer-options">'), 'Customer field offers register suggestions.');
+$assert(str_contains($invoiceTabSource, 'stepSaveButton.hidden = currentStep === 1'), 'Mobile wizard can save directly from step 2.');
+$assert(str_contains($invoiceTabSource, 'Ange kund eller företag innan du går vidare') && str_contains($invoiceTabSource, 'stepNextButton.click();'), 'Step 1 requires a customer and Enter continues.');
+$assert(str_contains($printLogoSource, 'r="3.5"') && str_contains($printLogoSource, 'stroke="#ffffff"'), 'Brand mark shows the enlarged stone-chip crack and glass glint.');
+
 fwrite(STDOUT, 'PASS: ' . $checks . ' Adminpanel render checks.' . PHP_EOL);
