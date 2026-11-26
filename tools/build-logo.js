@@ -51,13 +51,21 @@ const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 240" role
   <!-- Flat fills only: portal_sanitize_svg strips defs/gradients on view. -->
   <g transform="translate(0 0) scale(0.46875)">
     <rect width="512" height="512" rx="112" fill="#07172d"/>
-    <path d="M148 96h140l76 76v244a28 28 0 0 1-28 28H148a28 28 0 0 1-28-28V124a28 28 0 0 1 28-28z" fill="#ffffff"/>
-    <path d="M288 96l76 76h-52a24 24 0 0 1-24-24z" fill="#7fd6c8"/>
-    <g stroke="#0f9b8e" stroke-width="26" stroke-linecap="round" stroke-linejoin="round" fill="none">
-      <path d="M176 240h140"/>
-      <path d="M176 296h98"/>
-      <path d="M176 368l34 34 70-60"/>
+    <path d="M56 400V316l48-50h288l44 40 10 12 30 16 14 14v52z" fill="#ffffff"/>
+    <rect x="116" y="276" width="80" height="32" fill="#7fd6c8"/>
+    <rect x="208" y="276" width="92" height="32" fill="#7fd6c8"/>
+    <rect x="312" y="276" width="68" height="32" fill="#7fd6c8"/>
+    <g stroke="#0f9b8e" stroke-width="3.5" stroke-linecap="round">
+      <path d="M254 282v11"/>
+      <path d="M248 286l6 5"/>
+      <path d="M260 286l-6 5"/>
+      <path d="M254 297v6"/>
     </g>
+    <path d="M84 348h372" stroke="#0f9b8e" stroke-width="7" stroke-linecap="round"/>
+    <circle cx="130" cy="400" r="44" fill="#07172d" stroke="#ffffff" stroke-width="10"/>
+    <circle cx="420" cy="400" r="44" fill="#07172d" stroke="#ffffff" stroke-width="10"/>
+    <circle cx="130" cy="400" r="10" fill="#ffffff"/>
+    <circle cx="420" cy="400" r="10" fill="#ffffff"/>
   </g>
   <path d="${pathData}" fill="#0b2239"/>
   <rect x="${x}" y="176" width="${advance}" height="8" rx="4" fill="#0f9b8e"/>

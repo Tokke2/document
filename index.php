@@ -3850,11 +3850,11 @@ $languageLink = static function (string $language): string {
 ?>
 <?php
         $tabIcons = [
-            'protocol' => '<svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M7 3.5h7l4 4v13H7z"/><path d="M14 3.5v4h4M10 12h5M10 16h5"/></svg>',
+            'protocol' => '<svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>',
             'search' => '<svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 4.2 4.2"/></svg>',
             'invoice' => '<svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 3.5h12v17l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6M9 16h3"/></svg>',
-            'skadeblankett' => '<svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3 5 6v5c0 4.6 2.8 7.7 7 10 4.2-2.3 7-5.4 7-10V6z"/><path d="M12 8v4M12 15h.01"/></svg>',
-            'files' => '<svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3.5 7.5h6l2 2h9v9h-17z"/><path d="M3.5 7.5v-2h6l2 2"/></svg>',
+            'skadeblankett' => '<svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="4.5" y="4" width="15" height="16" rx="2.5"/><path d="M12 8.5v4.5M9.8 10.3l2.6 2.2M14.2 10.3l-2.6 2.2M12 14.5v1.5"/></svg>',
+            'files' => '<svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5.5 4.5A1.5 1.5 0 0 1 7 3h6.5L18.5 8v11.5A1.5 1.5 0 0 1 17 21H7a1.5 1.5 0 0 1-1.5-1.5z"/><path d="M13.5 3v5h5"/><path d="M8.5 15.5l6-6M12 17.5l4.5-4.5"/></svg>',
             'archive' => '<svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3 2"/></svg>',
             'customers' => '<svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="9" cy="8" r="3"/><path d="M3.5 20v-1.5a5.5 5.5 0 0 1 11 0V20M16 5.5a3 3 0 0 1 0 5.8M17 15.5a5 5 0 0 1 3.5 4.5"/></svg>',
             'calendar' => '<svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M7.5 3v4M16.5 3v4M3.5 9h17M8 13h2M14 13h2M8 17h2"/></svg>',
