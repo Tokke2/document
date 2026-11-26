@@ -236,3 +236,28 @@ function portal_github_release_install_latest(string $root, ?callable $check = n
     }
     return $result;
 }
+
+/** Hourly auto-update from the fixed repository (hard rule): a full-portal GET
+ * re-checks the latest stable release at most once per interval and installs it
+ * through the same reviewed, allowlisted, transactional path as the manual
+ * Adminpanel button. Failures are cached by portal_github_release_auto_status
+ * too, so a broken network or missing configuration retries hourly, not per
+ * page view. Never called during form posts, customer mode or scoped PWAs. */
+function portal_github_release_auto_update_if_due(string $root, int $intervalSeconds = 3600): array
+{
+    if ($intervalSeconds < 600) return ['ok' => false, 'code' => 'skipped'];
+    $status = portal_github_release_auto_status($root);
+    $checkedAt = is_array($status) && is_int($status['checked_at'] ?? null) ? (int) $status['checked_at'] : 0;
+    if ($checkedAt > 0 && time() - $checkedAt < $intervalSeconds) return ['ok' => false, 'code' => 'not_due'];
+    $fresh = portal_github_release_auto_status($root, null, null, true);
+    if (!is_array($fresh) || ($fresh['ok'] ?? false) !== true || !is_string($fresh['tag'] ?? null) || !is_string($fresh['commit'] ?? null)) {
+        return ['ok' => false, 'code' => is_array($fresh) && is_string($fresh['code'] ?? null) ? $fresh['code'] : 'check_failed'];
+    }
+    $marker = portal_github_release_install_marker($root);
+    if (is_array($marker) && is_string($marker['commit'] ?? null) && !portal_github_release_marker_differs($fresh, $marker)) {
+        return ['ok' => false, 'code' => 'already_current'];
+    }
+    $result = portal_github_release_install_latest($root);
+    if (!is_array($result)) return ['ok' => false, 'code' => 'install_failed'];
+    return $result;
+}

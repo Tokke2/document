@@ -149,5 +149,7 @@ $assert(str_contains($indexSource, 'header-admin-btn') && str_contains($indexSou
 $assert(str_contains($indexSource, 'portal_github_release_marker_differs') && str_contains($indexSource, '#central-admin-release-title'), 'The shortcut offers a direct update link when a newer release was checked.');
 $cssSource = (string) file_get_contents(__DIR__ . '/../../assets/portal.css');
 $assert(str_contains($cssSource, '.header-admin-btn') && str_contains($cssSource, '.header-admin-btn.is-update'), 'The admin shortcut has header styling and a distinct update state.');
+$assert(str_contains($indexSource, 'portal_github_release_auto_update_if_due') && str_contains($indexSource, '($_SERVER[\'REQUEST_METHOD\'] ?? \'GET\') === \'GET\''), 'A full-portal GET auto-updates from git at most once per hour.');
+$assert(str_contains($indexSource, 'portal_logout_all') && str_contains($indexSource, 'header-logout-btn'), 'A header logout button ends all portal sessions.');
 
 fwrite(STDOUT, 'PASS: ' . $checks . ' Adminpanel render checks.' . PHP_EOL);

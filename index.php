@@ -269,6 +269,23 @@ if ($centralAdminCanAccess && !$isSkadeCustomerMode
         $portalAdminUpdateTag = $portalAdminAutoStatus['tag'];
     }
 }
+// Hard rule: at most once per hour, a full-portal GET re-checks the fixed
+// repository and installs a newer stable release through the same reviewed,
+// transactional path as the manual Adminpanel button. Never during form posts,
+// customer mode or scoped PWAs; failed checks are cached for the interval too.
+$portalReleaseAutoResult = null;
+if (!$portalIsScopedPwa && !$isSkadeCustomerMode
+    && ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET'
+    && function_exists('portal_github_release_auto_update_if_due')) {
+    $portalReleaseAutoResult = portal_github_release_auto_update_if_due(__DIR__);
+    if (is_array($portalReleaseAutoResult)) {
+        if (($portalReleaseAutoResult['ok'] ?? false) === true) {
+            TadegaPrivacyLogger::event('release.auto_installed');
+        } elseif (!in_array($portalReleaseAutoResult['code'] ?? '', ['not_due', 'already_current', 'skipped', 'configuration_incomplete', 'configuration_missing', 'no_published_release'], true)) {
+            TadegaPrivacyLogger::event('release.auto_failed');
+        }
+    }
+}
 TadegaPrivacyLogger::cleanupDiagnostics(30);
 // Rotated/archived log files are removed seven days after their last write.
 TadegaPrivacyLogger::cleanupArchivedLogs(7);
@@ -2641,13 +2658,13 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     } elseif ($portalIsScopedPwa && !in_array($action, $pwaAllowedActions, true)) {
         http_response_code(404);
         $portalPostError = 'Åtgärden finns inte i den här fristående formulärappen.';
-    } elseif ($centralAdminNeedsPinChange && !in_array($action, ['central_admin_change_pin', 'central_admin_logout'], true)) {
+    } elseif ($centralAdminNeedsPinChange && !in_array($action, ['central_admin_change_pin', 'central_admin_logout', 'portal_logout_all'], true)) {
         portal_redirect('admin', 'central_admin_pin_expired');
     } elseif (
         $invoiceSetupState === 'unconfigured' && $action !== 'invoice_first_admin_setup' &&
         !$portalIsScopedPwa &&
         !$centralAdminCanAccess &&
-        !in_array($action, ['central_admin_login', 'central_admin_logout', 'central_admin_enroll', 'central_admin_change_pin'], true)
+        !in_array($action, ['central_admin_login', 'central_admin_logout', 'central_admin_enroll', 'central_admin_change_pin', 'portal_logout_all'], true)
     ) {
         portal_redirect('invoice');
     } else {
@@ -2661,6 +2678,14 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         } elseif ($action === 'calendar_logout') {
             if ($activeTab !== 'calendar' || ($portalIsScopedPwa && $portalPwaApp !== 'calendar')) { http_response_code(403); $portalPostError = 'Åtkomst nekad.'; }
             else { portal_invoice_auth_logout(); portal_redirect('calendar'); }
+        } elseif ($action === 'portal_logout_all') {
+            if ($portalIsScopedPwa) { http_response_code(403); $portalPostError = 'Åtkomst nekad.'; }
+            else {
+                portal_central_admin_auth_logout();
+                portal_invoice_auth_logout();
+                portal_protocol_auth_logout();
+                portal_redirect('protocol', 'portal_logout');
+            }
         } elseif (in_array($action, ['calendar_save', 'calendar_delete'], true)) {
             $actor = $activeTab === 'calendar' && (!$portalIsScopedPwa || $portalPwaApp === 'calendar') ? portal_invoice_auth_personal_user() : null;
             if (!is_array($actor) || !portal_calendar_valid_id($actor['id'] ?? null)) { http_response_code(403); $portalPostError = 'Åtkomst nekad.'; }
@@ -3590,6 +3615,7 @@ $noticeMessages = [
     'invoice_admin_required' => 'Den här åtgärden är endast tillgänglig för admin.',
     'central_admin_login_success' => 'Du är inloggad som central admin. Admin-PIN fungerar nu på personalsidorna; kund-PWA:erna förblir separata.',
     'central_admin_logout' => 'Du är utloggad från den centrala Adminpanelen.',
+    'portal_logout' => 'Du är utloggad från portalen.',
     'central_admin_setup_success' => 'Den centrala admin-PIN:en är skapad. Den ger åtkomst till personalsidorna utan att ändra de separata faktura- och protokollkontona.',
     'central_admin_pin_changed' => 'Den centrala admin-PIN:en har bytts. Övriga aktiva centrala admins-sessioner har ogiltigförklarats.',
     'central_admin_pin_expired' => 'Den centrala PIN-koden måste uppdateras innan adminåtkomsten kan fortsätta. Bekräfta den nuvarande koden och välj en ny enligt kraven på sidan.',
@@ -3703,6 +3729,7 @@ if ($portalLanguage === 'en') {
         'invoice_admin_required' => 'This action is available only to administrators.',
         'central_admin_login_success' => 'You are signed in as central administrator. The administrator PIN works on staff pages; customer standalone apps remain separate.',
         'central_admin_logout' => 'You are signed out of central administration.',
+        'portal_logout' => 'You are signed out of the portal.',
         'central_admin_setup_success' => 'The central administrator PIN was created. It grants access to staff pages without changing the separate invoice and service report accounts.',
         'central_admin_pin_changed' => 'The central administrator PIN was changed. Other active central administrator sessions were invalidated.',
         'central_admin_pin_expired' => 'The central PIN must be updated before administrator access can continue. Confirm the current PIN and choose a new one as instructed.',
@@ -4003,6 +4030,7 @@ $languageLink = static function (string $language): string {
         </a>
         <div class="header-actions">
             <?php if ($centralAdminCanAccess): ?><a class="btn header-admin-btn<?= $portalAdminUpdateTag !== null ? ' is-update' : '' ?>" href="<?= $portalAdminUpdateTag !== null ? '?tab=admin#central-admin-release-title' : '?tab=admin' ?>"<?= $portalAdminUpdateTag !== null ? ' aria-label="' . h(($portalLanguage ?? 'sv') === 'en' ? 'Update to release ' . $portalAdminUpdateTag : 'Uppdatera till release ' . $portalAdminUpdateTag) . '"' : '' ?>><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3 5 6v5c0 4.6 2.8 7.7 7 10 4.2-2.3 7-5.4 7-10V6z"/><path d="m9.2 12.2 1.8 1.8 3.9-4"/></svg><span><?= $portalAdminUpdateTag !== null ? (($portalLanguage ?? 'sv') === 'en' ? 'Update ' : 'Uppdatera ') . h($portalAdminUpdateTag) : (($portalLanguage ?? 'sv') === 'en' ? 'Admin' : 'Adminpanel') ?></span></a><?php endif; ?>
+            <?php if (!$portalIsScopedPwa && (is_array(portal_central_admin_auth_current_user()) || is_array(portal_invoice_auth_current_user()) || is_array(portal_protocol_auth_current_user()))): ?><form method="post" action="?tab=<?= h($activeTab) ?>" class="header-logout-form"><?= csrf_field() ?><input type="hidden" name="action" value="portal_logout_all" /><button class="btn header-logout-btn" type="submit"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Log out' : 'Logga ut' ?></button></form><?php endif; ?>
             <span class="header-language"><a href="<?= h($languageLink('sv')) ?>" onclick="return confirm(<?= h(json_encode($languageChangeWarning, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT)) ?>)" lang="sv" <?= $portalLanguage === 'sv' ? 'aria-current="true"' : '' ?>>Svenska</a> · <a href="<?= h($languageLink('en')) ?>" onclick="return confirm(<?= h(json_encode($languageChangeWarning, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT)) ?>)" lang="en" <?= $portalLanguage === 'en' ? 'aria-current="true"' : '' ?>>English</a></span>
             <button class="btn pwa-install-btn" id="pwa-install-button" type="button" hidden><?= ($portalLanguage ?? 'sv') === 'en' ? 'Install app' : 'Installera app' ?></button>
             <p class="pwa-install-help" id="pwa-install-help" role="status" aria-live="polite" hidden></p>

@@ -26,7 +26,7 @@ if (!class_exists('TadegaPrivacyLogger', false)) {
             'protocol.created', 'protocol.updated', 'protocol.email_accepted', 'protocol.email_failed', 'protocol.email_not_configured',
             'invoice.created', 'invoice.updated', 'invoice.email_accepted', 'invoice.email_failed', 'invoice.email_not_configured', 'invoice.email_retry',
             'document.created', 'document.updated', 'document.deleted',
-            'file.uploaded', 'file.deleted', 'settings.updated', 'settings.save_failed', 'backup.created',
+            'file.uploaded', 'file.deleted', 'settings.updated', 'settings.save_failed', 'backup.created', 'release.auto_installed', 'release.auto_failed',
             'skade.form_received', 'skade.signature_drawn', 'skade.pdf_generated', 'skade.pdf_failed',
             'skade.email_sent', 'skade.email_accepted', 'skade.email_failed', 'skade.email_not_configured', 'skade.email_retry_accepted',
             'skade.email_retry_failed', 'skade.email_status_save_failed', 'skade.template_selected',

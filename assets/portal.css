@@ -20,6 +20,9 @@
         .header-admin-btn:hover, .header-admin-btn:focus-visible { background:#eef7f9; }
         .header-admin-btn.is-update { background:#7fd6c8; border-color:#7fd6c8; color:#07172d; }
         .header-admin-btn .ui-icon { width:16px; height:16px; flex:0 0 auto; }
+        .header-logout-form { display:inline-flex; margin:0; }
+        .header-logout-btn { min-height:38px; padding:9px 13px; border:1px solid rgba(255,255,255,.5); border-radius:11px; background:transparent; color:#fff; font-size:.75rem; font-weight:760; line-height:1.1; touch-action:manipulation; }
+        .header-logout-btn:hover, .header-logout-btn:focus-visible { background:rgba(255,255,255,.14); }
         .pwa-install-btn[hidden] { display:none!important; }
         .pwa-install-btn:hover { background:#eaf7f9; }
         .pwa-install-help { position:absolute; z-index:30; top:calc(100% + 9px); right:0; width:min(300px,82vw); padding:12px 14px; border:1px solid var(--line); border-radius:12px; background:#fff; color:var(--ink); box-shadow:var(--shadow); font-size:.78rem; line-height:1.45; }

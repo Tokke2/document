@@ -16,6 +16,8 @@ $response=static fn(array $body):array => ['ok'=>true,'status'=>200,'body'=>json
 $release=static fn(string $tag,int $id):array => ['draft'=>false,'prerelease'=>false,'tag_name'=>$tag,'id'=>$id,'target_commitish'=>'different-branch'];
 $shaA=str_repeat('a',40); $shaB=str_repeat('b',40);
 $GLOBALS['latest_fixture']=['release'=>$response($release('0.0.1',123)), 'commit'=>$response(['sha'=>$shaA])];
+$autoGuard=portal_github_release_auto_update_if_due(__DIR__, 60);
+$assert(is_array($autoGuard) && ($autoGuard['code'] ?? '') === 'skipped', 'Hourly auto-update refuses intervals below ten minutes.');
 $metadata=portal_github_release_metadata();
 $assert(($metadata['ok'] ?? false) && $metadata['tag']==='0.0.1' && $metadata['commit']===$shaA && $metadata['release_id']===123, 'Use the latest release reported by GitHub, irrespective of version ordering or target branch.');
 $assert($GLOBALS['latest_urls']===['https://api.github.com/repos/Tokke2/document/releases/latest','https://api.github.com/repos/Tokke2/document/commits/refs%2Ftags%2F0.0.1'], 'Resolve the latest explicit tag ref, not a same-named branch.');
