@@ -599,7 +599,7 @@ html[data-theme="dark"] .skip-link { background:#182729; color:#e6efed; }
     .portal-network-status { margin:8px 12px 0; padding:10px 12px; font-size:.78rem; }
     .header-actions { gap:8px; }
     .ui-preferences-toggle { min-width:48px; min-height:48px; padding:8px 10px; }
-    .ui-preferences-panel { max-height:calc(100vh - 90px); overflow-y:auto; }
+    .ui-preferences-panel { max-height:calc(100vh - 90px); max-height:calc(100dvh - 90px); overflow-y:auto; }
 }
 @media (max-width:420px) {
     .header-actions { gap:6px; }
@@ -804,7 +804,12 @@ html[data-theme="dark"] .skip-link { background:#182729; color:#e6efed; }
 
 /* Screen sharpness and adaptive polish: crisp glyphs on HiDPI displays,
    stable text metrics, aligned numbers and lighter per-frame work. */
-body { -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; }
+body { -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; font-optical-sizing:auto; }
+/* Numbers line up in every table column; headings break evenly. */
+table { font-variant-numeric:tabular-nums; }
+h1,h2,h3,h4 { text-wrap:balance; }
+/* Brand art and icons stay crisp when the browser rasterizes them. */
+img.brand-icon, .page-heading-icon img, img[src*="icon"] { image-rendering:-webkit-optimize-contrast; }
 /* Full-height start on every screen: dynamic viewport height follows the
    browser chrome instead of leaving a dead band under the content. */
 body { min-height:100vh; min-height:100dvh; }
