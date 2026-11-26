@@ -7,6 +7,7 @@ $archiveCategories = [
     'overlatelse' => ['label' => 'Överlåtelseavtal', 'folder' => 'overlatelseavtal'],
     'service' => ['label' => 'Service', 'folder' => 'service'],
     'invoice' => ['label' => 'Fakturaunderlag', 'folder' => 'fakturaunderlag'],
+    'ovrigt' => ['label' => 'Övriga filer', 'folder' => 'ovrigt'],
 ];
 $validArchiveSubtabs = array_merge(['all'], array_keys($archiveCategories));
 $sub = isset($_GET['sub']) && is_string($_GET['sub']) ? $_GET['sub'] : 'all';
@@ -40,15 +41,21 @@ $archiveFileCategory = static function (array $item) use ($archiveCategories): ?
     if (preg_match('/fakturaunderlag/iu', $name) === 1) {
         return 'invoice';
     }
-    return null;
+    return 'ovrigt';
 };
 $archiveCategoryFolderNames = array_map('strtolower', array_column($archiveCategories, 'folder'));
 
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && ($_POST['action'] ?? '') === 'upload_pdf_file') {
     $file = $_FILES['new_file'] ?? null;
+    if (!empty($portalIsScopedPwa)) {
+        $uploadResult = 'upload_denied';
+        $file = null;
+    }
     $tmpName = is_array($file) ? ($file['tmp_name'] ?? null) : null;
     $uploadSize = is_array($file) ? ($file['size'] ?? null) : null;
-    if (!in_array($uploadCategory, $validArchiveSubtabs, true)) {
+    if ($uploadResult !== '') {
+        // Scoped PWA already set upload_denied above.
+    } elseif (!in_array($uploadCategory, $validArchiveSubtabs, true)) {
         $uploadResult = 'upload_error';
     } elseif (is_array($file) && in_array($file['error'] ?? null, [UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE], true)) {
         $uploadResult = 'upload_size';
@@ -133,6 +140,7 @@ $noticeMap = [
     'delete_error' => ['error', 'Filen kunde inte tas bort. Kontrollera bekräftelsen och att filen inte är en skyddad originalmall.'],
     'upload_ok' => ['success', 'Filen har laddats upp. En befintlig fil har inte skrivits över.'],
     'upload_error' => ['error', 'Filen kunde inte laddas upp. Försök igen.'],
+    'upload_denied' => ['error', 'Endast inloggade användare i portalen kan ladda upp filer till PDF-arkivet.'],
     'upload_size' => ['error', 'Filstorleken överskrider serverns gräns eller portalens maxgräns på 12 MB. Prova en mindre fil eller kontrollera PHP-inställningarna.'],
     'upload_type' => ['error', 'Endast giltiga PDF-, PNG- och JPG-filer kan laddas upp.'],
 ];
@@ -178,11 +186,13 @@ if ($sub !== 'all') {
         <div>
             <h2 class="file-panel-title"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Upload to PDF archive' : 'Ladda upp till PDF-arkivet' ?></h2>
             <?php if ($sub === 'all'): ?>
-                <small>Välj dokumenttyp för att placera filen i rätt underflik. Giltiga PDF/JPG/PNG · max 12 MB · befintliga filer skrivs inte över.</small>
+                <small><?= ($portalLanguage ?? 'sv') === 'en' ? 'Choose a document type to place the file in the right sub-tab. Valid PDF/JPG/PNG · max 12 MB · existing files are never overwritten.' : 'Välj dokumenttyp för att placera filen i rätt underflik. Giltiga PDF/JPG/PNG · max 12 MB · befintliga filer skrivs inte över.' ?></small>
             <?php elseif ($sub === 'templates'): ?>
-                <small>Originalmallar visas här utan att befintliga filer flyttas. Nya uppladdningar sparas i mallmappen. PDF/JPG/PNG · max 12 MB.</small>
+                <small><?= ($portalLanguage ?? 'sv') === 'en' ? 'Original templates are shown here without moving existing files. New uploads are saved in the template folder. PDF/JPG/PNG · max 12 MB.' : 'Originalmallar visas här utan att befintliga filer flyttas. Nya uppladdningar sparas i mallmappen. PDF/JPG/PNG · max 12 MB.' ?></small>
+            <?php elseif ($sub === 'ovrigt'): ?>
+                <small><?= ($portalLanguage ?? 'sv') === 'en' ? 'Files uploaded here are saved in the Other files sub-tab and are filled in manually from the app; only signed-in users can upload. Valid PDF/JPG/PNG · max 12 MB.' : 'Filer som laddas upp här sparas i underfliken Övriga filer och fylls på manuellt från appen; endast inloggade användare kan ladda upp. Giltiga PDF/JPG/PNG · max 12 MB.' ?></small>
             <?php else: ?>
-                <small>Filer som laddas upp här sparas i underfliken <?= h($archiveCategories[$sub]['label']) ?>. Giltiga PDF/JPG/PNG · max 12 MB.</small>
+                <small><?= ($portalLanguage ?? 'sv') === 'en' ? 'Files uploaded here are saved in the ' . h($archiveCategories[$sub]['label']) . ' sub-tab. Valid PDF/JPG/PNG · max 12 MB.' : 'Filer som laddas upp här sparas i underfliken ' . h($archiveCategories[$sub]['label']) . '. Giltiga PDF/JPG/PNG · max 12 MB.' ?></small>
             <?php endif; ?>
         </div>
         <form method="post" action="?tab=files&amp;sub=<?= h($sub) ?>" enctype="multipart/form-data">

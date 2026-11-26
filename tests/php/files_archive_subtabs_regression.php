@@ -11,6 +11,7 @@ $archiveFixtureFiles = [
     ['rel' => 'Serviceprotokoll-legacy.pdf', 'name' => 'Serviceprotokoll-legacy.pdf', 'date' => '2026-10-06 10:17', 'size' => 60.0],
     ['rel' => 'Fakturaunderlag-legacy.pdf', 'name' => 'Fakturaunderlag-legacy.pdf', 'date' => '2026-10-06 10:18', 'size' => 60.0],
     ['rel' => 'allmant/Anteckning.pdf', 'name' => 'Anteckning.pdf', 'date' => '2026-10-06 10:15', 'size' => 50.0],
+    ['rel' => 'ovrigt/Manuell-anteckning.pdf', 'name' => 'Manuell-anteckning.pdf', 'date' => '2026-10-06 10:19', 'size' => 55.0],
 ];
 
 function h(mixed $value): string
@@ -53,6 +54,7 @@ $categoryCases = [
     'overlatelse' => ['Overlatelseavtal-20261006.pdf', 'Fakturaunderlag-2001.pdf', 'Överlåtelseavtal', 'Överlåtelseavtal-legacy.pdf'],
     'service' => ['Serviceprotokoll-1000-01.pdf', 'Anteckning.pdf', 'Service', 'Serviceprotokoll-legacy.pdf'],
     'invoice' => ['Fakturaunderlag-2001.pdf', 'Overlatelseavtal-20261006.pdf', 'Fakturaunderlag', 'Fakturaunderlag-legacy.pdf'],
+    'ovrigt' => ['Manuell-anteckning.pdf', 'Serviceprotokoll-1000-01.pdf', 'Övriga filer', 'Anteckning.pdf'],
 ];
 foreach ($categoryCases as $sub => [$expectedFile, $excludedFile, $label, $legacyFile]) {
     $html = render_archive_subtab($sub);
@@ -73,6 +75,9 @@ $allHtml = render_archive_subtab('all');
 $assert(strpos($allHtml, 'Anteckning.pdf') !== false, 'Alla filer visar även osorterade dokument');
 $assert(strpos($allHtml, 'name="upload_category"') !== false, 'Alla filer-vyn erbjuder val av dokumenttyp vid uppladdning');
 $assert(strpos($allHtml, 'Överlåtelseavtal') !== false, 'PDF-arkivet visar underfliken Överlåtelseavtal');
+$assert(strpos($allHtml, 'Övriga filer') !== false, 'PDF-arkivet visar underfliken Övriga filer');
+$assert(strpos($allHtml, 'data-category="ovrigt" data-date="2026-10-06"') !== false, 'Okända filer markeras som Övriga i Alla filer');
+$assert(strpos($allHtml, 'value="ovrigt"') !== false, 'Alla filer-vyn kan välja Övriga filer vid uppladdning');
 $assert(strpos($allHtml, 'Fakturaunderlag') !== false, 'PDF-arkivet visar underfliken Fakturaunderlag');
 $assert(strpos($allHtml, 'id="file-date-from"') !== false && strpos($allHtml, 'id="file-date-to"') !== false, 'Alla filer-vyn erbjuder datumintervall');
 $assert(strpos($allHtml, 'id="file-registration-filter"') !== false, 'Alla filer-vyn erbjuder registreringsnummerfilter');
@@ -89,5 +94,16 @@ $assert(strpos($templateAdminHtml, 'name="action" value="delete_archive_file"') 
 
 $categoryHtml = render_archive_subtab('service');
 $assert(strpos($categoryHtml, 'id="file-category-filter"') === false && strpos($categoryHtml, 'Filtrera Service') !== false, 'En aktiv dokumenttypflik begränsar sökningen utan att visa ett missvisande tvärkategorifilter');
+
+$ovrigtHtml = render_archive_subtab('ovrigt');
+$assert(strpos($ovrigtHtml, 'endast inloggade användare kan ladda upp') !== false, 'Övriga filer förklarar att endast inloggade användare kan ladda upp');
+$assert(strpos($ovrigtHtml, 'fylls på manuellt från appen') !== false, 'Övriga filer förklarar att fyllandet sker manuellt från appen');
+$assert(strpos($ovrigtHtml, 'name="upload_category" value="ovrigt"') !== false, 'Övriga filer fylls på via uppladdning i underfliken');
+$assert(strpos($ovrigtHtml, 'Manuell-anteckning.pdf') !== false && strpos($ovrigtHtml, 'data-search="ovrigt Manuell-anteckning.pdf"') !== false, 'Övriga filer visar filer i ovrigt-mappen');
+$assert(strpos($ovrigtHtml, 'Serviceprotokoll-1000-01.pdf') === false, 'Övriga filer filtrerar bort serviceprotokoll');
+$filesSource = (string) file_get_contents(__DIR__ . '/../../tabs/files.php');
+$assert(strpos($filesSource, 'upload_denied') !== false && strpos($filesSource, '$portalIsScopedPwa') !== false, 'Uppladdning spärras för scoped PWA; endast inloggade användare i portalen kan ladda upp');
+$indexSource = (string) file_get_contents(__DIR__ . '/../../index.php');
+$assert(strpos($indexSource, "'invoice', 'ovrigt']") !== false, 'Radering godkänner underfliken Övriga filer');
 
 printf("PASS: %d PDF archive subtab regression checks.\n", $checks);

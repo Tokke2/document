@@ -3314,7 +3314,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 http_response_code(403);
                 $portalPostError = 'Endast central admin kan ta bort filer i arkivet.';
             } else {
-                $archiveSub = isset($_POST['archive_sub']) && is_string($_POST['archive_sub']) && in_array($_POST['archive_sub'], ['all', 'templates', 'skade', 'overlatelse', 'service', 'invoice'], true) ? $_POST['archive_sub'] : 'all';
+                $archiveSub = isset($_POST['archive_sub']) && is_string($_POST['archive_sub']) && in_array($_POST['archive_sub'], ['all', 'templates', 'skade', 'overlatelse', 'service', 'invoice', 'ovrigt'], true) ? $_POST['archive_sub'] : 'all';
                 $deleted = ($_POST['confirm_delete'] ?? '') === '1'
                     && portal_archive_delete_file(__DIR__ . '/pdf', $_POST['archive_file'] ?? null);
                 if ($deleted) {
