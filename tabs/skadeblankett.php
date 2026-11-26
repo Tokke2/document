@@ -113,6 +113,10 @@ $skadeFieldWhy = [
         'sv' => '<strong>Vad:</strong> När skadan skedde. <strong>Varför:</strong> Datumet behövs för ärendet. Skriv sex eller åtta siffror, eller välj i kalendern.',
         'en' => '<strong>What:</strong> When the damage happened. <strong>Why:</strong> The date is needed for the claim. Enter six or eight digits, or pick a date in the calendar.',
     ],
+    'sk-signature-date' => [
+        'sv' => '<strong>Vad:</strong> Datum när blanketten skrevs under. <strong>Varför:</strong> Hamnar i PDF:ens datumruta. Lämna tomt om blanketten inte är påskriven — rutan blir då tom; med en ritad signatur sätts dagens datum automatiskt.',
+        'en' => '<strong>What:</strong> The date the form was signed. <strong>Why:</strong> Appears in the PDF date box. Leave it empty if the form was not signed — the box then stays empty; a drawn signature auto-fills today\'s date.',
+    ],
     'sk-plats' => [
         'sv' => '<strong>Vad:</strong> Var skadan skedde, till exempel gata eller parkering. <strong>Varför:</strong> Ange det om du vet det; fältet är frivilligt.',
         'en' => '<strong>What:</strong> Where the damage happened, for example a street or a car park. <strong>Why:</strong> Enter it if you know it; the field is optional.',
@@ -485,7 +489,7 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
     body.skade-kiosk-mode .skade-kiosk-notice .btn { margin-top:16px; min-height:54px; }
     @media (display-mode:standalone) { body.skade-kiosk-mode .skade-install { display:none; } }
     <?php endif; ?>
-    @media print { .skade-hero-actions,.skade-progress,.skade-form-actions,.skade-preview,.skade-page form { display:none!important; } .skade-page { display:none!important; } }
+    @media print { .skade-hero,.skade-hero-actions,.skade-progress,.skade-form-actions,.skade-main,.skade-page form,.skade-kiosk-notice { display:none!important; } .skade-preview-head,.skade-preview-links { display:none!important; } .skade-preview { position:static; width:100%; margin:0; padding:0; border:0; box-shadow:none; } .skade-pdf-frame { height:auto; min-height:0; border:0; border-radius:0; } @page { margin:10mm; } }
     /* Shared Tadega mobile design system for staff and customer PWA modes. */
     .skade-page { --sk-ink:var(--ink); --sk-muted:var(--muted); --sk-line:var(--line); --sk-brand:var(--brand); --sk-bg:var(--canvas); }
     .skade-hero { border-color:#cfe3dc; background:linear-gradient(125deg,#eaf6f0 0%,#fff 58%,#f2f8f5 100%); box-shadow:0 12px 30px rgba(18,54,58,.065); }
@@ -602,6 +606,7 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
                 <div class="skade-success-actions">
                     <a class="btn btn-main" href="?view_file=<?= rawurlencode($skadePdf) ?>" target="_blank" rel="noopener"><?= ($portalLanguage ?? 'sv') === 'en' ? 'View completed PDF' : 'Visa ifylld PDF' ?></a>
                     <a class="btn btn-outline" href="?download_file=<?= rawurlencode($skadePdf) ?>"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Download PDF' : 'Ladda ned PDF' ?></a>
+                    <button type="button" class="btn btn-outline" id="skade-print-pdf"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Print' : 'Skriv ut' ?></button>
                 </div>
                 <?php if ($skadeMailStatus === 'sent'): ?>
                     <?php if ($skadeEmailRetryResult === 'sent'): ?>
@@ -788,7 +793,12 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
                         <small class="skade-signature-disclaimer"><?= $skadeCustomerMode ? 'Formuläruppgifterna och signaturen sparas i portalens privata lagring så personalen kan redigera skadeblanketten. Gallringen körs vid en portalöppning (högst en kontroll per 24 timmar) när ett år har gått sedan senaste ändring, annars sedan skapandet; den körs inte när portalen är stängd. PDF-versionerna behålls. Säkerhetskopior på servern gallras också; nedladdade ZIP-kopior och redan skickade mejl/bilagor utanför portalen påverkas inte. Signaturen bäddas in i PDF:en; mejl skickas endast om admin har valt en mottagare. En ritad signatur verifierar inte identiteten via BankID.' : 'Formuläruppgifterna och eventuell signatur sparas i portalens privata lagring för redigering. Gallringen körs vid en portalöppning (högst en kontroll per 24 timmar) när ett år har gått sedan senaste ändring, annars sedan skapandet; den körs inte när portalen är stängd. PDF-versionerna behålls. Säkerhetskopior på servern gallras också; nedladdade ZIP-kopior och redan skickade mejl/bilagor utanför portalen påverkas inte. PDF:en skickas endast om admin har valt en mottagare. Lämnas rutan tom kan PDF:en skrivas ut för handskriven underskrift. En ritad signatur verifierar inte kundens identitet via BankID.' ?></small>
                     </div>
                     <?php if (!$skadeCustomerMode): ?>
-                        <div class="skade-original-note"><span class="skade-mini-icon" aria-hidden="true">ⓘ</span><span>En ritad signatur placeras i originalets underskriftsruta. Lämna den tom om ni vill skriva ut blanketten utan underskrift; datumfältet och verkstadsuppgifterna kan kompletteras efteråt.</span></div>
+                        <div class="skade-field skade-signature-date-field">
+                            <div class="skade-label-row"><label class="skade-label" for="sk-signature-date">Påskrivet datum</label><?= $skadeWhyBtn('sk-signature-date') ?></div><?= $skadeWhyPanel('sk-signature-date') ?>
+                            <input id="sk-signature-date" name="s[signature_date]" type="date" maxlength="10" autocomplete="off" value="<?= h($skadeText('signature_date')) ?>">
+                            <small class="skade-help">Datum när blanketten skrevs under. Lämna tomt om den inte är påskriven — PDF:ens datumruta förblir då tom. Om en ritad signatur finns sätts dagens datum automatiskt.</small>
+                        </div>
+                        <div class="skade-original-note"><span class="skade-mini-icon" aria-hidden="true">ⓘ</span><span>En ritad signatur placeras i originalets underskriftsruta. Lämna den tom om ni vill skriva ut blanketten utan underskrift; påskrivet datum, datumfältet och verkstadsuppgifterna kan kompletteras efteråt.</span></div>
                     <?php endif; ?>
                     <div class="skade-form-actions">
                         <p><?= $skadeCustomerMode ? 'Kontrollera att allt är rätt innan du skickar uppgifterna.' : 'PDF:en sparas privat i arkivet. Loggen innehåller inte kund-, fordons- eller försäkringsuppgifter.' ?></p>
@@ -1728,6 +1738,10 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
         }
     });
     window.addEventListener('pageshow', function () { formSubmitting = false; });
+    var skadePrintButton = document.getElementById('skade-print-pdf');
+    if (skadePrintButton) {
+        skadePrintButton.addEventListener('click', function () { window.print(); });
+    }
     syncSignatureConfirmationRequirement();
     updateProgress();
     // Server-rejected photos: mark the file inputs so validateForm() below flags them

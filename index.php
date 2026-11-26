@@ -2016,6 +2016,7 @@ function portal_handle_skade_submission(): bool
         return sprintf('%04d-%02d-%02d', $year, $month, $day);
     };
     $clean['skadedatum'] = $normalizeSkadeDate($clean['skadedatum']);
+    $clean['signature_date'] = $normalizeSkadeDate($clean['signature_date']);
 
     $validDate = static function (string $value): bool {
         if (!preg_match('/\A\d{4}-\d{2}-\d{2}\z/', $value)) {
