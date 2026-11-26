@@ -352,8 +352,9 @@ function skade_pdf_signature_placement(int $imageWidthPx, int $imageHeightPx): ?
     $boxTopPt = 471.8;
     $boxWidthPt = 203.1;
     $boxHeightPt = 21.9;
-    // Leave the original box border visible, even for tall or very wide signatures.
-    $preferredWidthPt = $boxWidthPt - 10.0;
+    // Leave the original box border visible, even for tall or very wide signatures,
+    // while letting flat signatures use nearly the full width of the long box.
+    $preferredWidthPt = $boxWidthPt - 4.0;
     $preferredHeightPt = $boxHeightPt - 5.0;
     $imageWidthPt = min($preferredWidthPt, $preferredHeightPt * $aspect);
     $imageHeightPt = $imageWidthPt / $aspect;
