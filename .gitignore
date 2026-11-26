@@ -19,3 +19,7 @@ node_modules/
 test-results/
 playwright-report/
 tests/php/.*-sandbox/
+
+# Preview artifacts never belong in the repository
+logo-preview.png
+signature-example.png
