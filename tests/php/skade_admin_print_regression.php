@@ -112,6 +112,53 @@ $check($pdf->writtenText === [], 'An empty signed date writes nothing into the P
 skade_pdf_write_line($pdf, '2026-03-21', 88.0, 471.8, 201.9, 21.9, 8.5);
 $check(count($pdf->writtenText) === 1 && $pdf->writtenText[0] === '2026-03-21', 'An explicit signed date is written into the PDF date box.');
 
+// --- Text-fit field labels (small text warnings name the fields) ---
+if (!function_exists('skade_timer_start')) {
+    function skade_timer_start(string $name = 'default'): void {}
+}
+if (!function_exists('skade_timer_end')) {
+    function skade_timer_end(string $name = 'default', string $label = ''): float { return 0.0; }
+}
+$GLOBALS['skade_pdf_text_fit_stats'] = ['below_5pt_fields' => 0, 'unfit_fields' => 0, 'minimum_font_pt' => null];
+$fitPdf = new SkadeAdminPrintCapture('P', 'mm', 'A4');
+$fitPdf->AddPage();
+skade_pdf_write_line($fitPdf, str_repeat('mycket lang text ', 60), 300.0, 100.0, 12.0, 10.0, 8.5, 'Skadenummer');
+$fitStats = $GLOBALS['skade_pdf_text_fit_stats'];
+$fitLabels = array_merge((array) ($fitStats['below_5pt_labels'] ?? []), (array) ($fitStats['unfit_labels'] ?? []));
+$check(((int) ($fitStats['below_5pt_fields'] ?? 0)) > 0 || ((int) ($fitStats['unfit_fields'] ?? 0)) > 0, 'Tiny text boxes must be tracked as text-fit warnings.');
+$check(in_array('Skadenummer', $fitLabels, true), 'Text-fit warnings record which field became too small.');
+$GLOBALS['skade_pdf_text_fit_stats'] = null;
+
+// --- The success view lists the small fields from the redirect ---
+$testPdfDir2 = __DIR__ . '/../../pdf/TEST123';
+$testPdfPath2 = $testPdfDir2 . '/Skadeblankett-Bilglas-TEST123-20261125-120000-abcdef.pdf';
+$testPdfCreated2 = is_dir($testPdfDir2) || @mkdir($testPdfDir2, 0775, true);
+if ($testPdfCreated2 && !is_file($testPdfPath2)) {
+    $testPdfCreated2 = @file_put_contents($testPdfPath2, '%PDF-1.4 test') !== false;
+}
+$_GET = $testPdfCreated2 ? [
+    'pdf' => 'pdf/TEST123/Skadeblankett-Bilglas-TEST123-20261125-120000-abcdef.pdf',
+    'text_fit_warning' => '1',
+    'text_fit_fields' => 'Skadenummer, Skadeplats',
+] : [];
+ob_start();
+include __DIR__ . '/../../tabs/skadeblankett.php';
+$fitHtml = (string) ob_get_clean();
+if (is_file($testPdfPath2)) {
+    @unlink($testPdfPath2);
+}
+if (is_dir($testPdfDir2)) {
+    @rmdir($testPdfDir2);
+}
+$check($testPdfCreated2, 'Test PDF fixture could be created for the text-fit view.');
+$check(str_contains($fitHtml, 'Kontrollera dessa textrutor'), 'The success view names the fields with small text.');
+$check(str_contains($fitHtml, 'Skadenummer, Skadeplats'), 'The field list from the redirect is shown.');
+$check(str_contains($fitHtml, 'id="skade-print-preview"'), 'The preview pane offers a Print button.');
+
+// --- Server rules carry the field list through redirect and record ---
+$check(str_contains($indexSource, "'text_fit_fields' => \$pdfTextFitFields"), 'The redirect entry carries the small-text field list.');
+$check(str_contains($indexSource, '$fitFieldDetail'), 'The pre-save confirmation message names the fields.');
+
 if ($failures) {
     foreach ($failures as $failure) {
         echo "FAIL: {$failure}\n";

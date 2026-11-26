@@ -1461,6 +1461,9 @@ function portal_skade_redirect_submission_result(array $entry): never
         if (!empty($entry['text_fit_warning'])) {
             $url .= '&text_fit_warning=1';
         }
+        if (!empty($entry['text_fit_fields']) && is_array($entry['text_fit_fields'])) {
+            $url .= '&text_fit_fields=' . rawurlencode(implode(',', array_slice($entry['text_fit_fields'], 0, 12)));
+        }
         header('Location: ' . $url, true, 303);
         exit;
     }
@@ -1476,6 +1479,9 @@ function portal_skade_redirect_submission_result(array $entry): never
     }
     if (!empty($entry['text_fit_warning'])) {
         $url .= '&text_fit_warning=1';
+    }
+    if (!empty($entry['text_fit_fields']) && is_array($entry['text_fit_fields'])) {
+        $url .= '&text_fit_fields=' . rawurlencode(implode(',', array_slice($entry['text_fit_fields'], 0, 12)));
     }
     header('Location: ' . $url, true, 303);
     exit;
@@ -2223,8 +2229,19 @@ function portal_handle_skade_submission(): bool
     $pdfFailureCode = 'skade.pdf_generation_failed';
     $pdfFailureFields = [];
     $pdfTextFitWarning = false;
+    $pdfTextFitFields = [];
     if (is_array($result)) {
         $pdfTextFitWarning = is_array($result[2] ?? null) && (int) ($result[2]['below_5pt_fields'] ?? 0) > 0;
+        $pdfTextFitFields = [];
+        if (is_array($result[2] ?? null)) {
+            foreach (['below_5pt_labels', 'unfit_labels'] as $fitLabelKey) {
+                foreach ((array) ($result[2][$fitLabelKey] ?? []) as $fitLabel) {
+                    if (is_string($fitLabel) && $fitLabel !== '' && !in_array($fitLabel, $pdfTextFitFields, true) && count($pdfTextFitFields) < 12) {
+                        $pdfTextFitFields[] = $fitLabel;
+                    }
+                }
+            }
+        }
         if (is_string($result[2] ?? null)) {
             $pdfFailureCode = $result[2];
         }
@@ -2262,7 +2279,8 @@ function portal_handle_skade_submission(): bool
         $smallFieldCount = max(1, (int) ($warningStats['below_5pt_fields'] ?? 1));
         $smallestFontPt = is_numeric($warningStats['minimum_font_pt'] ?? null) ? number_format((float) $warningStats['minimum_font_pt'], 1, ',', '') : '';
         $fontDetail = $smallestFontPt !== '' ? ' Minsta storlek är ' . $smallestFontPt . ' pt.' : '';
-        $portalSkadeTextFitMessage = 'PDF-förhandskontrollen visar att ' . $smallFieldCount . ' textfält behöver mindre än 5 pt.' . $fontDetail . ' Ingen PDF har sparats eller skickats. Granska uppgifterna och välj sedan uttryckligen om du vill fortsätta.';
+        $fitFieldDetail = $pdfTextFitFields !== [] ? ' Kontrollera: ' . implode(', ', $pdfTextFitFields) . '.' : '';
+        $portalSkadeTextFitMessage = 'PDF-förhandskontrollen visar att ' . $smallFieldCount . ' textfält behöver mindre än 5 pt.' . $fontDetail . $fitFieldDetail . ' Ingen PDF har sparats eller skickats. Granska uppgifterna och välj sedan uttryckligen om du vill fortsätta.';
         $portalSkadeTextFitConfirmationRequired = true;
         TadegaPrivacyLogger::event('skade.pdf_text_fit_confirmation_required');
         return false;
@@ -2295,6 +2313,7 @@ function portal_handle_skade_submission(): bool
         'email_last_attempt_at' => $createdAt,
         'signature_drawn' => $signatureDrawn,
         'pdf_text_fit_warning' => $pdfTextFitWarning,
+        'pdf_text_fit_fields' => $pdfTextFitFields,
         'form_data' => $formData,
         'signature_png_base64' => $signatureBase64,
         'history' => [['action' => 'created', 'at' => $createdAt]],
@@ -2371,6 +2390,7 @@ function portal_handle_skade_submission(): bool
         'record_id' => $recordId,
         'updated' => $isEdit,
         'text_fit_warning' => $pdfTextFitWarning,
+        'text_fit_fields' => $pdfTextFitFields,
     ]);
 
     require_once __DIR__ . '/includes/send_skade_email.php';
@@ -2411,6 +2431,7 @@ function portal_handle_skade_submission(): bool
         'record_id' => $recordId,
         'updated' => $isEdit,
         'text_fit_warning' => $pdfTextFitWarning,
+        'text_fit_fields' => $pdfTextFitFields,
     ]);
 
     if ($digitalSignature) {
@@ -2424,6 +2445,7 @@ function portal_handle_skade_submission(): bool
         'signature_status' => $signatureStatus,
         'updated' => $isEdit,
         'text_fit_warning' => $pdfTextFitWarning,
+        'text_fit_fields' => $pdfTextFitFields,
     ]);
 }
 function portal_serve_asset_route(): void

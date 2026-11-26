@@ -69,7 +69,7 @@ function skade_pdf_mm(float $points): float
     return $points * 25.4 / 72;
 }
 
-function skade_pdf_track_font_size(float $size): void
+function skade_pdf_track_font_size(float $size, ?string $fieldLabel = null): void
 {
     $stats = $GLOBALS['skade_pdf_text_fit_stats'] ?? null;
     if (!is_array($stats) || $size >= 5.0) {
@@ -78,20 +78,34 @@ function skade_pdf_track_font_size(float $size): void
     $stats['below_5pt_fields'] = max(0, (int) ($stats['below_5pt_fields'] ?? 0)) + 1;
     $currentMinimum = $stats['minimum_font_pt'] ?? null;
     $stats['minimum_font_pt'] = is_numeric($currentMinimum) ? min((float) $currentMinimum, $size) : $size;
+    if (is_string($fieldLabel) && $fieldLabel !== '') {
+        $labels = is_array($stats['below_5pt_labels'] ?? null) ? $stats['below_5pt_labels'] : [];
+        if (!in_array($fieldLabel, $labels, true) && count($labels) < 20) {
+            $labels[] = $fieldLabel;
+        }
+        $stats['below_5pt_labels'] = $labels;
+    }
     $GLOBALS['skade_pdf_text_fit_stats'] = $stats;
 }
 
-function skade_pdf_mark_text_unfit(): void
+function skade_pdf_mark_text_unfit(?string $fieldLabel = null): void
 {
     $stats = $GLOBALS['skade_pdf_text_fit_stats'] ?? null;
     if (!is_array($stats)) {
         return;
     }
     $stats['unfit_fields'] = max(0, (int) ($stats['unfit_fields'] ?? 0)) + 1;
+    if (is_string($fieldLabel) && $fieldLabel !== '') {
+        $labels = is_array($stats['unfit_labels'] ?? null) ? $stats['unfit_labels'] : [];
+        if (!in_array($fieldLabel, $labels, true) && count($labels) < 20) {
+            $labels[] = $fieldLabel;
+        }
+        $stats['unfit_labels'] = $labels;
+    }
     $GLOBALS['skade_pdf_text_fit_stats'] = $stats;
 }
 
-function skade_pdf_write_line(FPDF $pdf, mixed $value, float $xPt, float $topPt, float $widthPt, float $heightPt, float $fontSize = 8.5): void
+function skade_pdf_write_line(FPDF $pdf, mixed $value, float $xPt, float $topPt, float $widthPt, float $heightPt, float $fontSize = 8.5, ?string $fieldLabel = null): void
 {
     $text = skade_pdf_encoding((string) $value);
     $text = trim(str_replace("\n", ' ', $text));
@@ -115,10 +129,10 @@ function skade_pdf_write_line(FPDF $pdf, mixed $value, float $xPt, float $topPt,
         }
     }
     if ($pdf->GetStringWidth($text) > $width + 0.001) {
-        skade_pdf_mark_text_unfit();
+        skade_pdf_mark_text_unfit($fieldLabel);
         return;
     }
-    skade_pdf_track_font_size($size);
+    skade_pdf_track_font_size($size, $fieldLabel);
     $x = skade_pdf_mm($xPt) + 1.0;
     $fontHeightMm = skade_pdf_mm($size);
     $lineBoxHeightMm = min($availableHeightMm, $fontHeightMm);
@@ -161,7 +175,7 @@ function skade_pdf_wrap_lines(FPDF $pdf, string $text, float $width, int $maxLin
     return $lines;
 }
 
-function skade_pdf_write_multiline(FPDF $pdf, mixed $value, float $xPt, float $topPt, float $widthPt, float $heightPt, float $fontSize = 8.5, float $lineHeight = 4.1): void
+function skade_pdf_write_multiline(FPDF $pdf, mixed $value, float $xPt, float $topPt, float $widthPt, float $heightPt, float $fontSize = 8.5, float $lineHeight = 4.1, ?string $fieldLabel = null): void
 {
     $text = trim((string) $value);
     if ($text === '') {
@@ -210,10 +224,10 @@ function skade_pdf_write_multiline(FPDF $pdf, mixed $value, float $xPt, float $t
         }
     }
     if (!$complete || !$lines) {
-        skade_pdf_mark_text_unfit();
+        skade_pdf_mark_text_unfit($fieldLabel);
         return;
     }
-    skade_pdf_track_font_size($size);
+    skade_pdf_track_font_size($size, $fieldLabel);
     $pdf->SetFont('Arial', '', $size);
     $pdf->SetXY(skade_pdf_mm($xPt) + 1.2, skade_pdf_mm($topPt) + $verticalPaddingMm);
     $pdf->MultiCell($width, $usedLineHeight, implode("\n", $lines), 0, 'L');
@@ -473,20 +487,20 @@ function create_skadeblankett_pdf_php(array $data, string $templatePath = '', st
         $pdf->SetFont('Arial', '', 8.5);
 
         // Appointment line and the top form fields.
-        skade_pdf_write_line($pdf, skade_pdf_format_datetime($data['inbokad'] ?? ''), 85.9, 18.1, 64.6, 12.3, 8.5);
+        skade_pdf_write_line($pdf, skade_pdf_format_datetime($data['inbokad'] ?? ''), 85.9, 18.1, 64.6, 12.3, 8.5, 'Inbokad tid');
         // Center the company tick inside the smaller square in the source form.
         skade_pdf_mark($pdf, !empty($data['company']), 76, 85, 14);
-        skade_pdf_write_multiline($pdf, $data['namn_adress'] ?? '', 85.5, 115.8, 199.5, 80.3, 8.5, 4.0);
-        skade_pdf_write_line($pdf, $data['person_orgnr'] ?? '', 86.5, 217.8, 199.5, 18.1, 8.2);
-        skade_pdf_write_line($pdf, $data['telefon'] ?? '', 85.5, 257.8, 199.5, 19.0, 8.2);
-        skade_pdf_write_multiline($pdf, $data['epost'] ?? '', 75.9, 297.8, 224.0, 39.0, 8.0, 3.6);
-        skade_pdf_write_line($pdf, $data['regnr'] ?? '', 317.0, 97.8, 203.1, 19.0, 10.0);
-        skade_pdf_write_line($pdf, $data['modell'] ?? '', 318.3, 140.0, 202.7, 18.7, 8.5);
-        skade_pdf_write_line($pdf, skade_pdf_format_number($data['matarstallning'] ?? '', 0), 309.9, 176.8, 211.1, 20.0, 8.5);
-        skade_pdf_write_line($pdf, $data['forsakringsbolag'] ?? '', 318.9, 217.8, 201.1, 19.0, 8.5);
-        skade_pdf_write_line($pdf, skade_pdf_format_date($data['skadedatum'] ?? ''), 318.6, 259.8, 201.4, 19.0, 8.5);
-        skade_pdf_write_line($pdf, $data['skadeplats'] ?? '', 319.3, 298.8, 200.6, 18.8, 8.5);
-        skade_pdf_write_line($pdf, $data['skadenummer'] ?? '', 309.9, 337.9, 211.1, 20.0, 8.5);
+        skade_pdf_write_multiline($pdf, $data['namn_adress'] ?? '', 85.5, 115.8, 199.5, 80.3, 8.5, 4.0, 'Namn och adress');
+        skade_pdf_write_line($pdf, $data['person_orgnr'] ?? '', 86.5, 217.8, 199.5, 18.1, 8.2, 'Person- eller organisationsnummer');
+        skade_pdf_write_line($pdf, $data['telefon'] ?? '', 85.5, 257.8, 199.5, 19.0, 8.2, 'Telefon');
+        skade_pdf_write_multiline($pdf, $data['epost'] ?? '', 75.9, 297.8, 224.0, 39.0, 8.0, 3.6, 'E-post');
+        skade_pdf_write_line($pdf, $data['regnr'] ?? '', 317.0, 97.8, 203.1, 19.0, 10.0, 'Registreringsnummer');
+        skade_pdf_write_line($pdf, $data['modell'] ?? '', 318.3, 140.0, 202.7, 18.7, 8.5, 'Modell');
+        skade_pdf_write_line($pdf, skade_pdf_format_number($data['matarstallning'] ?? '', 0), 309.9, 176.8, 211.1, 20.0, 8.5, 'Mätarställning');
+        skade_pdf_write_line($pdf, $data['forsakringsbolag'] ?? '', 318.9, 217.8, 201.1, 19.0, 8.5, 'Försäkringsbolag');
+        skade_pdf_write_line($pdf, skade_pdf_format_date($data['skadedatum'] ?? ''), 318.6, 259.8, 201.4, 19.0, 8.5, 'Skadedatum');
+        skade_pdf_write_line($pdf, $data['skadeplats'] ?? '', 319.3, 298.8, 200.6, 18.8, 8.5, 'Skadeplats');
+        skade_pdf_write_line($pdf, $data['skadenummer'] ?? '', 309.9, 337.9, 211.1, 20.0, 8.5, 'Skadenummer');
         skade_pdf_mark($pdf, !empty($data['nya_torkarblad_bestalls']), 315.0, 365.0, 14);
 
         // Keep an explicit date if supplied; otherwise date the customer's drawn signature
@@ -496,7 +510,7 @@ function create_skadeblankett_pdf_php(array $data, string $templatePath = '', st
         if ($signatureDate === '' && is_string($signatureBytes) && $signatureBytes !== '') {
             $signatureDate = (new DateTimeImmutable('now', new DateTimeZone('Europe/Stockholm')))->format('Y-m-d');
         }
-        skade_pdf_write_line($pdf, $signatureDate, 88.0, 471.8, 201.9, 21.9, 8.5);
+        skade_pdf_write_line($pdf, $signatureDate, 88.0, 471.8, 201.9, 21.9, 8.5, 'Påskrivet datum');
         if (is_string($signatureBytes) && $signatureBytes !== '') {
             $storageDirectory = $appRoot . '/storage';
             $storageGuard = $storageDirectory . '/.htaccess';
@@ -563,16 +577,16 @@ function create_skadeblankett_pdf_php(array $data, string $templatePath = '', st
         if (($data['damage_cause'] ?? '') === 'stone_chip') {
             skade_pdf_mark($pdf, true, 307, 524, 14);
         } elseif (($data['damage_cause'] ?? '') === 'other') {
-            skade_pdf_write_line($pdf, $data['other_cause'] ?? '', 392, 529, 120, 13, 7.5);
+            skade_pdf_write_line($pdf, $data['other_cause'] ?? '', 392, 529, 120, 13, 7.5, 'Annan orsak');
         }
 
         $actions = is_array($data['actions'] ?? null) ? $data['actions'] : [];
         skade_pdf_mark($pdf, in_array('replacement', $actions, true), 307, 560, 14);
         skade_pdf_mark($pdf, in_array('repair', $actions, true), 307, 580, 14);
-        skade_pdf_write_line($pdf, skade_pdf_format_number($data['mount_time'] ?? '', 2, true), 458.3, 544.1, 58.4, 14, 7.5);
-        skade_pdf_write_line($pdf, skade_pdf_amount($data['glass_price'] ?? ''), 431.5, 560.9, 58.4, 14, 7.5);
-        skade_pdf_write_line($pdf, skade_pdf_format_number($data['stone_count'] ?? '', 0), 486.2, 576.5, 20.5, 14, 7.5);
-        skade_pdf_write_multiline($pdf, $data['notes'] ?? '', 78, 612, 215, 65, 7.5, 3.7);
+        skade_pdf_write_line($pdf, skade_pdf_format_number($data['mount_time'] ?? '', 2, true), 458.3, 544.1, 58.4, 14, 7.5, 'Monteringstid');
+        skade_pdf_write_line($pdf, skade_pdf_amount($data['glass_price'] ?? ''), 431.5, 560.9, 58.4, 14, 7.5, 'Glaspris');
+        skade_pdf_write_line($pdf, skade_pdf_format_number($data['stone_count'] ?? '', 0), 486.2, 576.5, 20.5, 14, 7.5, 'Antal stenskott');
+        skade_pdf_write_multiline($pdf, $data['notes'] ?? '', 78, 612, 215, 65, 7.5, 3.7, 'Anteckningar');
 
         $equipment = is_array($data['equipment'] ?? null) ? $data['equipment'] : [];
         $equipmentBoxes = [
@@ -585,10 +599,10 @@ function create_skadeblankett_pdf_php(array $data, string $templatePath = '', st
         }
 
         skade_pdf_mark($pdf, !empty($data['wiper_service']), 96, 706, 14);
-        skade_pdf_write_line($pdf, !empty($data['wiper_service']) ? skade_pdf_amount($data['wiper_price'] ?? '') : '', 207.1, 706.3, 28.1, 14, 7.0);
-        skade_pdf_write_line($pdf, skade_pdf_format_number($data['washer_liters'] ?? '', 2, true), 205.5, 730.5, 39.6, 14, 7.0);
+        skade_pdf_write_line($pdf, !empty($data['wiper_service']) ? skade_pdf_amount($data['wiper_price'] ?? '') : '', 207.1, 706.3, 28.1, 14, 7.0, 'Torkarbladspris');
+        skade_pdf_write_line($pdf, skade_pdf_format_number($data['washer_liters'] ?? '', 2, true), 205.5, 730.5, 39.6, 14, 7.0, 'Spolvätska i liter');
         skade_pdf_mark($pdf, !empty($data['solar_film']), 96, 754, 14);
-        skade_pdf_write_line($pdf, !empty($data['solar_film']) ? skade_pdf_amount($data['solar_price'] ?? '') : '', 216.0, 753.7, 28.1, 14, 7.0);
+        skade_pdf_write_line($pdf, !empty($data['solar_film']) ? skade_pdf_amount($data['solar_price'] ?? '') : '', 216.0, 753.7, 28.1, 14, 7.0, 'Solfilmspris');
 
         $payment = (string) ($data['payment_method'] ?? 'pickup');
         $paymentAmount = skade_pdf_amount($data['payment_amount'] ?? '');
@@ -597,13 +611,13 @@ function create_skadeblankett_pdf_php(array $data, string $templatePath = '', st
         skade_pdf_mark($pdf, $payment === 'swish', 307, 734, 14);
         skade_pdf_mark($pdf, $payment === 'cash', 307, 751, 14);
         if ($payment === 'izettle') {
-            skade_pdf_write_line($pdf, $paymentAmount, 397.3, 700.1, 44.5, 13, 7.0);
+            skade_pdf_write_line($pdf, $paymentAmount, 397.3, 700.1, 44.5, 13, 7.0, 'Betalat belopp');
         } elseif ($payment === 'swish') {
-            skade_pdf_write_line($pdf, $paymentAmount, 393.7, 732.5, 55.2, 13, 7.0);
+            skade_pdf_write_line($pdf, $paymentAmount, 393.7, 732.5, 55.2, 13, 7.0, 'Betalat belopp');
         } elseif ($payment === 'cash') {
-            skade_pdf_write_line($pdf, $paymentAmount, 401.5, 748.9, 55.0, 13, 7.0);
+            skade_pdf_write_line($pdf, $paymentAmount, 401.5, 748.9, 55.0, 13, 7.0, 'Betalat belopp');
         }
-        skade_pdf_write_line($pdf, skade_pdf_format_date($data['replacement_date'] ?? ''), 211.0, 796.0, 168.0, 20.0, 8.0);
+        skade_pdf_write_line($pdf, skade_pdf_format_date($data['replacement_date'] ?? ''), 211.0, 796.0, 168.0, 20.0, 8.0, 'Bytesdatum');
 
         $fitStats = $GLOBALS['skade_pdf_text_fit_stats'] ?? [];
         if ((int) ($fitStats['unfit_fields'] ?? 0) > 0) {

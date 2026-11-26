@@ -184,6 +184,9 @@ if ($skadeMailStatus === '' && isset($_GET['email']) && is_string($_GET['email']
 $skadeSignatureStatus = isset($_GET['sig']) && is_string($_GET['sig']) ? $_GET['sig'] : '';
 $skadeWasUpdated = isset($_GET['updated']) && is_string($_GET['updated']) && $_GET['updated'] === '1';
 $skadePdfTextFitWarning = isset($_GET['text_fit_warning']) && is_string($_GET['text_fit_warning']) && $_GET['text_fit_warning'] === '1';
+$skadePdfTextFitFields = isset($_GET['text_fit_fields']) && is_string($_GET['text_fit_fields'])
+    ? array_slice(array_values(array_unique(array_filter(array_map('trim', explode(',', $_GET['text_fit_fields'])), static function (string $label): bool { return $label !== ''; }))), 0, 12)
+    : [];
 $skadeEmailRetryResult = isset($_GET['email_retry']) && is_string($_GET['email_retry']) && in_array($_GET['email_retry'], ['sent', 'failed', 'pending'], true) ? $_GET['email_retry'] : '';
 $skadeEmailRecordId = '';
 $skadeEmailSent = false;
@@ -594,6 +597,7 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
                     <div class="skade-text-fit-warning" role="alert">
                         <strong>Kontrollera PDF:en — text under 5 pt</strong>
                         <p>Ett eller flera fält behövde mindre text för att rymmas. Kontrollera läsbarheten innan PDF:en används. Vid behov kan underlaget redigeras från Historik och en ny version skapas.</p>
+                        <?php if ($skadePdfTextFitFields): ?><p>Kontrollera dessa textrutor: <strong><?= h(implode(', ', $skadePdfTextFitFields)) ?></strong>.</p><?php endif; ?>
                     </div>
                 <?php endif; ?>
                 <?php if ($skadeSignatureStatus === 'drawn'): ?>
@@ -823,6 +827,7 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
                         <div class="skade-preview-links">
                             <a class="btn btn-main" href="<?= h($skadePreviewUrl) ?>" target="_blank" rel="noopener"><?= $skadePdfValid ? 'Öppna skapad PDF ↗' : 'Öppna original ↗' ?></a>
                             <a class="btn btn-outline" href="<?= h($skadePreviewDownloadUrl) ?>"><?= $skadePdfValid ? 'Ladda ned PDF' : 'Ladda ned original' ?></a>
+                            <button type="button" class="btn btn-outline" id="skade-print-preview"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Print' : 'Skriv ut' ?></button>
                             <?php if ($skadePdfValid && $skadeTemplateExists): ?>
                                 <a class="btn btn-outline" href="<?= h($skadeViewOriginal) ?>" target="_blank" rel="noopener"><?= ($portalLanguage ?? 'sv') === 'en' ? 'View original form' : 'Visa originalblankett' ?></a>
                             <?php endif; ?>
@@ -1738,10 +1743,10 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
         }
     });
     window.addEventListener('pageshow', function () { formSubmitting = false; });
-    var skadePrintButton = document.getElementById('skade-print-pdf');
-    if (skadePrintButton) {
+    var skadePrintButtons = document.querySelectorAll('#skade-print-pdf, #skade-print-preview');
+    Array.prototype.forEach.call(skadePrintButtons, function (skadePrintButton) {
         skadePrintButton.addEventListener('click', function () { window.print(); });
-    }
+    });
     syncSignatureConfirmationRequirement();
     updateProgress();
     // Server-rejected photos: mark the file inputs so validateForm() below flags them
