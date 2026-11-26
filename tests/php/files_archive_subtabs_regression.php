@@ -54,7 +54,7 @@ $categoryCases = [
     'overlatelse' => ['Overlatelseavtal-20261006.pdf', 'Fakturaunderlag-2001.pdf', 'Överlåtelseavtal', 'Överlåtelseavtal-legacy.pdf'],
     'service' => ['Serviceprotokoll-1000-01.pdf', 'Anteckning.pdf', 'Service', 'Serviceprotokoll-legacy.pdf'],
     'invoice' => ['Fakturaunderlag-2001.pdf', 'Overlatelseavtal-20261006.pdf', 'Fakturaunderlag', 'Fakturaunderlag-legacy.pdf'],
-    'ovrigt' => ['Manuell-anteckning.pdf', 'Serviceprotokoll-1000-01.pdf', 'Övriga filer', 'Anteckning.pdf'],
+    'ovrigt' => ['Manuell-anteckning.pdf', 'Serviceprotokoll-1000-01.pdf', 'Övriga filer', 'Manuell-anteckning.pdf'],
 ];
 foreach ($categoryCases as $sub => [$expectedFile, $excludedFile, $label, $legacyFile]) {
     $html = render_archive_subtab($sub);
@@ -76,7 +76,8 @@ $assert(strpos($allHtml, 'Anteckning.pdf') !== false, 'Alla filer visar även os
 $assert(strpos($allHtml, 'name="upload_category"') !== false, 'Alla filer-vyn erbjuder val av dokumenttyp vid uppladdning');
 $assert(strpos($allHtml, 'Överlåtelseavtal') !== false, 'PDF-arkivet visar underfliken Överlåtelseavtal');
 $assert(strpos($allHtml, 'Övriga filer') !== false, 'PDF-arkivet visar underfliken Övriga filer');
-$assert(strpos($allHtml, 'data-category="ovrigt" data-date="2026-10-06"') !== false, 'Okända filer markeras som Övriga i Alla filer');
+$assert(strpos($allHtml, 'data-category="ovrigt" data-date="2026-10-06"') !== false, 'Filer i pdf/ovrigt markeras som Övriga i Alla filer');
+$assert(strpos($allHtml, 'Anteckning.pdf') !== false && strpos($allHtml, 'data-category="uncategorized"') !== false, 'Okända filer utanför pdf/ovrigt listas som oklassificerade i Alla filer');
 $assert(strpos($allHtml, 'value="ovrigt"') !== false, 'Alla filer-vyn kan välja Övriga filer vid uppladdning');
 $assert(strpos($allHtml, 'Fakturaunderlag') !== false, 'PDF-arkivet visar underfliken Fakturaunderlag');
 $assert(strpos($allHtml, 'id="file-date-from"') !== false && strpos($allHtml, 'id="file-date-to"') !== false, 'Alla filer-vyn erbjuder datumintervall');
@@ -101,6 +102,7 @@ $assert(strpos($ovrigtHtml, 'fylls på manuellt från appen') !== false, 'Övrig
 $assert(strpos($ovrigtHtml, 'name="upload_category" value="ovrigt"') !== false, 'Övriga filer fylls på via uppladdning i underfliken');
 $assert(strpos($ovrigtHtml, 'Manuell-anteckning.pdf') !== false && strpos($ovrigtHtml, 'data-search="ovrigt Manuell-anteckning.pdf"') !== false, 'Övriga filer visar filer i ovrigt-mappen');
 $assert(strpos($ovrigtHtml, 'Serviceprotokoll-1000-01.pdf') === false, 'Övriga filer filtrerar bort serviceprotokoll');
+$assert(strpos($ovrigtHtml, 'Anteckning.pdf') === false, 'Endast filer i pdf/ovrigt visas i Övriga filer; okända filer utanför mappen hör inte dit');
 $filesSource = (string) file_get_contents(__DIR__ . '/../../tabs/files.php');
 $assert(strpos($filesSource, 'upload_denied') !== false && strpos($filesSource, '$portalIsScopedPwa') !== false, 'Uppladdning spärras för scoped PWA; endast inloggade användare i portalen kan ladda upp');
 $indexSource = (string) file_get_contents(__DIR__ . '/../../index.php');

@@ -41,7 +41,7 @@ $archiveFileCategory = static function (array $item) use ($archiveCategories): ?
     if (preg_match('/fakturaunderlag/iu', $name) === 1) {
         return 'invoice';
     }
-    return 'ovrigt';
+    return null;
 };
 $archiveCategoryFolderNames = array_map('strtolower', array_column($archiveCategories, 'folder'));
 
