@@ -170,9 +170,10 @@ $csrfAvailable = csrf_token() !== '';
                 <p><?= ($portalLanguage ?? 'sv') === 'en' ? 'Manage email, logos and backups in one place.' : 'Hantera e-post, logotyper och säkerhetskopior från en samlad vy.' ?></p>
             </div>
         </div>
-        <div class="settings-runtime" aria-label="PHP-version <?= h(PHP_VERSION) ?>">
+        <div class="settings-runtime" aria-label="PHP-version <?= h(PHP_VERSION) ?>, portalversion <?= h($portalVersionLabel ?? '') ?>">
             <span class="settings-runtime-dot <?= $phpSupported ? '' : 'is-warning' ?>" aria-hidden="true"></span>
             <div><strong>PHP <?= h(PHP_VERSION) ?></strong><small><?= $phpSupported ? 'Målversion 8.5 uppfylld' : 'Uppgradera till PHP 8.5' ?></small></div>
+            <div class="settings-runtime-version"><strong>Version <?= h($portalVersionLabel ?? '-') ?></strong><small><?= ($portalLanguage ?? 'sv') === 'en' ? 'Portal version' : 'Portalversion' ?></small></div>
         </div>
     </header>
 
@@ -219,6 +220,7 @@ $csrfAvailable = csrf_token() !== '';
                     <div class="settings-brand-preview-copy">
                         <p class="settings-help"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Portal logo as an editable vector (SVG) for screen and print. Convert the text to outlines before sending to press.' : 'Portalens logotyp som redigerbar vektor (SVG) för skärm och tryck. Konvertera texten till konturer innan du skickar till tryck.' ?></p>
                         <a class="btn btn-outline" href="?download_file=assets/tadega-logo.svg"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Download logo (SVG)' : 'Ladda ner logotyp (SVG)' ?></a>
+                        <a class="btn btn-outline" href="?download_file=assets/tadega-logo-tryck.svg"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Download print logo (editable SVG)' : 'Ladda ner tryck-SVG (redigerbar)' ?></a>
                     </div>
                 </div>
                 <form method="post" action="?tab=settings" enctype="multipart/form-data">

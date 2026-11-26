@@ -42,6 +42,10 @@ if ($tc_session_ready) {
 }
 $tc_csrf_ready = $tc_session_ready && $tc_csrf_token !== '';
 
+// Every signed-in account (staff or admin, including the central admin) may add
+// and edit customers; only the admin role may delete one.
+$tc_can_delete = ($invoiceAuthUser['role'] ?? '') === 'admin';
+
 $tc_escape = static function (mixed $value): string {
     if (!is_scalar($value)) {
         $value = '';
@@ -413,7 +417,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             }
         } elseif ($tc_action === 'delete_customer') {
             $tc_delete_id = $_POST['id'] ?? '';
-            if (!is_string($tc_delete_id) || $tc_delete_id === '' || strlen($tc_delete_id) > 128) {
+            if (!$tc_can_delete) {
+                $tc_post_error = ($portalLanguage ?? 'sv') === 'en' ? 'Only admins can delete customers.' : 'Endast admin kan radera kunder.';
+            } elseif (!is_string($tc_delete_id) || $tc_delete_id === '' || strlen($tc_delete_id) > 128) {
                 $tc_post_error = 'Kunden kunde inte raderas. Ladda om sidan och försök igen.';
             } else {
                 $tc_found = false;
@@ -856,12 +862,12 @@ $tc_actions_ready = $tc_data_ready && $tc_csrf_ready;
                     </div>
                     <div class="tc-card-actions">
                         <a class="tc-link-btn" href="index.php?tab=customers&amp;edit_id=<?= rawurlencode($tc_customer['id']) ?>"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Edit' : 'Redigera' ?></a>
-                        <form class="tc-delete-form" method="post" onsubmit="return confirm('Vill du verkligen radera den här kunden?');">
+                        <?php if ($tc_can_delete): ?><form class="tc-delete-form" method="post" onsubmit="return confirm('Vill du verkligen radera den här kunden?');">
                             <input type="hidden" name="action" value="delete_customer">
                             <input type="hidden" name="id" value="<?= $tc_escape($tc_customer['id']) ?>">
                             <?php if ($tc_csrf_ready): ?><input type="hidden" name="csrf_token" value="<?= $tc_escape($tc_csrf_token) ?>"><?php endif; ?>
                             <button class="tc-link-btn tc-link-danger" type="submit" <?= !$tc_actions_ready ? 'disabled' : '' ?>><?= ($portalLanguage ?? 'sv') === 'en' ? 'Delete' : 'Radera' ?></button>
-                        </form>
+                        </form><?php endif; ?>
                     </div>
                 </article>
             <?php endforeach; ?>

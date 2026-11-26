@@ -152,4 +152,28 @@ $assert(str_contains($cssSource, '.header-admin-btn') && str_contains($cssSource
 $assert(str_contains($indexSource, 'portal_github_release_auto_update_if_due') && str_contains($indexSource, '($_SERVER[\'REQUEST_METHOD\'] ?? \'GET\') === \'GET\''), 'A full-portal GET auto-updates from git at most once per hour.');
 $assert(str_contains($indexSource, 'portal_logout_all') && str_contains($indexSource, 'header-logout-btn'), 'A header logout button ends all portal sessions.');
 
+// Version number under Inställningar (release constant + visible runtime strip).
+$versionSource = (string) file_get_contents(__DIR__ . '/../../includes/portal_version.php');
+$settingsSource = (string) file_get_contents(__DIR__ . '/../../tabs/settings.php');
+$assert(preg_match('/const TADEGA_PORTAL_VERSION = \'[0-9]+\.[0-9]+\.[0-9]+\';/', $versionSource) === 1, 'Release constant carries a semantic version.');
+$assert(str_contains($indexSource, 'TADEGA_PORTAL_VERSION') && str_contains($indexSource, 'portal_github_release_install_marker(__DIR__)'), 'Version label prefers the installed release marker.');
+$assert(str_contains($settingsSource, 'Version <?= h($portalVersionLabel') && str_contains($settingsSource, 'settings-runtime-version'), 'Inställningar always shows the portal version in the runtime strip.');
+
+// Central admin needs no second sign-in on staff pages (invoice + protocol
+// already fall back to the central admin session).
+$invoiceAuthSource = (string) file_get_contents(__DIR__ . '/../../includes/invoice_auth.php');
+$assert(str_contains($invoiceAuthSource, 'portal_central_admin_auth_portal_user'), 'Invoice session falls back to the signed-in central admin.');
+$assert(str_contains($indexSource, 'portal_central_admin_auth_portal_user'), 'Central admin sign-in covers search and staff tabs.');
+
+// Customer register: everyone may add, only the admin role may delete.
+$customersSource = (string) file_get_contents(__DIR__ . '/../../tabs/customers.php');
+$assert(str_contains($customersSource, '$tc_can_delete = ($invoiceAuthUser[\'role\'] ?? \'\') === \'admin\''), 'Customer deletion is restricted to the admin role.');
+$assert(str_contains($customersSource, 'Only admins can delete customers.') && str_contains($customersSource, 'if ($tc_can_delete):'), 'Delete guard blocks the action and hides the button for staff.');
+
+// Editable print logo: downloadable, live text, palette documented.
+$printLogoSource = (string) file_get_contents(__DIR__ . '/../../assets/tadega-logo-tryck.svg');
+$assert(str_contains($settingsSource, 'tadega-logo-tryck.svg'), 'Settings offers the editable print SVG for download.');
+$assert(str_contains($printLogoSource, '<text id="namn"') && str_contains($printLogoSource, 'Palett:'), 'Print original keeps editable text objects and a palette note.');
+$assert(str_contains($indexSource, '\'tadega-logo-tryck.svg\''), 'Print original passes the asset allowlist.');
+
 fwrite(STDOUT, 'PASS: ' . $checks . ' Adminpanel render checks.' . PHP_EOL);

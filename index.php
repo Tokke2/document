@@ -10,6 +10,7 @@ error_reporting(E_ALL);
 ini_set('display_errors', '0');
 ini_set('log_errors', '1');
 require_once __DIR__ . '/includes/logger.php';
+require_once __DIR__ . '/includes/portal_version.php';
 require_once __DIR__ . '/includes/request_logger.php';
 TadegaRequestLogger::start(__DIR__);
 TadegaPrivacyLogger::registerErrorHandlers();
@@ -285,6 +286,24 @@ if (!$portalIsScopedPwa && !$isSkadeCustomerMode
             TadegaPrivacyLogger::event('release.auto_failed');
         }
     }
+}
+// Version number for Inställningar: the installed release marker first (what is
+// actually running), then the environment label, then the release constant.
+$portalVersionLabel = null;
+if (function_exists('portal_github_release_install_marker')) {
+    $portalVersionInstalled = portal_github_release_install_marker(__DIR__);
+    if (is_array($portalVersionInstalled) && is_string($portalVersionInstalled['tag'] ?? null) && $portalVersionInstalled['tag'] !== '') {
+        $portalVersionLabel = $portalVersionInstalled['tag'];
+    }
+}
+if ($portalVersionLabel === null) {
+    $portalVersionEnv = getenv('TADEGA_PORTAL_RELEASE');
+    if (is_string($portalVersionEnv) && preg_match('/\A[A-Za-z0-9][A-Za-z0-9.+_-]{0,79}\z/D', $portalVersionEnv) === 1) {
+        $portalVersionLabel = $portalVersionEnv;
+    }
+}
+if ($portalVersionLabel === null) {
+    $portalVersionLabel = defined('TADEGA_PORTAL_VERSION') ? TADEGA_PORTAL_VERSION : '-';
 }
 TadegaPrivacyLogger::cleanupDiagnostics(30);
 // Rotated/archived log files are removed seven days after their last write.
@@ -1236,8 +1255,8 @@ function portal_sanitize_svg(string $xml): ?string
     if (!$dom->documentElement->hasAttribute('xmlns')) {
         $dom->documentElement->setAttribute('xmlns', 'http://www.w3.org/2000/svg');
     }
-    $allowedElements = ['svg', 'g', 'path', 'rect', 'circle', 'ellipse', 'line', 'polyline', 'polygon', 'title', 'desc'];
-    $allowedAttributes = ['xmlns', 'viewbox', 'width', 'height', 'fill', 'stroke', 'stroke-width', 'stroke-linecap', 'stroke-linejoin', 'fill-rule', 'clip-rule', 'opacity', 'fill-opacity', 'stroke-opacity', 'transform', 'd', 'points', 'cx', 'cy', 'r', 'rx', 'ry', 'x', 'y', 'x1', 'x2', 'y1', 'y2'];
+    $allowedElements = ['svg', 'g', 'path', 'rect', 'circle', 'ellipse', 'line', 'polyline', 'polygon', 'title', 'desc', 'text'];
+    $allowedAttributes = ['xmlns', 'viewbox', 'width', 'height', 'fill', 'stroke', 'stroke-width', 'stroke-linecap', 'stroke-linejoin', 'fill-rule', 'clip-rule', 'opacity', 'fill-opacity', 'stroke-opacity', 'transform', 'd', 'points', 'cx', 'cy', 'r', 'rx', 'ry', 'x', 'y', 'x1', 'x2', 'y1', 'y2', 'id', 'font-family', 'font-size', 'font-weight', 'letter-spacing'];
 
     $cleanNode = static function (DOMNode $node) use (&$cleanNode, $allowedElements, $allowedAttributes): void {
         if (!$node->childNodes) {
@@ -2524,7 +2543,7 @@ function portal_serve_asset_route(): void
         $baseName === 'assets' &&
         (($extension === 'css' && basename($real) !== 'portal.css') ||
             ($extension === 'js' && !in_array(basename($real), ['signature_pad.js', 'invoice_voice.js', 'table_sort.js'], true)) ||
-            ($extension === 'svg' && !in_array(basename($real), ['tadega-icon.svg', 'tadega-logo.svg'], true)))
+            ($extension === 'svg' && !in_array(basename($real), ['tadega-icon.svg', 'tadega-logo.svg', 'tadega-logo-tryck.svg'], true)))
     ) {
         http_response_code(404);
         exit;
