@@ -144,4 +144,10 @@ $legacyPolicyUser['pin_policy_update_required'] = true;
 $policyUpdate = render_admin_panel_for_test('configured', $legacyPolicyUser, null, 'configured');
 $assert(str_contains($policyUpdate, 'PIN-kod följer ett äldre format') && str_contains($policyUpdate, '6–10 siffror'), 'Legacy PIN users should be told why rotation is required and shown the new format.');
 
+$indexSource = (string) file_get_contents(__DIR__ . '/../../index.php');
+$assert(str_contains($indexSource, 'header-admin-btn') && str_contains($indexSource, "'?tab=admin'"), 'Central admin gets a permanent header shortcut to the Adminpanel.');
+$assert(str_contains($indexSource, 'portal_github_release_marker_differs') && str_contains($indexSource, '#central-admin-release-title'), 'The shortcut offers a direct update link when a newer release was checked.');
+$cssSource = (string) file_get_contents(__DIR__ . '/../../assets/portal.css');
+$assert(str_contains($cssSource, '.header-admin-btn') && str_contains($cssSource, '.header-admin-btn.is-update'), 'The admin shortcut has header styling and a distinct update state.');
+
 fwrite(STDOUT, 'PASS: ' . $checks . ' Adminpanel render checks.' . PHP_EOL);

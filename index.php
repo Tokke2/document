@@ -250,6 +250,25 @@ if (!$portalIsScopedPwa && $activeTab === 'admin' && $centralAdminSetupState ===
 $isSkadeCustomerMode = $activeTab === 'skadeblankett'
     && isset($_GET['mode']) && is_string($_GET['mode']) && $_GET['mode'] === 'customer'
     && basename($_SERVER['SCRIPT_NAME'] ?? '') === 'skadeblankett-kund.php';
+// Permanent header shortcut for the central admin: the tab menu scrolls the
+// Adminpanel out of view on narrow screens and the git updater lives inside
+// it. When the cached release check already differs from the installed
+// marker, the shortcut reads "Uppdatera <tag>" and links straight to the
+// one-click button. Cheap: both helpers only read local cache files.
+$portalAdminUpdateTag = null;
+if ($centralAdminCanAccess && !$isSkadeCustomerMode
+    && function_exists('portal_github_release_auto_status')
+    && function_exists('portal_github_release_install_marker')
+    && function_exists('portal_github_release_marker_differs')) {
+    $portalAdminAutoStatus = portal_github_release_auto_status(__DIR__);
+    $portalAdminInstalledMarker = portal_github_release_install_marker(__DIR__);
+    if (is_array($portalAdminAutoStatus) && ($portalAdminAutoStatus['ok'] ?? false) === true
+        && is_string($portalAdminAutoStatus['tag'] ?? null)
+        && is_array($portalAdminInstalledMarker)
+        && portal_github_release_marker_differs($portalAdminAutoStatus, $portalAdminInstalledMarker)) {
+        $portalAdminUpdateTag = $portalAdminAutoStatus['tag'];
+    }
+}
 TadegaPrivacyLogger::cleanupDiagnostics(30);
 // Rotated/archived log files are removed seven days after their last write.
 TadegaPrivacyLogger::cleanupArchivedLogs(7);
@@ -3983,6 +4002,7 @@ $languageLink = static function (string $language): string {
             <span><span class="brand-name"><?= h($portalCompanyName) ?></span><span class="brand-caption"><?= h($portalIsScopedPwa ? $portalPwaName : 'Dokumentportalen') ?></span></span>
         </a>
         <div class="header-actions">
+            <?php if ($centralAdminCanAccess): ?><a class="btn header-admin-btn<?= $portalAdminUpdateTag !== null ? ' is-update' : '' ?>" href="<?= $portalAdminUpdateTag !== null ? '?tab=admin#central-admin-release-title' : '?tab=admin' ?>"<?= $portalAdminUpdateTag !== null ? ' aria-label="' . h(($portalLanguage ?? 'sv') === 'en' ? 'Update to release ' . $portalAdminUpdateTag : 'Uppdatera till release ' . $portalAdminUpdateTag) . '"' : '' ?>><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3 5 6v5c0 4.6 2.8 7.7 7 10 4.2-2.3 7-5.4 7-10V6z"/><path d="m9.2 12.2 1.8 1.8 3.9-4"/></svg><span><?= $portalAdminUpdateTag !== null ? (($portalLanguage ?? 'sv') === 'en' ? 'Update ' : 'Uppdatera ') . h($portalAdminUpdateTag) : (($portalLanguage ?? 'sv') === 'en' ? 'Admin' : 'Adminpanel') ?></span></a><?php endif; ?>
             <span class="header-language"><a href="<?= h($languageLink('sv')) ?>" onclick="return confirm(<?= h(json_encode($languageChangeWarning, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT)) ?>)" lang="sv" <?= $portalLanguage === 'sv' ? 'aria-current="true"' : '' ?>>Svenska</a> · <a href="<?= h($languageLink('en')) ?>" onclick="return confirm(<?= h(json_encode($languageChangeWarning, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT)) ?>)" lang="en" <?= $portalLanguage === 'en' ? 'aria-current="true"' : '' ?>>English</a></span>
             <button class="btn pwa-install-btn" id="pwa-install-button" type="button" hidden><?= ($portalLanguage ?? 'sv') === 'en' ? 'Install app' : 'Installera app' ?></button>
             <p class="pwa-install-help" id="pwa-install-help" role="status" aria-live="polite" hidden></p>
