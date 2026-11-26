@@ -1468,7 +1468,7 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
                         <button class="btn btn-outline" type="button" id="voice-start"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Start voice input' : 'Starta röstinmatning' ?></button>
                         <button class="btn btn-outline" type="button" id="voice-stop" hidden><?= ($portalLanguage ?? 'sv') === 'en' ? 'Stop and review' : 'Stoppa och granska' ?></button>
                         <button class="btn btn-outline" type="button" id="voice-cancel" hidden><?= ($portalLanguage ?? 'sv') === 'en' ? 'Cancel recording' : 'Avbryt inspelning' ?></button>
-                        <label for="voice-transcript"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Recognized text (editable)' : 'Uppfattad text (kan redigeras)' ?></label>
+                        <label for="voice-transcript"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Recognized text (editable) · Ctrl+Enter applies it' : 'Uppfattad text (kan redigeras) · Ctrl+Enter använder förslaget' ?></label>
                         <textarea id="voice-transcript" maxlength="1000" placeholder="Exempel: 2st Glasreparationer 750 kr st"></textarea>
                         <div class="invoice-form-grid" id="voice-row-preview">
                             <label><?= ($portalLanguage ?? 'sv') === 'en' ? 'Description' : 'Beskrivning' ?> <input id="voice-name" maxlength="200" aria-describedby="voice-uncertainty"></label>
@@ -1489,7 +1489,7 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
                             <button type="button" class="btn btn-outline" id="voice-numeric-price" hidden></button>
                         </div>
                         <p class="invoice-help"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Speak in Swedish, for example: windscreen replacement, one and a half hours, 850 kronor per hour. The price must be per unit, not a total. Review and complete every field before applying. Dictation and commands are in Swedish.' : 'Säg till exempel: byte av vindruta, en och en halv timme, 850 kronor per timme. Ange pris per enhet, inte totalsumma. Granska och komplettera alla fält innan du använder förslaget.' ?></p>
-                        <details><summary><?= ($portalLanguage ?? 'sv') === 'en' ? 'Swedish voice commands' : 'Svenska röstkommandon' ?></summary><p class="invoice-help"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Say “nästa”, “punkt” or “nästa rad” to move to the next row. Apply or clear the current proposal first. Ending a dictated row with “punkt” moves to the next row after you approve the proposal. Say “till kund”, “till referens”, “till beskrivning”, “till antal”, “till enhet”, “till pris” or “rad 2” to navigate. Say “ny rad” or “läs upp underlaget”. Commands never save or send the record. Say “ersätt med …” or “lägg till …” to edit the dictated proposal. “Ångra senaste” immediately undoes the last applied suggestion when it has not been edited since.' : 'Säg ”nästa”, ”punkt” eller ”nästa rad” för att gå till nästa rad. Använd eller rensa först det aktuella förslaget. Om du avslutar en dikterad rad med ordet ”punkt” går appen vidare när du har godkänt förslaget. Säg ”till kund”, ”till referens”, ”till beskrivning”, ”till antal”, ”till enhet”, ”till pris” eller ”rad 2” för att navigera. Säg ”ny rad” eller ”läs upp underlaget”. Kommandon sparar eller skickar aldrig underlaget. Säg ”ersätt med …” eller ”lägg till …” för att ändra den dikterade texten. ”Ångra senaste” ångrar direkt senast använda förslaget om det inte har ändrats efteråt.' ?></p></details>
+                        <details><summary><?= ($portalLanguage ?? 'sv') === 'en' ? 'Swedish voice commands' : 'Svenska röstkommandon' ?></summary><p class="invoice-help"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Say “nästa”, “punkt” or “nästa rad” to move to the next row. Apply or clear the current proposal first. Ending a dictated row with “punkt” moves to the next row after you approve the proposal. Say “till kund”, “till referens”, “till beskrivning”, “till antal”, “till enhet”, “till pris” or “rad 2” to navigate. Say “ny rad”, “läs upp underlaget”, “rensa” or “avbryt” to empty the current proposal. Commands never save or send the record. Say “ersätt med …” or “lägg till …” to edit the dictated proposal. “Ångra senaste” immediately undoes the last applied suggestion when it has not been edited since.' : 'Säg ”nästa”, ”punkt” eller ”nästa rad” för att gå till nästa rad. Använd eller rensa först det aktuella förslaget. Om du avslutar en dikterad rad med ordet ”punkt” går appen vidare när du har godkänt förslaget. Säg ”till kund”, ”till referens”, ”till beskrivning”, ”till antal”, ”till enhet”, ”till pris” eller ”rad 2” för att navigera. Säg ”ny rad”, ”läs upp underlaget”, ”rensa” eller ”avbryt” för att tömma det aktuella förslaget. Kommandon sparar eller skickar aldrig underlaget. Säg ”ersätt med …” eller ”lägg till …” för att ändra den dikterade texten. ”Ångra senaste” ångrar direkt senast använda förslaget om det inte har ändrats efteråt.' ?></p></details>
                         <button type="button" class="btn btn-outline" id="voice-parse"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Interpret text' : 'Tolka text' ?></button>
                         <button type="button" class="btn btn-main" id="voice-apply"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Apply suggestion' : 'Använd förslaget' ?></button>
                         <button type="button" class="btn btn-outline" id="voice-clear"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Clear proposal' : 'Rensa förslag' ?></button>
@@ -1498,6 +1498,7 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
                         <button type="button" class="btn btn-outline" id="voice-read-stop" hidden><?= ($portalLanguage ?? 'sv') === 'en' ? 'Stop reading' : 'Stoppa uppläsning' ?></button>
                         <p class="invoice-help"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Reading includes the customer, reference, assignment and entered lines, not an unapplied voice proposal. Anyone nearby may hear it. The device speech service may process the text.' : 'Uppläsning omfattar kund, referens, uppdrag och inmatade rader, inte ett oanvänt röstförslag. Personer i närheten kan höra. Enhetens taltjänst kan behandla texten.' ?></p>
                         <p id="voice-status" role="status" aria-live="polite"></p>
+                        <p id="voice-live-commands" class="invoice-help" hidden><?= ($portalLanguage ?? 'sv') === 'en' ? 'While listening say: ”ny rad” · ”nästa rad” · ”till kund” · ”till antal” · ”till pris” · ”rad 2” · ”läs upp underlaget” · ”ångra senaste” · ”rensa” · ”avbryt”.' : 'Medan mikrofonen lyssnar: säg ”ny rad” · ”nästa rad” · ”till kund” · ”till antal” · ”till pris” · ”rad 2” · ”läs upp underlaget” · ”ångra senaste” · ”rensa” · ”avbryt”.' ?></p>
                     </div>
                 </details>
                 <section class="invoice-section" aria-labelledby="invoice-customer-heading" data-invoice-step="1">
@@ -3563,6 +3564,13 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
             }
             if (normalized === 'läs upp underlaget') { document.getElementById('voice-read').click(); return true; }
             if (normalized === 'ny rad' || normalized === 'lägg till rad') { if (target.value === 'row') nextVoiceRow(); else status.textContent = voiceMessage('Välj fakturarad först.', 'Select invoice line first.'); return true; }
+            if (normalized === 'rensa' || normalized === 'rensa text' || normalized === 'rensa förslag' || normalized === 'avbryt') {
+                priorText = transcript.value;
+                transcript.value = '';
+                parse();
+                status.textContent = voiceMessage(normalized === 'avbryt' ? 'Förslaget avbröts och rensades.' : 'Förslaget rensades.', normalized === 'avbryt' ? 'The proposal was cancelled and cleared.' : 'The proposal was cleared.');
+                return true;
+            }
             var fieldCommand = { 'till beskrivning':name, 'till antal':qty, 'till enhet':unit, [invMsg('till pris', 'to price')]:price };
             if (Object.prototype.hasOwnProperty.call(fieldCommand, normalized)) {
                 if (target.value !== 'row') { status.textContent = voiceMessage('Välj fakturarad först.', 'Select invoice line first.'); return true; }
@@ -3648,6 +3656,8 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
             start.disabled = recording;
             if (stop) stop.hidden = !recording;
             if (cancel) cancel.hidden = !recording;
+            var liveCommands = document.getElementById('voice-live-commands');
+            if (liveCommands) liveCommands.hidden = !recording;
         }
         if (!window.SpeechRecognition && !window.webkitSpeechRecognition) {
             start.disabled = true;
@@ -3837,6 +3847,15 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
             }
         }
         document.getElementById('voice-apply').addEventListener('click', function () { applyVoiceSuggestion(false); });
+        var voiceTranscriptField = document.getElementById('voice-transcript');
+        if (voiceTranscriptField) {
+            voiceTranscriptField.addEventListener('keydown', function (event) {
+                if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+                    event.preventDefault();
+                    applyVoiceSuggestion(false);
+                }
+            });
+        }
         var readStop = document.getElementById('voice-read-stop');
         var speechGeneration = 0;
         function stopReading(showMessage) {

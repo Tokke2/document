@@ -174,4 +174,33 @@ function final(text) { const result = [{ transcript: text }]; result.isFinal = t
     assert.equal(c.win.document.querySelectorAll('.invoice-item-name').length, 4, 'A recognized period also navigates');
     c.dom.window.close();
 }
+{
+    const c = setup();
+    const say = text => { c.get('#voice-start').click(); const e = c.engine(); e.onresult({ results: [final(text)] }); e.onend(); };
+    assert.equal(c.get('#voice-live-commands').hidden, true, 'Live command strip starts hidden');
+    c.get('#voice-start').click();
+    assert.equal(c.get('#voice-live-commands').hidden, false, 'Live command strip shows while listening');
+    const listening = c.engine();
+    listening.onresult({ results: [final('rensa')] }); listening.onend();
+    assert.equal(c.get('#voice-live-commands').hidden, true, 'Strip hides when listening stops');
+    c.input('#voice-transcript', '2st Glasreparationer 750 kr st');
+    c.get('#voice-parse').click();
+    assert.equal(c.get('#voice-name').value, 'Glasreparationer');
+    say('rensa');
+    assert.equal(c.get('#voice-transcript').value, '', 'rensa clears the transcript');
+    assert.equal(c.get('#voice-name').value, '', 'rensa clears the parsed proposal');
+    assert.match(c.get('#voice-status').textContent, /rensades/);
+    c.input('#voice-transcript', '2st Glasreparationer 750 kr st');
+    c.get('#voice-parse').click();
+    say('avbryt');
+    assert.equal(c.get('#voice-transcript').value, '', 'avbryt clears the transcript');
+    assert.match(c.get('#voice-status').textContent, /avbröts/);
+    c.input('#voice-transcript', '2st Glasreparationer 750 kr st');
+    c.get('#voice-parse').click();
+    c.get('#voice-status').textContent = '';
+    c.get('#voice-transcript').dispatchEvent(new c.win.KeyboardEvent('keydown', { key: 'Enter', ctrlKey: true, bubbles: true, cancelable: true }));
+    assert.notEqual(c.get('#voice-status').textContent, '', 'Ctrl+Enter runs the apply handler');
+    assert.equal(c.get('.invoice-item-name').value, 'Glasreparationer', 'Ctrl+Enter applies a valid proposal');
+    c.dom.window.close();
+}
 console.log('PASS: invoice voice simulated DOM checks.');
