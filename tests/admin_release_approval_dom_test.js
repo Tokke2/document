@@ -15,7 +15,7 @@ const data=new document.defaultView.FormData(form);
 assert.equal(data.get('action'),'portal_release_install_latest');
 assert.ok(data.get('csrf_token'));
 assert.equal(data.has('confirm_install'),false);
-assert.ok(form.querySelector('button[type="submit"]').textContent.includes('Uppdatera till senaste release'));
+assert.ok(form.querySelector('button[type="submit"]').textContent.includes('Uppdatera appen nu'));
 assert.ok(document.querySelector('.central-admin-release').textContent.includes('utan att först visa en fillista'));
 assert.ok(document.querySelector('style').textContent.includes('p.central-admin-release-note { display:block'));
 console.log('PASS: single-submit update form, CSRF and release warning layout.');

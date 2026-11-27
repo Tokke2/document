@@ -394,6 +394,17 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
     .skade-signature-copy { margin:0 0 10px; color:#687985; font-size:.75rem; }
     .skade-signature-canvas { display:block; width:100%; height:auto; min-height:180px; border:1px solid #bdcbd1; border-radius:9px; background-color:#fff; background-image:linear-gradient(to bottom, transparent calc(100% - 44px), #c6d4da calc(100% - 43px), #c6d4da calc(100% - 41px), transparent calc(100% - 40px)); background-repeat:no-repeat; cursor:crosshair; touch-action:none; user-select:none; }
     .skade-signature-canvas:focus-visible { outline:3px solid rgba(17,113,138,.2); outline-offset:2px; }
+    .skade-more-fields { grid-column:1 / -1; min-width:0; padding:12px; border:1px solid var(--sk-line); border-radius:10px; }
+    .skade-more-fields > summary { cursor:pointer; padding:8px 0; font-weight:750; }
+    .skade-more-fields > .skade-grid { margin-top:12px; }
+    body.skade-signing-expanded { overflow:hidden!important; }
+    body .skade-signature.is-expanded { position:fixed; inset:0; z-index:10000; margin:0; padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left)); border-radius:0; background:#fff; overflow:auto; display:flex; flex-direction:column; align-items:center; }
+    .skade-signature.is-expanded > * { flex-shrink:0; }
+    .skade-signature.is-expanded .skade-signature-canvas { min-height:0!important; max-width:100%; }
+    .skade-signature.is-expanded :is(.skade-signature-copy,.skade-customer-declaration,.skade-signature-confirm,.skade-signature-disclaimer) { display:none!important; }
+    .skade-signature.is-expanded .skade-signature-tools { width:100%; justify-content:center; flex-wrap:wrap; }
+    @media print { .skade-more-fields > summary { display:none; } .skade-more-fields > .skade-grid { display:grid!important; } }
+
     .skade-signature-tools { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:8px; }
     .skade-signature-status { color:#687985; font-size:.73rem; }
     .skade-signature-status[data-state="error"] { color:#b42318; font-weight:700; }
@@ -778,6 +789,7 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
                         <noscript><small class="skade-help"><?= $skadeCustomerMode ? 'Digital signering kräver JavaScript. Be personalen om hjälp.' : 'Ritning kräver JavaScript. Ni kan ändå skapa PDF:en utan digital signatur och låta kunden skriva under utskriften för hand.' ?></small></noscript>
                         <input type="hidden" name="s[signature_png]" id="skade-signature-png" value="<?= $skadeText('signature_png') ?>">
                         <div class="skade-signature-tools">
+                            <button class="btn btn-outline" type="button" id="skade-signature-expand" aria-expanded="false" hidden><?= ($portalLanguage ?? 'sv') === 'en' ? 'Larger signing area' : 'Signera i helskärmsvy' ?></button>
                             <button class="btn btn-outline" type="button" id="skade-signature-clear"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Clear signature' : 'Rensa signatur' ?></button>
                             <span class="skade-signature-status" id="skade-signature-status" aria-live="polite"><?= ($portalLanguage ?? 'sv') === 'en' ? 'No signature yet' : 'Ingen signatur ännu' ?></span>
                         </div>
@@ -1180,8 +1192,29 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
             keepalive: true
         }).catch(function () {});
     }
+    (function setupOptionalSkadeFields() {
+        ['sk-epost', 'sk-matarstallning', 'sk-plats', 'sk-skadenr'].forEach(function (id) {
+            var field = document.getElementById(id), wrapper = field && field.closest('.skade-field');
+            var grid = wrapper && wrapper.parentNode;
+            if (!grid || field.required) return;
+            var details = Array.prototype.find.call(grid.children, function (child) { return child.classList.contains('skade-more-fields'); });
+            if (!details) {
+                details = document.createElement('details'); details.className = 'skade-more-fields';
+                var summary = document.createElement('summary'); summary.textContent = skMsg('Fler uppgifter (frivilligt)', 'More information (optional)');
+                var content = document.createElement('div'); content.className = 'skade-grid';
+                details.append(summary, content); grid.appendChild(details);
+            }
+            details.querySelector('.skade-grid').appendChild(wrapper);
+            if (field.value.trim() !== '') details.open = true;
+        });
+        form.addEventListener('invalid', function (event) {
+            var details = event.target.closest('.skade-more-fields'); if (details) details.open = true;
+        }, true);
+    }());
     function focusInvalidField(field) {
         if (!field) return;
+        var optionalGroup = field.closest('.skade-more-fields');
+        if (optionalGroup) optionalGroup.open = true;
         try {
             if (typeof field.scrollIntoView === 'function') field.scrollIntoView({ behavior: 'smooth', block: 'center' });
         } catch (error) {}
@@ -1462,6 +1495,51 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
             })
             : null;
         var context = signaturePad ? signaturePad.context : null;
+        (function setupExpandedSignature() {
+            var button = document.getElementById('skade-signature-expand');
+            var card = canvas.closest('.skade-signature');
+            if (!button || !card || !signaturePad || !context) return;
+            button.hidden = false;
+            var expanded = false, ratio = 1, oldStyle = null, oldRole = card.getAttribute('role');
+            function fitCanvas() {
+                if (!expanded) return;
+                var width = Math.max(100, Math.min(window.innerWidth - 48, (window.innerHeight - 180) * ratio));
+                canvas.style.setProperty('width', width + 'px', 'important');
+                canvas.style.setProperty('height', (width / ratio) + 'px', 'important');
+                signaturePad.resize();
+            }
+            function closeExpanded() {
+                if (!expanded) return;
+                expanded = false; card.classList.remove('is-expanded'); document.body.classList.remove('skade-signing-expanded');
+                if (oldStyle === null) canvas.removeAttribute('style'); else canvas.setAttribute('style', oldStyle);
+                if (oldRole) card.setAttribute('role', oldRole); else card.removeAttribute('role');
+                card.removeAttribute('aria-modal');
+                button.setAttribute('aria-expanded', 'false'); button.textContent = skMsg('Signera i helskärmsvy', 'Larger signing area');
+                signaturePad.resize(); button.focus();
+            }
+            button.addEventListener('click', function () {
+                if (expanded) { closeExpanded(); return; }
+                var bounds = canvas.getBoundingClientRect();
+                ratio = bounds.width > 0 && bounds.height > 0 ? bounds.width / bounds.height : canvas.width / canvas.height;
+                oldStyle = canvas.getAttribute('style');
+                expanded = true; card.classList.add('is-expanded'); document.body.classList.add('skade-signing-expanded');
+                card.setAttribute('role', 'dialog'); card.setAttribute('aria-modal', 'true');
+                button.setAttribute('aria-expanded', 'true'); button.textContent = skMsg('Klar – tillbaka till formuläret', 'Done – back to form');
+                fitCanvas(); canvas.focus();
+            });
+            document.addEventListener('keydown', function (event) {
+                if (!expanded) return;
+                if (event.key === 'Escape') { event.preventDefault(); closeExpanded(); }
+                if (event.key === 'Tab') {
+                    var targets = [canvas, button, clearButton].filter(Boolean), index = targets.indexOf(document.activeElement);
+                    event.preventDefault(); targets[(index + (event.shiftKey ? -1 : 1) + targets.length) % targets.length].focus();
+                }
+            });
+            document.addEventListener('focusin', function (event) { if (expanded && !card.contains(event.target)) canvas.focus(); });
+            window.addEventListener('resize', fitCanvas);
+            form.addEventListener('submit', function (event) { if (expanded) { event.preventDefault(); closeExpanded(); } });
+        }());
+
         if (signaturePad && context) {
             if (signatureInput.value.indexOf('data:image/png;base64,') === 0) {
                 var savedSignatureImage = new Image();
@@ -1720,6 +1798,7 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
     form.addEventListener('input', handleFormChange);
     form.addEventListener('change', handleFormChange);
     form.addEventListener('submit', function (event) {
+        if (event.defaultPrevented) return;
         if (formSubmitting) {
             event.preventDefault();
             return;

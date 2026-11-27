@@ -68,7 +68,7 @@ Listan är helt ny och återanvänder inga förslag från `FORSLAG-25.md`. Efter
 
 ### Batch 2 – förenklingar, redovisad 2026-11-25
 
-Förslag på nästa förbättringar, inte beställda eller implementerade i 0.0.26:
+Förslag på nästa förbättringar, inte beställda eller implementerade i 0.0.26. Punkterna 5–9 beställdes därefter av användaren och genomförs i 0.0.27; övriga punkter är fortfarande förslag:
 
 1. **Entydiga datumetiketter:** byt generiska ”Datum” till ”Underlagsdatum”, ”Påskrivet datum” respektive ”Levererat datum” överallt så syftet syns direkt.
 2. **Datumknappar för personal:** ”Idag”, ”Igår” och ”Rensa” bredvid valbara datum; kundens automatiska påskriftsdatum påverkas inte.

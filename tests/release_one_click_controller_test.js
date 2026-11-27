@@ -24,7 +24,7 @@ try {
  function run(tab,post=null,admin=true,scoped=false) {
   return call(`chdir(${q(sandbox)}); $_SERVER['SCRIPT_NAME']=${q(scoped?'/dokument/pwa-kalender.php':'/dokument/index.php')}; $_SERVER['REQUEST_METHOD']=${q(post?'POST':'GET')}; session_save_path(${q(sandbox+'/storage/sessions')}); session_id(${q(session.id)}); session_start(); $_COOKIE[${q(cookieName)}]=${q(admin?session.admin:'')}; $_GET=json_decode(base64_decode('${b64({tab})}'),true); $_POST=json_decode(base64_decode('${b64(post||{})}'),true); require ${q(scoped?'pwa-kalender.php':'index.php')};`);
  }
- const page=run('admin'); assert.match(page,/Uppdatera till senaste release/);
+ const page=run('admin'); assert.match(page,/Uppdatera appen nu/);
  const match=page.match(/name="csrf_token" value="([a-f0-9]{64})"/); assert.ok(match); const token=match[1];
  const action={action:'portal_release_install_latest',csrf_token:token}; const wasCalled=()=>fs.existsSync(path.join(sandbox,'storage/test-call'));
  run('admin',{...action,csrf_token:'wrong'}); assert.equal(wasCalled(),false,'Bad CSRF must block update');

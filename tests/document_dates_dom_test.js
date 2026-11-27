@@ -17,6 +17,7 @@ for (const scoped of [false, true]) {
     assert.equal(d.querySelector('#invoice-date').value, '2026-01-03');
     const delivery = d.querySelector('#invoice-delivery-date');
     assert.equal(delivery.value, '2026-01-02', 'Reopening restores delivery date');
+    assert.equal(d.querySelector('#invoice-more-fields').open, true, 'Restored optional dates stay visible');
     assert.equal(delivery.required, false);
     assert.equal(delivery.disabled, false);
     delivery.value = '2026-03-04';

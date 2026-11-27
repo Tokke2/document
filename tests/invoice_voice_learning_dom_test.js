@@ -9,7 +9,7 @@ const flush = () => new Promise(resolve => setImmediate(resolve));
 (async () => {
     const dom = new JSDOM(html, { url: 'https://example.test/?tab=invoice', runScripts: 'outside-only', pretendToBeVisual: true });
     const win = dom.window;
-    let current, failLoad = false, failSync = false, blockSync = false, releaseSync;
+    let current, failLoad = false, failSync = false, blockSync = false, releaseSync, blockTrack = false, releaseTrack;
     const profile = { learning: true, auto: false, reviewed: 49, corrections: [], share_learning:false,numeric_learning: false, numeric_corrections: [] };
     const requests = [];
     const tokenData = new Map(); let nextToken = 0;
@@ -25,6 +25,7 @@ const flush = () => new Promise(resolve => setImmediate(resolve));
         const op = p.get('operation'); requests.push({ op, keys: Array.from(p.keys()) });
         if (op === 'sync_auto' && blockSync) { blockSync = false; await new Promise(resolve => { releaseSync = resolve; }); }
         if (op === 'sync_auto' && failSync) return { ok: false, json: async () => ({code:'storage_error'}) };
+        if (op === 'track_auto' && blockTrack) { blockTrack = false; await new Promise(resolve => { releaseTrack = resolve; }); }
         if (op === 'track_auto' && failLoad) return { ok: false, json: async () => ({code:'storage_error'}) };
         if (op === 'review') { profile.reviewed = Math.min(50, profile.reviewed + 1); if (p.get('heard') && p.get('heard') !== p.get('approved')) profile.corrections.push({ heard: p.get('heard'), approved: p.get('approved') }); }
         if (op === 'auto_on') profile.auto = true;
@@ -99,6 +100,20 @@ const flush = () => new Promise(resolve => setImmediate(resolve));
     failLoad = true; await say('1st Extra 900 kr st');
     assert.equal(win.document.querySelectorAll('.invoice-item-name').length, 3, 'Storage/network failure prevents automatic entry');
     assert.match(get('#voice-status').textContent, /manuellt/);
+    failLoad = false;
+    get('#voice-learning-retry').click(); await flush(); await flush();
+    // Refresh the personal profile after the intentionally failed request.
+    get('#voice-start').click();
+    const blockedItem = [{ transcript: '1st Kundskydd 910 kr st' }]; blockedItem.isFinal = true;
+    blockTrack = true;
+    current.onresult({ results: [blockedItem] }); current.onend(); await flush();
+    assert.equal(typeof releaseTrack, 'function', 'Auto verification is in flight');
+    get('#invoice-customer').value = 'Ny kund';
+    get('#invoice-customer').dispatchEvent(new win.Event('input', { bubbles: true }));
+    releaseTrack(); await flush(); await flush();
+    assert.equal(win.document.querySelectorAll('.invoice-item-name').length, 3, 'A late automatic response cannot write to a different customer');
+    get('#voice-apply').click();
+    assert.equal(win.document.querySelectorAll('.invoice-item-name').length, 3, 'Manual apply also requires reinterpretation after customer change');
     const savedToken = rows[1].closest('tr').querySelector('.invoice-voice-token').value;
     dom.window.close();
     const restored = new JSDOM(html, { url: 'https://example.test/?tab=invoice', runScripts: 'outside-only', pretendToBeVisual: true });

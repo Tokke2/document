@@ -509,6 +509,15 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
         box-shadow: 0 3px 10px rgba(16, 57, 73, .12);
     }
     .invoice-print-logo { display: none; }
+    .invoice-quantity-control { display:flex; align-items:center; gap:6px; min-width:0; }
+    .invoice-quantity-control > .invoice-item-qty { flex:1 1 0; min-width:0; }
+    .invoice-quantity-unit { display:inline-block; flex-shrink:0; margin:3px 0; color:var(--inv-muted); font-weight:700; }
+    .invoice-more-fields { grid-column:1 / -1; min-width:0; padding:12px; border:1px solid var(--inv-line); border-radius:10px; }
+    .invoice-more-fields > summary { cursor:pointer; font-weight:750; padding:8px 0; }
+    .invoice-more-fields > .invoice-form-grid { margin-top:12px; }
+    .invoice-remove-cell [data-move-line] { min-width:40px; margin:2px; }
+    @media print { .invoice-more-fields > summary { display:none; } .invoice-more-fields > .invoice-form-grid { display:grid!important; } }
+
     .invoice-title {
         margin: 0;
         font-size: clamp(1.35rem, 3vw, 1.85rem);
@@ -1465,6 +1474,7 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
                         <small class="invoice-help"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Select a row or focus one in the invoice table. Replacing existing values requires confirmation.' : 'Välj en rad här eller markera en rad i fakturatabellen. Befintliga uppgifter ersätts bara efter bekräftelse.' ?></small>
                         <label for="voice-target"><?= ($portalLanguage ?? 'sv') === 'en' ? 'What would you like to enter?' : 'Vad vill du ange?' ?></label>
                         <select id="voice-target"><option value="row"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Invoice line' : 'Fakturarad' ?></option><option value="customer"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Customer' : 'Kund' ?></option><option value="reference"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Reference' : 'Referens' ?></option><option value="catalog"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Search item' : 'Sök artikel' ?></option></select>
+                        <p id="voice-heard" class="invoice-help" aria-live="off" hidden></p>
                         <button class="btn btn-outline" type="button" id="voice-start"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Start voice input' : 'Starta röstinmatning' ?></button>
                         <button class="btn btn-outline" type="button" id="voice-stop" hidden><?= ($portalLanguage ?? 'sv') === 'en' ? 'Stop and review' : 'Stoppa och granska' ?></button>
                         <button class="btn btn-outline" type="button" id="voice-cancel" hidden><?= ($portalLanguage ?? 'sv') === 'en' ? 'Cancel recording' : 'Avbryt inspelning' ?></button>
@@ -2686,7 +2696,7 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
         var customer = document.getElementById('invoice-customer');
         var reference = document.getElementById('invoice-reference');
         var description = document.getElementById('invoice-description');
-        if ([customer, reference, description].some(function (field) { return field && field.value.trim() !== ''; })) return true;
+        if ([customer, reference, description, document.getElementById('invoice-delivery-date')].some(function (field) { return field && field.value.trim() !== ''; })) return true;
         return Array.prototype.some.call(body.rows, function (row) {
             return Array.prototype.some.call(row.querySelectorAll('input'), function (input) { return input.value.trim() !== ''; });
         });
@@ -2832,6 +2842,7 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
 
     function recalculate() {
         Array.prototype.forEach.call(body.rows, function (row) {
+            syncQuantityUnit(row);
             var quantity = readNumber(row.querySelector('.invoice-item-qty'));
             var price = readNumber(row.querySelector('.invoice-item-price'));
             var rowTotal = roundCurrency(quantity * price);
@@ -2968,7 +2979,34 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
             row.querySelector('.invoice-item-unit').setAttribute('aria-label', invMsg('Enhet, rad ', 'Unit, row ') + (index + 1));
             row.querySelector('.invoice-item-price').setAttribute('aria-label', invMsg('Pris per enhet i kronor, rad ', 'Price per unit in kronor, row ') + (index + 1));
             row.querySelector('[data-remove-line]').setAttribute('aria-label', 'Ta bort rad ' + (index + 1));
+            var controls = row.querySelector('.invoice-remove-cell');
+            ['up', 'down'].forEach(function (direction) {
+                var move = controls.querySelector('[data-move-line="' + direction + '"]');
+                if (!move) {
+                    move = document.createElement('button'); move.type = 'button'; move.className = 'invoice-remove';
+                    move.dataset.moveLine = direction;
+                    move.textContent = direction === 'up' ? '↑' : '↓'; controls.insertBefore(move, controls.querySelector('[data-remove-line]'));
+                }
+                move.disabled = direction === 'up' ? index === 0 : index === body.rows.length - 1;
+                move.setAttribute('aria-label', invMsg('Flytta rad ', 'Move row ') + (index + 1) + (direction === 'up' ? invMsg(' upp', ' up') : invMsg(' ner', ' down')));
+            });
+            syncQuantityUnit(row);
+
         });
+    }
+
+    function syncQuantityUnit(row) {
+        var quantity = row.querySelector('.invoice-item-qty'), unit = row.querySelector('.invoice-item-unit');
+        if (!quantity || !unit) return;
+        var hint = quantity.parentNode.querySelector('.invoice-quantity-unit');
+        if (!hint) {
+            var control = document.createElement('div'); control.className = 'invoice-quantity-control';
+            quantity.parentNode.insertBefore(control, quantity);
+            hint = document.createElement('small'); hint.className = 'invoice-quantity-unit';
+            control.append(quantity, hint);
+        }
+        hint.textContent = invoiceUnitOptions[unit.value] || unit.value;
+        quantity.setAttribute('aria-label', invMsg('Antal, rad ', 'Quantity, row ') + (Array.prototype.indexOf.call(body.rows, row) + 1) + ' (' + hint.textContent + ')');
     }
 
     function createCell(label, element, className) {
@@ -3083,6 +3121,34 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
         recalculate();
         return row;
     }
+
+    (function setupOptionalInvoiceFields() {
+        var grid = form.querySelector('.invoice-form-grid');
+        if (!grid) return;
+        var details = document.createElement('details'); details.className = 'invoice-more-fields'; details.id = 'invoice-more-fields';
+        var summary = document.createElement('summary'); summary.textContent = invMsg('Fler uppgifter (frivilligt)', 'More information (optional)');
+        var content = document.createElement('div'); content.className = 'invoice-form-grid';
+        details.append(summary, content); grid.appendChild(details);
+        ['invoice-delivery-date', 'invoice-reference', 'invoice-fortnox-number'].forEach(function (id) {
+            var field = document.getElementById(id), wrapper = field && field.closest('.invoice-field');
+            if (!wrapper || wrapper.querySelector('[required]')) return;
+            content.appendChild(wrapper);
+            if (Array.prototype.some.call(wrapper.querySelectorAll('input,textarea,select'), function (input) { return input.value.trim() !== ''; })) details.open = true;
+        });
+        form.addEventListener('invalid', function (event) {
+            if (details.contains(event.target)) details.open = true;
+        }, true);
+        form.addEventListener('input', function (event) {
+            if (details.contains(event.target)) details.open = true;
+        });
+        form.addEventListener('change', function () {
+            if (Array.prototype.some.call(content.querySelectorAll('input,textarea,select'), function (field) { return field.value.trim() !== ''; })) details.open = true;
+        });
+        var openBeforePrint = false;
+        window.addEventListener('beforeprint', function () { openBeforePrint = details.open; details.open = true; });
+        window.addEventListener('afterprint', function () { details.open = openBeforePrint; });
+
+    }());
 
     var openVoice = document.getElementById('invoice-open-voice'), voicePanel = document.getElementById('invoice-voice-panel');
     if (openVoice && voicePanel) {
@@ -3464,6 +3530,34 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
         var priorText = '';
         var lastApplied = null;
         var recognition = null;
+        var recordingTimer = null;
+        var heard = document.getElementById('voice-heard');
+        var customerInput = document.getElementById('invoice-customer');
+        var customerRegister = document.getElementById('invoice-customer-select');
+        function customerContext() { return JSON.stringify([customerInput ? customerInput.value : '', customerRegister ? customerRegister.value : '']); }
+        var customerSnapshot = customerContext();
+        var customerContextChanged = false;
+        function stopForContextChange(message) {
+            customerContextChanged = true;
+            voiceObservation = null; lastApplied = null; lastRowFingerprint = null;
+            var engine = recognition; recognition = null; setRecording(false);
+            if (engine) { try { engine.abort(); } catch (error) { try { engine.stop(); } catch (ignored) {} } }
+            if (transcript.value.trim()) { transcriptNeedsParsing = true; refreshUncertainty(); }
+            if (engine || transcript.value.trim()) status.textContent = message;
+        }
+        function customerChanged() {
+            var value = customerContext();
+            if (value === customerSnapshot) return;
+            customerSnapshot = value;
+            stopForContextChange(voiceMessage('Kunden ändrades. Mikrofonen pausades och sena resultat ignoreras. Granska texten och tolka på nytt, eller starta en ny diktering.', 'Customer changed. The microphone was paused and late results are ignored. Review and reinterpret the text, or start a new dictation.'));
+        }
+        if (customerInput) ['input', 'change'].forEach(function (type) { customerInput.addEventListener(type, customerChanged); });
+        form.addEventListener('change', customerChanged); // Includes the customer-register selector's programmatic fill.
+        document.addEventListener('visibilitychange', function () {
+            if (document.hidden && recognition) stopForContextChange(voiceMessage('Mikrofonen pausades när sidan doldes. Starta igen när du är redo.', 'The microphone was paused when the page was hidden. Start again when ready.'));
+        });
+        window.addEventListener('pagehide', function () { if (recognition) stopForContextChange(''); });
+
         var transcriptNeedsParsing = false;
         var lastRowFingerprint = null;
         var previewPending = false;
@@ -3518,6 +3612,7 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
         }
         document.getElementById('voice-undo').addEventListener('click', function () { if (!undoApplied()) status.textContent = <?= json_encode(($portalLanguage ?? 'sv') === 'en' ? "There is nothing to undo." : "Det finns ingen användning att ångra.", JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>; });
         function parse() {
+            customerContextChanged = false; // Explicit interpretation or a fresh completed dictation.
             if (target.value !== 'row') return;
             var row = window.InvoiceVoice.parseRow(transcript.value);
             closeArticleChoices();
@@ -3660,7 +3755,12 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
             status.textContent = voiceMessage('Förslaget rensades. Fakturaraderna ändrades inte.', 'The proposal was cleared. Invoice rows were not changed.');
         });
         function setRecording(recording) {
-            start.disabled = recording;
+            if (!recording) {
+                window.clearTimeout(recordingTimer); recordingTimer = null;
+                if (heard) { heard.hidden = true; heard.textContent = ''; }
+            }
+            start.setAttribute('aria-pressed', recording ? 'true' : 'false');
+            start.disabled = recording || (!window.SpeechRecognition && !window.webkitSpeechRecognition);
             if (stop) stop.hidden = !recording;
             if (cancel) cancel.hidden = !recording;
             var liveCommands = document.getElementById('voice-live-commands');
@@ -3680,10 +3780,11 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
                 }
                 recognition = engine;
                 var initialText = transcript.value, initialTarget = target.value;
+                var initialCustomer = customerInput ? customerInput.value : '';
                 var initialSuggestion = JSON.stringify([name.value, qty.value, unit.value, price.value]);
                 var initialDestination = destinationRow, initialActiveRow = activeVoiceRow;
                 var fragments = [], cancelled = false, failed = false;
-                engine.lang = 'sv-SE'; engine.interimResults = false; engine.maxAlternatives = 1;
+                engine.lang = 'sv-SE'; engine.interimResults = true; engine.maxAlternatives = 1;
                 engine.onresult = function (event) {
                     if (cancelled || failed || recognition !== engine || !event.results) return;
                     var first = typeof event.resultIndex === 'number' ? event.resultIndex : 0;
@@ -3691,6 +3792,12 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
                         var item = event.results[i];
                         if (item && item.isFinal !== false && item[0] && typeof item[0].transcript === 'string') fragments[i] = item[0].transcript;
                     }
+                    if (heard) {
+                        var live = Array.prototype.map.call(event.results, function (item) { return item && item[0] ? String(item[0].transcript || '') : ''; }).join(' ').slice(0, 1000);
+                        heard.textContent = voiceMessage('Mikrofonen hör: ', 'Microphone hears: ') + live;
+                        heard.hidden = !live;
+                    }
+
                 };
                 engine.onerror = function (event) {
                     if (recognition !== engine || cancelled) return;
@@ -3699,7 +3806,11 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
                     status.textContent = code === 'not-allowed' || code === 'service-not-allowed'
                         ? voiceMessage(invMsg('Mikrofonen eller rösttjänsten är blockerad. Kontrollera behörigheter i webbläsaren.', 'The microphone or speech service is blocked. Check the browser permissions.'), 'Microphone or speech service blocked. Check browser permissions.')
                         : code === 'no-speech' ? voiceMessage(invMsg('Inget tal uppfattades. Försök igen eller skriv manuellt.', 'No speech was detected. Try again or type manually.'), 'No speech was detected. Try again or type manually.')
+                        : code === 'network' ? voiceMessage('Rösttjänsten kunde inte nås. Kontrollera anslutningen eller skriv texten manuellt. Befintliga uppgifter är kvar.', 'The speech service could not be reached. Check your connection or type manually. Existing entries are kept.')
+                        : code === 'audio-capture' ? voiceMessage('Ingen mikrofon kunde användas. Kontrollera att den är ansluten och inte upptagen av en annan app.', 'No microphone was available. Check that it is connected and not in use by another app.')
                         : voiceMessage(invMsg('Röstinmatningen misslyckades. Försök igen eller skriv manuellt.', 'Voice input failed. Try again or type manually.'), 'Voice input failed. Try again or type manually.');
+                    recognition = null; setRecording(false);
+                    try { engine.abort(); } catch (ignored) {}
                 };
                 engine.onend = function () {
                     if (recognition !== engine) return;
@@ -3708,9 +3819,10 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
                     var spoken = fragments.filter(function (part) { return typeof part === 'string' && part.trim(); }).join(' ').trim();
                     if (!spoken) { status.textContent = voiceMessage(invMsg('Inget tal uppfattades. Försök igen eller skriv manuellt.', 'No speech was detected. Try again or type manually.'), 'No speech was detected. Try again or type manually.'); return; }
                     if (Array.from(spoken).length > 1000) { status.textContent = voiceMessage(invMsg('Dikteringen blev för lång. Dela upp den i kortare förslag; inget har använts.', 'The dictation became too long. Split it into shorter suggestions; nothing was used.'), 'Dictation was too long. Split it into shorter suggestions; nothing was applied.'); return; }
-                    if (transcript.value !== initialText || target.value !== initialTarget || initialSuggestion !== JSON.stringify([name.value, qty.value, unit.value, price.value]) || initialDestination !== destinationRow || initialActiveRow !== activeVoiceRow) {
+                    if ((customerInput && customerInput.value !== initialCustomer) || transcript.value !== initialText || target.value !== initialTarget || initialSuggestion !== JSON.stringify([name.value, qty.value, unit.value, price.value]) || initialDestination !== destinationRow || initialActiveRow !== activeVoiceRow) {
                         status.textContent = voiceMessage(invMsg('Förslaget ändrades under inspelningen. Dikteringen användes inte; försök igen.', 'The suggestion changed during recording. The dictation was not used; try again.'), 'The suggestion changed during recording. Dictation was not applied; try again.'); return;
                     }
+                    customerContextChanged = false;
                     var outcome = acceptSpeech(spoken);
                     if (initialTarget !== 'row' && outcome !== true) status.textContent = voiceMessage('Granska texten innan du använder den.', 'Review the text before applying it.');
                     if (initialTarget === 'row' && outcome === 'dictated') {
@@ -3764,11 +3876,18 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
                         ? voiceMessage(invMsg('Inspelningen avbröts. Inget förslag användes.', 'The recording was cancelled. No suggestion was used.'), 'Recording cancelled. No suggestion was applied.')
                         : voiceMessage(invMsg('Kunde inte stoppa mikrofonen. Stäng sidan eller återkalla mikrofontillståndet. Inget förslag användes.', 'Could not stop the microphone. Close the page or revoke the microphone permission. No suggestion was used.'), 'Could not stop the microphone. Close the page or revoke microphone permission. No suggestion was applied.');
                 };
-                try { setRecording(true); status.textContent = voiceMessage('Lyssnar…', 'Listening…'); engine.start(); }
+                try {
+                    setRecording(true); status.textContent = voiceMessage('Lyssnar… Tala en rad och tryck Avsluta när du är klar.', 'Listening… Speak one line and press Stop when ready.');
+                    engine.start();
+                    if (recognition === engine) recordingTimer = window.setTimeout(function () {
+                        if (recognition === engine) stopForContextChange(voiceMessage('Inspelningen pausades efter en minut. Dela upp arbetet i kortare dikteringar.', 'Recording paused after one minute. Use shorter dictations.'));
+                    }, 60000);
+                }
                 catch (error) { recognition = null; setRecording(false); status.textContent = voiceMessage(invMsg('Mikrofonen kunde inte startas.', 'The microphone could not start.'), 'The microphone could not be started.'); }
             });
         }
         function applyVoiceSuggestion(isAuto, provenanceToken) {
+            if (customerContextChanged) { status.textContent = voiceMessage('Kunden eller röstsessionen ändrades. Granska texten och välj Tolka text igen innan förslaget används.', 'The customer or voice session changed. Review the text and choose Interpret text again before applying it.'); return; }
             if (recognition) { status.textContent = voiceMessage(invMsg('Avsluta eller avbryt inspelningen först.', 'Finish or cancel the recording first.'), 'Stop or cancel recording first.'); return; }
             if (target.value === 'row') {
                 if (articleUncertain) { status.textContent = voiceMessage(invMsg('Välj artikel eller bekräfta fritext innan förslaget används.', 'Choose an item or confirm free text before the suggestion is used.'), 'Select an item or confirm free text before applying the proposal.'); return; }
@@ -3848,8 +3967,8 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
                 var previousValue = field.value;
                 field.value = transcript.value.trim().slice(0, field.maxLength);
                 var appliedValue = field.value;
-                lastApplied = { undo: function () { if (field.value !== appliedValue) return false; field.value = previousValue; field.dispatchEvent(new Event('input', { bubbles: true })); return true; } };
                 field.dispatchEvent(new Event('input', { bubbles: true }));
+                lastApplied = { undo: function () { if (field.value !== appliedValue) return false; field.value = previousValue; field.dispatchEvent(new Event('input', { bubbles: true })); return true; } };
                 status.textContent = invMsg('Fältet har uppdaterats. Kontrollera uppgiften.', 'The field was updated. Check the entry.');
             }
         }
@@ -4118,6 +4237,24 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
     table.addEventListener('input', recalculate);
     table.addEventListener('change', recalculate);
     table.addEventListener('click', function (event) {
+        var move = event.target.closest('[data-move-line]');
+        if (move && !move.disabled) {
+            var moving = move.closest('tr'), previous = moving.previousElementSibling, next = moving.nextElementSibling;
+            if (move.dataset.moveLine === 'up' && previous) body.insertBefore(moving, previous);
+            else if (move.dataset.moveLine === 'down' && next) body.insertBefore(next, moving);
+            // PHP receives row order through the item keys too. Keep locks,
+            // mirrors and encrypted voice provenance attached to their DOM row.
+            Array.prototype.forEach.call(body.rows, function (row, index) {
+                row.querySelectorAll('input[name],select[name]').forEach(function (field) {
+                    field.name = field.name.replace(/^items\[\d+\]/, 'items[' + index + ']');
+                });
+            });
+            nextIndex = body.rows.length;
+            updateRowControls(); recalculate(); scheduleAutosave();
+            rowNote.textContent = invMsg('Raden flyttades till plats ', 'Row moved to position ') + (Array.prototype.indexOf.call(body.rows, moving) + 1) + '.';
+            moving.querySelector('.invoice-item-name').focus();
+            return;
+        }
         var button = event.target.closest('[data-remove-line]');
         if (!button) return;
 
