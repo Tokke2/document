@@ -987,6 +987,7 @@ function portal_send_invoice_saved_email(array $invoice, string $kind = 'invoice
         'Fortnox fakturanummer: ' . $singleLine($invoice['fortnox_invoice_number'] ?? '', 80),
         'Fortnox fakturadatum: ' . $singleLine($invoice['fortnox_invoice_date'] ?? '', 10),
         'Underlagsdatum: ' . $singleLine($invoice['date'] ?? '', 10),
+        'Levererat datum: ' . $singleLine($invoice['delivery_date'] ?? '', 10),
         'Kund/företag: ' . $singleLine($invoice['customer'] ?? '', 180),
         'Kundens referens: ' . $singleLine($invoice['ref'] ?? '', 160),
         '',
@@ -1087,6 +1088,7 @@ function portal_save_invoice(): bool
         'id' => portal_post_text($i, 'id', 128),
         'vat_mode' => portal_post_text($i, 'vat_mode', 8),
         'date' => portal_post_text($i, 'date', 10),
+        'delivery_date' => portal_post_text($i, 'delivery_date', 10),
         'ref' => portal_post_text($i, 'ref', 160),
         'customer' => portal_post_text($i, 'customer', 180),
         'description' => portal_post_text($i, 'description', 5000),
@@ -1117,7 +1119,8 @@ function portal_save_invoice(): bool
     if (!in_array($fields['vat_mode'], ['ex', 'inc'], true)) {
         return false;
     }
-    if ($fields['date'] !== '' && !preg_match('/\A\d{4}-\d{2}-\d{2}\z/', $fields['date'])) {
+    if (($fields['date'] !== '' && !portal_valid_iso_date($fields['date']))
+        || ($fields['delivery_date'] !== '' && !portal_valid_iso_date($fields['delivery_date']))) {
         return false;
     }
     $items = portal_process_items($_POST['items'] ?? [], 'invoice');
@@ -1198,6 +1201,7 @@ function portal_save_invoice(): bool
         'fortnox_invoice_number' => $isInvoiceAdmin ? $fortnoxNumber : (string) ($old['fortnox_invoice_number'] ?? ''),
         'fortnox_invoice_date' => $isInvoiceAdmin ? $fortnoxDate : (string) ($old['fortnox_invoice_date'] ?? ''),
         'date' => $fields['date'] !== '' ? $fields['date'] : date('Y-m-d'),
+        'delivery_date' => $fields['delivery_date'],
         'ref' => $fields['ref'],
         'customer' => $fields['customer'],
         'description' => $fields['description'],
@@ -1875,6 +1879,9 @@ function portal_handle_skade_submission(): bool
         'solar_price' => 20, 'payment_amount' => 20, 'signature_date' => 10,
         'replacement_date' => 10,
     ];
+    if (portal_skade_is_customer_route()) {
+        $data['signature_date'] = (new DateTimeImmutable('now', new DateTimeZone('Europe/Stockholm')))->format('Y-m-d');
+    }
     $clean = [];
     foreach ($limits as $key => $limit) {
         $value = portal_post_text($data, $key, $limit);

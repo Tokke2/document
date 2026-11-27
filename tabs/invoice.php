@@ -54,7 +54,7 @@ $invoiceHistoryRecords = array_values(array_filter($invoiceListRecords, static f
 }));
 $invoiceRecordSearchText = static function (array $record) use ($invoiceArticleUnits): string {
     $searchParts = [];
-    foreach (['nummer', 'fortnox_invoice_number', 'fortnox_invoice_date', 'date', 'customer', 'ref', 'description'] as $field) {
+    foreach (['nummer', 'fortnox_invoice_number', 'fortnox_invoice_date', 'date', 'delivery_date', 'customer', 'ref', 'description'] as $field) {
         $value = $record[$field] ?? '';
         if (is_scalar($value)) {
             $text = trim(app_legacy_text($value));
@@ -173,7 +173,7 @@ if ($importingProtocol) {
 }
 
 if (is_array($editInvoice)) {
-    foreach (['nummer', 'fortnox_invoice_number', 'fortnox_invoice_date', 'date', 'ref', 'customer', 'description'] as $legacyKey) {
+    foreach (['nummer', 'fortnox_invoice_number', 'fortnox_invoice_date', 'date', 'delivery_date', 'ref', 'customer', 'description'] as $legacyKey) {
         if (isset($editInvoice[$legacyKey])) {
             $editInvoice[$legacyKey] = app_legacy_text($editInvoice[$legacyKey]);
         }
@@ -1515,6 +1515,11 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
                             <p class="invoice-help" id="invoice-date-help">Visar vilket datum uppdraget eller underlaget gäller och hjälper till att sortera historiken.</p>
                         </div>
                         <div class="invoice-field">
+                            <label for="invoice-delivery-date"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Delivered date' : 'Levererat datum' ?></label>
+                            <input id="invoice-delivery-date" type="date" name="i[delivery_date]" aria-describedby="invoice-delivery-date-help" value="<?= h($editInvoice['delivery_date'] ?? '') ?>">
+                            <p class="invoice-help" id="invoice-delivery-date-help"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Date the work or goods were delivered. Optional; separate from the record and invoice dates.' : 'Datum då arbetet eller varan levererades. Frivilligt och separat från underlagsdatum och fakturadatum.' ?></p>
+                        </div>
+                        <div class="invoice-field">
                             <label for="invoice-customer"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Customer / company' : 'Kund / företag' ?></label>
                             <input id="invoice-customer" name="i[customer]" maxlength="180" autocomplete="organization" placeholder="<?= ($portalLanguage ?? 'sv') === 'en' ? 'Company or customer name — suggestions from the register' : 'Företags- eller kundnamn – förslag från Kundregistret' ?>" aria-describedby="invoice-customer-help" value="<?= h($editInvoice['customer'] ?? '') ?>"<?= $invoiceCustomerOptions ? ' list="invoice-customer-options"' : '' ?>>
                             <?php if ($invoiceCustomerOptions): ?><datalist id="invoice-customer-options"><?php foreach ($invoiceCustomerOptions as $invoiceCustomerOption): ?><option value="<?= h($invoiceCustomerOption['name']) ?>"></option><?php endforeach; ?></datalist><?php endif; ?>
@@ -1702,6 +1707,7 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
                     <dl class="invoice-review-details">
                         <div><dt><?= ($portalLanguage ?? 'sv') === 'en' ? 'Customer / company' : 'Kund / företag' ?></dt><dd id="invoice-review-customer"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Not specified' : 'Inte angivet' ?></dd></div>
                         <div><dt><?= ($portalLanguage ?? 'sv') === 'en' ? 'Date' : 'Datum' ?></dt><dd id="invoice-review-date"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Not specified' : 'Inte angivet' ?></dd></div>
+                        <div><dt><?= ($portalLanguage ?? 'sv') === 'en' ? 'Delivered date' : 'Levererat datum' ?></dt><dd id="invoice-review-delivery-date"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Not specified' : 'Inte angivet' ?></dd></div>
                         <div><dt><?= ($portalLanguage ?? 'sv') === 'en' ? 'Customer reference' : 'Kundens referens' ?></dt><dd id="invoice-review-reference"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Not specified' : 'Inte angivet' ?></dd></div>
                         <div><dt><?= ($portalLanguage ?? 'sv') === 'en' ? 'Fortnox invoice number' : 'Fortnox fakturanummer' ?></dt><dd id="invoice-review-fortnox"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Not recorded yet' : 'Inte registrerat ännu' ?></dd></div>
                         <div><dt><?= ($portalLanguage ?? 'sv') === 'en' ? 'Fortnox invoice date' : 'Fakturadatum i Fortnox' ?></dt><dd id="invoice-review-fortnox-date"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Not recorded yet' : 'Inte registrerat ännu' ?></dd></div>
@@ -1779,7 +1785,7 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
                                 ?>
                                 <tr data-invoice-record-row data-search="<?= h($invoiceRecordSearch) ?>">
                                     <td data-label="Underlagsnr"><span class="invoice-record-primary"><?= h($invoiceRecord['nummer'] ?? '—') ?></span></td>
-                                    <td data-label="Underlagsdatum"><?= h($invoiceRecord['date'] ?? '') ?></td>
+                                    <td data-label="Underlagsdatum"><?= h($invoiceRecord['date'] ?? '') ?><?php if (!empty($invoiceRecord['delivery_date'])): ?><span class="invoice-record-muted"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Delivered: ' : 'Levererat: ' ?><?= h($invoiceRecord['delivery_date']) ?></span><?php endif; ?></td>
                                     <td data-label="Kund och referens"><span class="invoice-record-primary"><?= h($invoiceRecordCustomer !== '' ? $invoiceRecordCustomer : 'Kund saknas') ?></span><?php if ($invoiceRecordReference !== ''): ?><span class="invoice-record-muted">Ref: <?= h($invoiceRecordReference) ?></span><?php endif; ?></td>
                                     <td class="invoice-record-total" data-label="Sparad summa"><?= number_format((float) ($invoiceRecord['total_sum'] ?? 0), 2, ',', ' ') ?> kr</td>
                                     <td class="invoice-record-email" data-label="Intern e-postavisering">
@@ -1864,7 +1870,7 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
                                 <tr data-invoice-record-row data-search="<?= h($invoiceRecordSearch) ?>">
                                     <td data-label="Underlagsnr"><span class="invoice-record-primary"><?= h($invoiceRecord['nummer'] ?? '—') ?></span></td>
                                     <td data-label="Fortnox-nr"><span class="invoice-record-primary"><?= h($invoiceFortnoxNumber) ?></span></td>
-                                    <td data-label="Underlagsdatum"><?= h($invoiceRecord['date'] ?? '') ?></td>
+                                    <td data-label="Underlagsdatum"><?= h($invoiceRecord['date'] ?? '') ?><?php if (!empty($invoiceRecord['delivery_date'])): ?><span class="invoice-record-muted"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Delivered: ' : 'Levererat: ' ?><?= h($invoiceRecord['delivery_date']) ?></span><?php endif; ?></td>
                                     <td data-label="Fakturadatum"><?= h($invoiceFortnoxDate !== '' ? $invoiceFortnoxDate : '—') ?></td>
                                     <td data-label="Kund och referens"><span class="invoice-record-primary"><?= h($invoiceRecordCustomer !== '' ? $invoiceRecordCustomer : 'Kund saknas') ?></span><?php if ($invoiceRecordReference !== ''): ?><span class="invoice-record-muted">Ref: <?= h($invoiceRecordReference) ?></span><?php endif; ?></td>
                                     <td class="invoice-record-total" data-label="Sparad summa"><?= number_format((float) ($invoiceRecord['total_sum'] ?? 0), 2, ',', ' ') ?> kr</td>
@@ -2858,6 +2864,7 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
 
         setReviewText('invoice-review-customer', document.getElementById('invoice-customer').value, 'Inte angivet');
         setReviewText('invoice-review-date', formatReviewDate(document.getElementById('invoice-date').value), 'Inte angivet');
+        setReviewText('invoice-review-delivery-date', formatReviewDate(document.getElementById('invoice-delivery-date').value), 'Inte angivet');
         setReviewText('invoice-review-reference', document.getElementById('invoice-reference').value, 'Inte angivet');
         setReviewText('invoice-review-description', document.getElementById('invoice-description').value, 'Inte angivet');
 
@@ -3874,6 +3881,7 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
             function value(id) { var field=document.getElementById(id); return field ? (typeof field.value === 'string' ? field.value.trim() : field.textContent.trim()) : ''; }
             var pieces = [
                 invMsg('Fakturaunderlag. Datum: ', 'Invoice record. Date: ') + (value('invoice-date') || invMsg('saknas', 'missing')) + '.',
+                invMsg('Levererat datum: ', 'Delivered date: ') + (value('invoice-delivery-date') || invMsg('inte angivet', 'not specified')) + '.',
                 invMsg('Kund: ', 'Customer: ') + (value('invoice-customer') || invMsg('saknas', 'missing')) + '.',
                 invMsg('Referens: ', 'Reference: ') + (value('invoice-reference') || invMsg('saknas', 'missing')) + '.',
                 invMsg('Uppdrag: ', 'Assignment: ') + (value('invoice-description') || invMsg('saknas', 'missing')) + '.',

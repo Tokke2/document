@@ -801,7 +801,7 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
                         <div class="skade-field skade-signature-date-field">
                             <div class="skade-label-row"><label class="skade-label" for="sk-signature-date">Påskrivet datum</label><?= $skadeWhyBtn('sk-signature-date') ?></div><?= $skadeWhyPanel('sk-signature-date') ?>
                             <input id="sk-signature-date" name="s[signature_date]" type="date" maxlength="10" autocomplete="off" value="<?= h($skadeText('signature_date')) ?>">
-                            <small class="skade-help">Datum när blanketten skrevs under. Lämna tomt om den inte är påskriven — PDF:ens datumruta förblir då tom. Om en ritad signatur finns sätts dagens datum automatiskt.</small>
+                            <small class="skade-help">Välj det datum då blanketten skrevs under. Lämna tomt om den inte är påskriven — PDF:ens datumruta förblir då tom. Om en ritad signatur finns sätts dagens datum automatiskt.</small>
                         </div>
                         <div class="skade-original-note"><span class="skade-mini-icon" aria-hidden="true">ⓘ</span><span>En ritad signatur placeras i originalets underskriftsruta. Lämna den tom om ni vill skriva ut blanketten utan underskrift; påskrivet datum, datumfältet och verkstadsuppgifterna kan kompletteras efteråt.</span></div>
                     <?php endif; ?>

@@ -140,7 +140,7 @@ function portal_autosaved_drafts_sanitize_payload(string $type, array $post, boo
     }
 
     $keys = $type === 'invoice'
-        ? ['id' => 128, 'date' => 10, 'ref' => 160, 'customer' => 180, 'description' => 5000, 'vat_mode' => 8, 'source_protocol_id' => 128]
+        ? ['id' => 128, 'date' => 10, 'delivery_date' => 10, 'ref' => 160, 'customer' => 180, 'description' => 5000, 'vat_mode' => 8, 'source_protocol_id' => 128]
         : ['id' => 128, 'reg' => 20, 'date' => 10, 'km' => 20, 'customer' => 180, 'tech' => 120, 'description' => 5000];
     $cleanForm = [];
     foreach ($keys as $key => $maxLength) {
@@ -157,6 +157,11 @@ function portal_autosaved_drafts_sanitize_payload(string $type, array $post, boo
         return null;
     }
     if ($type === 'invoice') {
+        $deliveryDate = $cleanForm['delivery_date'];
+        if ($deliveryDate !== '' && (!preg_match('/\A(\d{4})-(\d{2})-(\d{2})\z/D', $deliveryDate, $parts)
+            || !checkdate((int) $parts[2], (int) $parts[3], (int) $parts[1]))) {
+            return null;
+        }
         if ($cleanForm['source_protocol_id'] !== '' && !preg_match('/\A[A-Za-z0-9_-]{1,128}\z/D', $cleanForm['source_protocol_id'])) {
             return null;
         }
@@ -240,7 +245,7 @@ function portal_autosaved_drafts_has_content(string $type, array $payload): bool
     $formKey = $type === 'invoice' ? 'i' : 'p';
     $form = is_array($payload[$formKey] ?? null) ? $payload[$formKey] : [];
     $contentKeys = $type === 'invoice'
-        ? ['ref', 'customer', 'description']
+        ? ['ref', 'customer', 'description', 'delivery_date']
         : ['reg', 'km', 'customer', 'tech', 'description'];
     foreach ($contentKeys as $key) {
         if (trim((string) ($form[$key] ?? '')) !== '') {
