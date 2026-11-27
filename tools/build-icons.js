@@ -54,7 +54,7 @@ function icoFromPngs(entries) {
         console.log(`assets/${name} ${size}x${size} ${data.length} B`);
     }
     const faviconEntries = [];
-    for (const size of [48, 32]) {
+    for (const size of [16, 32, 48, 256]) {
         faviconEntries.push({ size, data: await pngBuffer(size) });
     }
     const ico = icoFromPngs(faviconEntries);

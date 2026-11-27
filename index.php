@@ -4029,13 +4029,13 @@ $languageLink = static function (string $language): string {
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="<?= h($isSkadeCustomerMode ? 'Skadeblankett' : ($portalIsScopedPwa ? $portalPwaName : 'Dokumentportalen')) ?>">
     <meta name="msapplication-TileColor" content="#07172d">
-    <meta name="msapplication-TileImage" content="<?= h($portalAssetEntry . '?view_file=assets/pwa-icon-192.png') ?>">
+    <meta name="msapplication-TileImage" content="<?= h($portalAssetEntry . '?view_file=assets/pwa-icon-192.png&v=windshield-1') ?>">
     <meta name="msapplication-config" content="./browserconfig.xml">
     <title><?= h($isSkadeCustomerMode ? 'Skadeblankett · Dokumentportalen' : ($portalIsScopedPwa ? $portalPwaName . ' · Dokumentportalen' : $pageTitle . ' · Dokumentportalen')) ?></title>
     <link rel="manifest" href="<?= h($portalManifestHref) ?>">
     <link rel="icon" type="image/x-icon" href="./favicon.ico?v=<?= (string) (@filemtime(__DIR__ . '/favicon.ico') ?: '1') ?>">
-    <link rel="icon" type="image/png" sizes="192x192" href="<?= h($portalAssetEntry . '?view_file=assets/pwa-icon-192.png') ?>">
-    <link rel="shortcut icon" type="image/png" href="<?= h($portalAssetEntry . '?view_file=assets/pwa-icon-192.png') ?>">
+    <link rel="icon" type="image/png" sizes="192x192" href="<?= h($portalAssetEntry . '?view_file=assets/pwa-icon-192.png&v=windshield-1') ?>">
+    <link rel="shortcut icon" type="image/png" href="<?= h($portalAssetEntry . '?view_file=assets/pwa-icon-192.png&v=windshield-1') ?>">
     <link rel="apple-touch-icon" sizes="180x180" href="<?= h($portalAssetEntry . '?view_file=assets/apple-touch-icon.png&v=' . (string) (@filemtime(__DIR__ . '/assets/apple-touch-icon.png') ?: '1')) ?>">
     <link rel="stylesheet" href="<?= h($portalAssetEntry . '?view_file=assets/portal.css&v=' . (string) (@filemtime(__DIR__ . '/assets/portal.css') ?: '1')) ?>">
     <script>
@@ -4107,7 +4107,8 @@ $languageLink = static function (string $language): string {
 <header class="app-header">
     <div class="app-header-inner">
         <a class="brand" href="?tab=<?= h($activeTab) ?>" aria-label="<?= h($portalIsScopedPwa ? $portalPwaName . ' startsida' : 'Dokumentportalen startsida') ?>">
-            <?php if (!$portalIsScopedPwa && $portalCompanyLogo !== ''): ?><img class="brand-company-logo" src="?view_file=<?= rawurlencode('svg/' . $portalCompanyLogo) ?>" alt=""><?php else: ?><img class="brand-icon" src="<?= h($portalAssetEntry . '?view_file=assets/tadega-icon.svg') ?>" alt=""><?php endif; ?>
+            <img class="brand-icon" src="<?= h($portalAssetEntry . '?view_file=assets/tadega-icon.svg&v=' . (string) (@filemtime(__DIR__ . '/assets/tadega-icon.svg') ?: '1')) ?>" width="60" height="60" alt="">
+            <?php if (!$portalIsScopedPwa && $portalCompanyLogo !== ''): ?><img class="brand-company-logo" src="?view_file=<?= rawurlencode('svg/' . $portalCompanyLogo) ?>" alt=""><?php endif; ?>
             <span><span class="brand-name"><?= h($portalCompanyName) ?></span><span class="brand-caption"><?= h($portalIsScopedPwa ? $portalPwaName : 'Dokumentportalen') ?></span></span>
         </a>
         <div class="header-actions">

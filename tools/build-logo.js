@@ -1,7 +1,7 @@
 'use strict';
 // Regenerate assets/tadega-logo.svg (outlined wordmark for screen) and
 // assets/tadega-logo-tryck.svg (editable print original with live text).
-// The badge is drawn as vector shapes; "Dokumentportalen" and "TADGA AB" are
+// The badge comes from assets/tadega-icon.svg; "Dokumentportalen" and "TADGA AB" are
 // converted to outlines with opentype.js in the screen logo so print output
 // can never substitute a font, while the print SVG keeps them as text objects.
 // Run: node tools/build-logo.js
@@ -45,34 +45,10 @@ if (272 + title.advance > 960) {
 }
 const subtitle = outline('TADGA AB', 24, 274, 200, 7);
 
-// Badge: rounded dark plate, polished limousine side profile with cabin glass,
-// stone-chip crack in the windscreen, chrome strip and two wheels.
-const iconPaths = `
-    <rect width="512" height="512" rx="112" fill="#07172d"/>
-    <path d="M44 402v-56c0-9 6-17 15-19l54-13 46-58c6-8 15-12 25-12h150c9 0 17 4 23 11l42 47 66 16c9 2 15 10 15 19v45c0 11-9 20-20 20z" fill="#ffffff"/>
-    <path d="M136 274l38-47c4-5 9-8 15-8h64v55z" fill="#7fd6c8"/>
-    <path d="M266 219h72c6 0 11 2 15 7l30 34-117 4z" fill="#7fd6c8"/>
-    <path d="M400 244l24 28 34 8v10l-58-14z" fill="#7fd6c8"/>
-    <g stroke="#ffffff" stroke-width="4" stroke-linecap="round" opacity="0.75">
-      <path d="M276 228l34 12"/>
-      <path d="M352 264l22 8"/>
-    </g>
-    <g stroke="#0f9b8e" stroke-width="3.5" stroke-linecap="round">
-      <path d="M322 228v22"/>
-      <path d="M313 234l9 7"/>
-      <path d="M331 234l-9 7"/>
-      <path d="M316 244l-12 8"/>
-      <path d="M328 244l12 8"/>
-      <path d="M317 252l-8 9"/>
-      <path d="M327 252l8 9"/>
-    </g>
-    <circle cx="322" cy="240" r="3.5" fill="#0f9b8e"/>
-    <path d="M74 344h366" stroke="#0f9b8e" stroke-width="7" stroke-linecap="round"/>
-    <circle cx="132" cy="400" r="44" fill="#07172d" stroke="#ffffff" stroke-width="10"/>
-    <circle cx="420" cy="400" r="44" fill="#07172d" stroke="#ffffff" stroke-width="10"/>
-    <circle cx="132" cy="400" r="10" fill="#ffffff"/>
-    <circle cx="420" cy="400" r="10" fill="#ffffff"/>
-`;
+// Single source of truth: use the exact same windshield + lightning as the
+// PWA icons, favicon and PDF raster. Never maintain a second drawing here.
+const icon = fs.readFileSync(path.join(root, 'assets/tadega-icon.svg'), 'utf8');
+const iconPaths = icon.replace(/^<svg\b[^>]*>/, '').replace(/<\/svg>\s*$/, '').trim();
 
 const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 240" role="img" aria-label="Tadega AB – Dokumentportalen">
   <!--

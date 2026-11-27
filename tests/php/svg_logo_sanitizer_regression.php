@@ -23,9 +23,9 @@ $icon = (string) file_get_contents(__DIR__ . '/../../assets/tadega-icon.svg');
 $safeIcon = portal_sanitize_svg($icon);
 $assert(is_string($safeIcon), 'App icon passes the sanitizer');
 $assert(str_contains($safeIcon, 'rx="112"'), 'Badge corner radius survives sanitizing');
-$assert(str_contains($safeIcon, 'M56 400'), 'Limousine body path survives sanitizing');
-$assert(str_contains($safeIcon, 'cx="420"'), 'Wheel circle survives sanitizing');
-$assert(str_contains($safeIcon, 'stroke="#0f9b8e"'), 'Teal stroke colour survives sanitizing');
+$assert(str_contains($safeIcon, 'id="windshield-frame"'), 'Large windshield frame survives sanitizing');
+$assert(str_contains($safeIcon, 'id="lightning"'), 'Large lightning bolt survives sanitizing');
+$assert(str_contains($safeIcon, 'fill="#7fd6c8"'), 'Turquoise windshield glass survives sanitizing');
 
 $logo = (string) file_get_contents(__DIR__ . '/../../assets/tadega-logo.svg');
 $safeLogo = portal_sanitize_svg($logo);

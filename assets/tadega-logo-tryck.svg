@@ -9,32 +9,13 @@
     texten till banor (Illustrator: Text → Skapa konturer, Inkscape:
     Path → Object to Path) om tryckeriet saknar Inter.
   -->
-  <g id="varumaerke" transform="translate(0 0) scale(0.46875)">
-    <rect width="512" height="512" rx="112" fill="#07172d"/>
-    <path d="M44 402v-56c0-9 6-17 15-19l54-13 46-58c6-8 15-12 25-12h150c9 0 17 4 23 11l42 47 66 16c9 2 15 10 15 19v45c0 11-9 20-20 20z" fill="#ffffff"/>
-    <path d="M136 274l38-47c4-5 9-8 15-8h64v55z" fill="#7fd6c8"/>
-    <path d="M266 219h72c6 0 11 2 15 7l30 34-117 4z" fill="#7fd6c8"/>
-    <path d="M400 244l24 28 34 8v10l-58-14z" fill="#7fd6c8"/>
-    <g stroke="#ffffff" stroke-width="4" stroke-linecap="round" opacity="0.75">
-      <path d="M276 228l34 12"/>
-      <path d="M352 264l22 8"/>
-    </g>
-    <g stroke="#0f9b8e" stroke-width="3.5" stroke-linecap="round">
-      <path d="M322 228v22"/>
-      <path d="M313 234l9 7"/>
-      <path d="M331 234l-9 7"/>
-      <path d="M316 244l-12 8"/>
-      <path d="M328 244l12 8"/>
-      <path d="M317 252l-8 9"/>
-      <path d="M327 252l8 9"/>
-    </g>
-    <circle cx="322" cy="240" r="3.5" fill="#0f9b8e"/>
-    <path d="M74 344h366" stroke="#0f9b8e" stroke-width="7" stroke-linecap="round"/>
-    <circle cx="132" cy="400" r="44" fill="#07172d" stroke="#ffffff" stroke-width="10"/>
-    <circle cx="420" cy="400" r="44" fill="#07172d" stroke="#ffffff" stroke-width="10"/>
-    <circle cx="132" cy="400" r="10" fill="#ffffff"/>
-    <circle cx="420" cy="400" r="10" fill="#ffffff"/>
-
+  <g id="varumaerke" transform="translate(0 0) scale(0.46875)"><!-- Canonical brand mark. Flat vector fills survive the public SVG sanitizer.
+       Keep the large windshield and lightning shared by every logo/icon build. -->
+  <rect width="512" height="512" rx="112" fill="#07172d"/>
+  <path id="windshield-frame" d="M151 117Q256 91 361 117Q380 122 386 143L440 347Q445 373 419 380Q256 417 93 380Q67 373 72 347L126 143Q132 122 151 117Z" fill="#ffffff"/>
+  <path id="windshield-glass" d="M156 143Q256 119 356 143L413 354Q256 390 99 354Z" fill="#7fd6c8"/>
+  <path d="M169 163L135 291" fill="none" stroke="#ffffff" stroke-width="12" stroke-linecap="round"/>
+  <path id="lightning" d="M278 146L190 270H249L229 362L330 229H269Z" fill="#07172d"/>
   </g>
   <g id="ordmark" font-family="Inter, 'Segoe UI', Arial, sans-serif">
     <text id="namn" x="272" y="150" font-size="64" font-weight="800" fill="#0b2239">Dokumentportalen</text>

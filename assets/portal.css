@@ -839,3 +839,12 @@ html { -webkit-text-size-adjust:100%; text-size-adjust:100%; }
         .tab-icon, .ui-icon, .calendar-heading-icon { stroke-width:1.7; }
     }
 }
+
+/* Shared windshield identity: prominent at every breakpoint, never flex-shrunk. */
+.app-header .brand-icon {
+    width:60px; height:60px; flex:0 0 60px; border-radius:14px;
+}
+@media (max-width:720px) {
+    .app-header .brand-icon { width:48px; height:48px; flex-basis:48px; border-radius:12px; }
+    .app-header .brand { gap:10px; }
+}

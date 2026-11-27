@@ -206,6 +206,6 @@ $assert(str_contains($adminTabSource, 'högst en gång i timmen') && !str_contai
 $assert(str_contains($invoiceTabSource, 'list="invoice-customer-options"') && str_contains($invoiceTabSource, '<datalist id="invoice-customer-options">'), 'Customer field offers register suggestions.');
 $assert(str_contains($invoiceTabSource, 'stepSaveButton.hidden = currentStep === 1'), 'Mobile wizard can save directly from step 2.');
 $assert(str_contains($invoiceTabSource, 'Ange kund eller företag innan du går vidare') && str_contains($invoiceTabSource, 'stepNextButton.click();'), 'Step 1 requires a customer and Enter continues.');
-$assert(str_contains($printLogoSource, 'r="3.5"') && str_contains($printLogoSource, 'stroke="#ffffff"'), 'Brand mark shows the enlarged stone-chip crack and glass glint.');
+$assert(str_contains($printLogoSource, 'id="windshield-frame"') && str_contains($printLogoSource, 'id="lightning"') && str_contains($printLogoSource, 'stroke="#ffffff"'), 'Brand mark shows the shared large windshield, lightning bolt and glass reflection.');
 
 fwrite(STDOUT, 'PASS: ' . $checks . ' Adminpanel render checks.' . PHP_EOL);

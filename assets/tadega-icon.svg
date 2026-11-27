@@ -1,26 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Dokumentportalen">
-  <!--
-    Limousine in profile whose three windows are glass panes, with a
-    stone-chip crack in the middle pane: both trades the portal serves
-    (limousines and glass) in one flat, high-contrast mark. The long flat
-    roofline reads as a limousine even at 16 px; the teal chrome strip and
-    chip crack keep the glass trade visible. Raster derivatives:
-    node tools/build-icons.js
-  -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Dokumentportalen – vindruta med blixt">
+  <!-- Canonical brand mark. Flat vector fills survive the public SVG sanitizer.
+       Keep the large windshield and lightning shared by every logo/icon build. -->
   <rect width="512" height="512" rx="112" fill="#07172d"/>
-  <path d="M56 400V316l48-50h288l44 40 10 12 30 16 14 14v52z" fill="#ffffff"/>
-  <rect x="116" y="276" width="80" height="32" fill="#7fd6c8"/>
-  <rect x="208" y="276" width="92" height="32" fill="#7fd6c8"/>
-  <rect x="312" y="276" width="68" height="32" fill="#7fd6c8"/>
-  <g stroke="#0f9b8e" stroke-width="3.5" stroke-linecap="round">
-    <path d="M254 282v11"/>
-    <path d="M248 286l6 5"/>
-    <path d="M260 286l-6 5"/>
-    <path d="M254 297v6"/>
-  </g>
-  <path d="M84 348h372" stroke="#0f9b8e" stroke-width="7" stroke-linecap="round"/>
-  <circle cx="130" cy="400" r="44" fill="#07172d" stroke="#ffffff" stroke-width="10"/>
-  <circle cx="420" cy="400" r="44" fill="#07172d" stroke="#ffffff" stroke-width="10"/>
-  <circle cx="130" cy="400" r="10" fill="#ffffff"/>
-  <circle cx="420" cy="400" r="10" fill="#ffffff"/>
+  <path id="windshield-frame" d="M151 117Q256 91 361 117Q380 122 386 143L440 347Q445 373 419 380Q256 417 93 380Q67 373 72 347L126 143Q132 122 151 117Z" fill="#ffffff"/>
+  <path id="windshield-glass" d="M156 143Q256 119 356 143L413 354Q256 390 99 354Z" fill="#7fd6c8"/>
+  <path d="M169 163L135 291" fill="none" stroke="#ffffff" stroke-width="12" stroke-linecap="round"/>
+  <path id="lightning" d="M278 146L190 270H249L229 362L330 229H269Z" fill="#07172d"/>
 </svg>

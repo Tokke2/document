@@ -12,6 +12,7 @@ $customerMailStatus = isset($_GET['mail']) && is_string($_GET['mail']) && in_arr
 $customerTextFitWarning = isset($_GET['text_fit_warning']) && is_string($_GET['text_fit_warning']) && $_GET['text_fit_warning'] === '1';
 $customerFileRoutes = [];
 $customerPublicAssets = [
+    'assets/tadega-icon.svg', // Shared windshield mark; no other SVG is made public.
     'assets/apple-touch-icon.png',
     'assets/pwa-icon-192.png',
     'assets/pwa-icon-512.png',

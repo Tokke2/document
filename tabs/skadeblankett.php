@@ -313,6 +313,7 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
     }
     <?php endif; ?>
     .skade-hero { display:flex; align-items:flex-start; justify-content:space-between; gap:24px; margin:0 0 20px; padding:24px 26px; border:1px solid #d4e8ed; border-radius:20px; background:linear-gradient(125deg,#f2fbfd 0%,#fff 62%,#edf6f8 100%); box-shadow:0 12px 28px rgba(16,57,73,.06); }
+    .skade-brand-mark { display:block; width:64px; height:64px; flex:0 0 64px; border-radius:14px; }
     .skade-hero-kicker { display:flex; align-items:center; gap:8px; margin:0 0 9px; color:#0f6d85; font-size:.72rem; font-weight:850; letter-spacing:.12em; text-transform:uppercase; }
     .skade-hero h2 { max-width:720px; margin:0; color:#163343; font-size:clamp(1.35rem,2.7vw,2rem); letter-spacing:-.035em; line-height:1.16; }
     .skade-hero p { max-width:730px; margin:10px 0 0; color:#5f7180; font-size:.93rem; }
@@ -528,7 +529,7 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
     <section class="skade-hero" aria-labelledby="skade-title">
         <div>
             <?php if ($skadeCustomerMode): ?>
-                <p class="skade-hero-kicker"><span aria-hidden="true">◈</span> <?= ($portalLanguage ?? 'sv') === 'en' ? 'Auto glass · customer form' : 'Bilglas · kundformulär' ?></p>
+                <p class="skade-hero-kicker"><img class="skade-brand-mark" src="./skadeblankett-kund.php?view_file=assets/tadega-icon.svg&amp;v=windshield-1" width="64" height="64" alt=""> <?= ($portalLanguage ?? 'sv') === 'en' ? 'Auto glass · customer form' : 'Bilglas · kundformulär' ?></p>
                 <h2 id="skade-title"><?= $skadeCustomerDone ? (($portalLanguage ?? 'sv') === 'en' ? 'Thank you!' : 'Tack!') : (($portalLanguage ?? 'sv') === 'en' ? 'Complete the damage form' : 'Fyll i skadeblanketten') ?></h2>
                 <?php if (!$skadeCustomerDone): ?>
                 <p><?= ($portalLanguage ?? 'sv') === 'en' ? 'Fields marked * are required. Other fields are optional. In the final step, draw your signature.' : 'Fält märkta med * är obligatoriska. Övriga fält är frivilliga. I sista steget ritar du din signatur.' ?></p>

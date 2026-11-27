@@ -2,7 +2,7 @@
 <browserconfig>
   <msapplication>
     <tile>
-      <square150x150logo src="index.php?view_file=assets/pwa-icon-192.png" />
+      <square150x150logo src="index.php?view_file=assets/pwa-icon-192.png&amp;v=windshield-1" />
       <TileColor>#07172d</TileColor>
     </tile>
   </msapplication>
