@@ -396,7 +396,7 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
         stroke-linejoin: round;
     }
     .invoice-voice [hidden] { display:none !important; }
-    .invoice-mobile-voice-shortcut { display:none; }
+    .invoice-mobile-voice-shortcut { display:inline-flex; min-height:48px; margin:8px 0; }
     @media (max-width: 720px) { .invoice-mobile-voice-shortcut { display:inline-flex; min-height:48px; width:100%; justify-content:center; margin:8px 0; } .invoice-voice button { min-height:44px; } }
     .invoice-article-picker { margin:0 0 14px; padding:12px 14px; border:1px solid var(--inv-line); border-radius:12px; background:#f8fbfc; }
     .invoice-article-picker > summary { color:var(--inv-brand-dark); font-weight:780; cursor:pointer; }
@@ -1446,7 +1446,7 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
                 <?= csrf_field() ?>
                 <p class="invoice-autosave-status" id="invoice-autosave-status" role="status" aria-live="polite"><span id="invoice-autosave-message"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Your changes are automatically saved as a draft.' : 'Dina ändringar sparas automatiskt som ett utkast.' ?></span> <a id="invoice-autosave-resume" href="?tab=invoice&amp;draft_id=<?= h($invoiceDraftId) ?>"<?= is_array($invoiceDraftData) ? '' : ' hidden' ?>><?= ($portalLanguage ?? 'sv') === 'en' ? 'Open autosaved draft' : 'Öppna autosparat utkast' ?></a></p>
 
-                <button type="button" class="btn btn-outline invoice-mobile-voice-shortcut" id="invoice-open-voice" aria-controls="invoice-voice-panel" aria-expanded="false"><svg class="invoice-voice-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M9 21h6"/></svg><?= ($portalLanguage ?? 'sv') === 'en' ? 'Open voice input' : 'Öppna röstinmatning' ?></button>
+                <button type="button" class="btn btn-outline invoice-mobile-voice-shortcut" id="invoice-open-voice" aria-controls="invoice-voice-panel" aria-expanded="false"><svg class="invoice-voice-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M9 21h6"/></svg><?= ($portalLanguage ?? 'sv') === 'en' ? 'Start voice input' : 'Starta röstinmatning' ?></button>
                 <details class="invoice-voice invoice-register" id="invoice-voice-panel">
                     <summary><svg class="invoice-voice-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M9 21h6"/></svg><?= ($portalLanguage ?? 'sv') === 'en' ? 'Voice and quick entry' : 'Röst och snabb inmatning' ?></summary>
                     <div class="invoice-register-body" style="display:block">
@@ -1474,6 +1474,7 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
                         <small class="invoice-help"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Select a row or focus one in the invoice table. Replacing existing values requires confirmation.' : 'Välj en rad här eller markera en rad i fakturatabellen. Befintliga uppgifter ersätts bara efter bekräftelse.' ?></small>
                         <label for="voice-target"><?= ($portalLanguage ?? 'sv') === 'en' ? 'What would you like to enter?' : 'Vad vill du ange?' ?></label>
                         <select id="voice-target"><option value="row"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Invoice line' : 'Fakturarad' ?></option><option value="customer"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Customer' : 'Kund' ?></option><option value="reference"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Reference' : 'Referens' ?></option><option value="catalog"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Search item' : 'Sök artikel' ?></option></select>
+                        <p class="invoice-help" id="voice-finish-help"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Tap Start voice input once. Dictate in Swedish and finish by saying “slut” or “färdigt”. The final command is removed from the text. You can also use Stop and review. Microphone permission may be requested the first time.' : 'Tryck en gång på Starta röstinmatning. Diktera och avsluta med att säga ”slut” eller ”färdigt”. Avslutsordet tas bort från texten. Du kan också trycka Stoppa och granska. Första gången kan du behöva tillåta mikrofonen.' ?></p>
                         <p id="voice-heard" class="invoice-help" aria-live="off" hidden></p>
                         <button class="btn btn-outline" type="button" id="voice-start"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Start voice input' : 'Starta röstinmatning' ?></button>
                         <button class="btn btn-outline" type="button" id="voice-stop" hidden><?= ($portalLanguage ?? 'sv') === 'en' ? 'Stop and review' : 'Stoppa och granska' ?></button>
@@ -1508,7 +1509,7 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
                         <button type="button" class="btn btn-outline" id="voice-read-stop" hidden><?= ($portalLanguage ?? 'sv') === 'en' ? 'Stop reading' : 'Stoppa uppläsning' ?></button>
                         <p class="invoice-help"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Reading includes the customer, reference, assignment and entered lines, not an unapplied voice proposal. Anyone nearby may hear it. The device speech service may process the text.' : 'Uppläsning omfattar kund, referens, uppdrag och inmatade rader, inte ett oanvänt röstförslag. Personer i närheten kan höra. Enhetens taltjänst kan behandla texten.' ?></p>
                         <p id="voice-status" role="status" aria-live="polite"></p>
-                        <p id="voice-live-commands" class="invoice-help" hidden><?= ($portalLanguage ?? 'sv') === 'en' ? 'While listening say: ”ny rad” · ”nästa rad” · ”till kund” · ”till antal” · ”till pris” · ”rad 2” · ”läs upp underlaget” · ”ångra senaste” · ”rensa” · ”avbryt”.' : 'Medan mikrofonen lyssnar: säg ”ny rad” · ”nästa rad” · ”till kund” · ”till antal” · ”till pris” · ”rad 2” · ”läs upp underlaget” · ”ångra senaste” · ”rensa” · ”avbryt”.' ?></p>
+                        <p id="voice-live-commands" class="invoice-help" hidden><?= ($portalLanguage ?? 'sv') === 'en' ? 'Finish recording by saying “slut” or “färdigt”. Other commands: ”ny rad” · ”nästa rad” · ”till kund” · ”till antal” · ”till pris” · ”rad 2” · ”läs upp underlaget” · ”ångra senaste” · ”rensa” · ”avbryt”.' : 'Avsluta inspelningen med ”slut” eller ”färdigt”. Andra kommandon: ”ny rad” · ”nästa rad” · ”till kund” · ”till antal” · ”till pris” · ”rad 2” · ”läs upp underlaget” · ”ångra senaste” · ”rensa” · ”avbryt”.' ?></p>
                     </div>
                 </details>
                 <section class="invoice-section" aria-labelledby="invoice-customer-heading" data-invoice-step="1">
@@ -3152,7 +3153,7 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
 
     var openVoice = document.getElementById('invoice-open-voice'), voicePanel = document.getElementById('invoice-voice-panel');
     if (openVoice && voicePanel) {
-        openVoice.addEventListener('click', function () { voicePanel.open = true; openVoice.setAttribute('aria-expanded', 'true'); voicePanel.scrollIntoView && voicePanel.scrollIntoView({ block:'start' }); });
+        openVoice.addEventListener('click', function () { voicePanel.open = true; openVoice.setAttribute('aria-expanded', 'true'); voicePanel.scrollIntoView && voicePanel.scrollIntoView({ block:'start' }); var startVoice = document.getElementById('voice-start'); if (startVoice && !startVoice.disabled) startVoice.click(); });
         voicePanel.addEventListener('toggle', function () { openVoice.setAttribute('aria-expanded', voicePanel.open ? 'true' : 'false'); });
     }
 
@@ -3759,6 +3760,7 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
                 window.clearTimeout(recordingTimer); recordingTimer = null;
                 if (heard) { heard.hidden = true; heard.textContent = ''; }
             }
+            if (openVoice) { openVoice.disabled = recording; openVoice.setAttribute('aria-pressed', recording ? 'true' : 'false'); }
             start.setAttribute('aria-pressed', recording ? 'true' : 'false');
             start.disabled = recording || (!window.SpeechRecognition && !window.webkitSpeechRecognition);
             if (stop) stop.hidden = !recording;
@@ -3772,6 +3774,7 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
         } else {
             start.addEventListener('click', function () {
                 if (recognition) return;
+                if (voicePanel) voicePanel.open = true;
                 if (readStop && !readStop.hidden) { status.textContent = voiceMessage('Stoppa uppläsningen innan du startar mikrofonen.', 'Stop reading before starting the microphone.'); return; }
                 var Engine = window.SpeechRecognition || window.webkitSpeechRecognition;
                 var engine;
@@ -3783,14 +3786,34 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
                 var initialCustomer = customerInput ? customerInput.value : '';
                 var initialSuggestion = JSON.stringify([name.value, qty.value, unit.value, price.value]);
                 var initialDestination = destinationRow, initialActiveRow = activeVoiceRow;
-                var fragments = [], cancelled = false, failed = false;
-                engine.lang = 'sv-SE'; engine.interimResults = true; engine.maxAlternatives = 1;
+                var fragments = [], cancelled = false, failed = false, voiceFinished = false, finishedText = '';
+                function collectedSpeech() {
+                    return fragments.filter(function (part) { return typeof part === 'string' && part.trim(); }).join(' ').trim();
+                }
+                engine.lang = 'sv-SE'; engine.continuous = true; engine.interimResults = true; engine.maxAlternatives = 1;
                 engine.onresult = function (event) {
-                    if (cancelled || failed || recognition !== engine || !event.results) return;
+                    if (cancelled || failed || voiceFinished || recognition !== engine || !event.results) return;
                     var first = typeof event.resultIndex === 'number' ? event.resultIndex : 0;
                     for (var i = first; i < event.results.length; i++) {
                         var item = event.results[i];
                         if (item && item.isFinal !== false && item[0] && typeof item[0].transcript === 'string') fragments[i] = item[0].transcript;
+                    }
+                    // Act only on finalized words: interim hypotheses can still change.
+                    // A standalone final command or a trailing command ends this session;
+                    // words such as 'slutpris' and commands in the middle stay as text.
+                    var completed = collectedSpeech();
+                    var finish = completed.match(/(?:^|[\s.,!?;:]+)(?:slut|färdigt)[\s.!?,;:]*$/i);
+                    if (finish) {
+                        voiceFinished = true;
+                        finishedText = completed.slice(0, finish.index).trim();
+                        if (heard) { heard.hidden = true; heard.textContent = ''; }
+                        status.textContent = voiceMessage('Avslutar och väntar på resultat…', 'Stopping and waiting for the result…');
+                        try { engine.stop(); }
+                        catch (error) {
+                            try { engine.abort(); }
+                            catch (ignored) { recognition = null; setRecording(false); status.textContent = voiceMessage('Kunde inte stoppa mikrofonen. Stäng sidan eller återkalla mikrofontillståndet. Inget förslag användes.', 'Could not stop the microphone. Close the page or revoke microphone permission. No suggestion was applied.'); }
+                        }
+                        return;
                     }
                     if (heard) {
                         var live = Array.prototype.map.call(event.results, function (item) { return item && item[0] ? String(item[0].transcript || '') : ''; }).join(' ').slice(0, 1000);
@@ -3816,7 +3839,8 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
                     if (recognition !== engine) return;
                     recognition = null; setRecording(false);
                     if (cancelled || failed) return;
-                    var spoken = fragments.filter(function (part) { return typeof part === 'string' && part.trim(); }).join(' ').trim();
+                    var spoken = voiceFinished ? finishedText : collectedSpeech();
+                    if (voiceFinished && !spoken) { status.textContent = voiceMessage('Inspelningen avslutades. Ingen ny text att tolka; tidigare uppgifter är kvar.', 'Recording finished. No new text to interpret; existing entries are kept.'); return; }
                     if (!spoken) { status.textContent = voiceMessage(invMsg('Inget tal uppfattades. Försök igen eller skriv manuellt.', 'No speech was detected. Try again or type manually.'), 'No speech was detected. Try again or type manually.'); return; }
                     if (Array.from(spoken).length > 1000) { status.textContent = voiceMessage(invMsg('Dikteringen blev för lång. Dela upp den i kortare förslag; inget har använts.', 'The dictation became too long. Split it into shorter suggestions; nothing was used.'), 'Dictation was too long. Split it into shorter suggestions; nothing was applied.'); return; }
                     if ((customerInput && customerInput.value !== initialCustomer) || transcript.value !== initialText || target.value !== initialTarget || initialSuggestion !== JSON.stringify([name.value, qty.value, unit.value, price.value]) || initialDestination !== destinationRow || initialActiveRow !== activeVoiceRow) {
@@ -3877,7 +3901,7 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
                         : voiceMessage(invMsg('Kunde inte stoppa mikrofonen. Stäng sidan eller återkalla mikrofontillståndet. Inget förslag användes.', 'Could not stop the microphone. Close the page or revoke the microphone permission. No suggestion was used.'), 'Could not stop the microphone. Close the page or revoke microphone permission. No suggestion was applied.');
                 };
                 try {
-                    setRecording(true); status.textContent = voiceMessage('Lyssnar… Tala en rad och tryck Avsluta när du är klar.', 'Listening… Speak one line and press Stop when ready.');
+                    setRecording(true); status.textContent = voiceMessage('Lyssnar… Diktera och säg ”slut” eller ”färdigt” när du är klar.', 'Listening… Dictate in Swedish and say “slut” or “färdigt” when done.');
                     engine.start();
                     if (recognition === engine) recordingTimer = window.setTimeout(function () {
                         if (recognition === engine) stopForContextChange(voiceMessage('Inspelningen pausades efter en minut. Dela upp arbetet i kortare dikteringar.', 'Recording paused after one minute. Use shorter dictations.'));

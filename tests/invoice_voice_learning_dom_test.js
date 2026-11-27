@@ -71,7 +71,7 @@ const flush = () => new Promise(resolve => setImmediate(resolve));
     assert.equal(get('#voice-auto-toggle').disabled, false);
     get('#voice-auto-toggle').click(); await flush();
     assert.equal(profile.auto, true, 'Automatic mode needs opt-in');
-    await say('1st Sten skott 450 kr st');
+    await say('1st Sten skott 450 kr st färdigt');
     let rows = win.document.querySelectorAll('.invoice-item-name');
     assert.equal(rows.length, 2); assert.equal(rows[1].value, 'Sten skott', 'Complete new speech is applied automatically');
     assert.equal(profile.reviewed, 50, 'Automatic entries never count as verified reviews');
