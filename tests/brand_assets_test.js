@@ -52,7 +52,16 @@ const inner = icon.replace(/^<svg\b[^>]*>/, '').replace(/<\/svg>\s*$/, '').trim(
     }
     const index = read('index.php');
     assert.ok(index.includes('width="60" height="60"'), 'Header reserves full logo space');
-    assert.match(index, /<img class="brand-icon"[^>]*>[\s\S]*?<\?php if \(!\$portalIsScopedPwa && \$portalCompanyLogo/, 'Shared mark remains visible even with a custom company logo');
+    assert.ok(!index.includes('class="brand-company-logo"'), 'Legacy company logos cannot appear beside or replace the locked mark');
+    assert.ok(!index.includes("$_POST['company_logo']"), 'Crafted company-logo settings cannot replace the locked mark');
+    assert.equal(require('node:crypto').createHash('sha256').update(icon).digest('hex'),
+        '5fe995061b71c91bae61e61dfe2f50bc1b582568ae6f793e421002f78d9bc072',
+        'Approved windshield/bolt master is frozen; changing its appearance needs explicit user approval');
+    const admin = read('tabs/admin.php'), settings = read('tabs/settings.php');
+    assert.ok(!admin.includes('name="company_logo"'), 'No logo selector in Administration');
+    assert.ok(!settings.includes('name="logo_file"') && !settings.includes('value="upload_logo"'), 'No replacement upload in Settings');
+    assert.ok(settings.includes('?download_file=assets/tadega-logo-tryck.svg'), 'Editable print copy stays downloadable');
+    assert.match(read('assets/tadega-logo-tryck.svg'), /<text id="namn"/, 'Print text remains editable');
     const css = read('assets/portal.css');
     assert.match(css, /\.app-header \.brand-icon\s*\{\s*width:60px; height:60px; flex:0 0 60px/);
     assert.match(css, /\.app-header \.brand-icon\s*\{ width:48px; height:48px; flex-basis:48px/);

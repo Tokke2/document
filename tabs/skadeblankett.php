@@ -799,7 +799,7 @@ if (!$skadeCustomerMode && $skadeMailStatus === 'failed' && $skadeEmailRecordId 
                     </div>
                     <?php if (!$skadeCustomerMode): ?>
                         <div class="skade-field skade-signature-date-field">
-                            <div class="skade-label-row"><label class="skade-label" for="sk-signature-date">Påskrivet datum</label><?= $skadeWhyBtn('sk-signature-date') ?></div><?= $skadeWhyPanel('sk-signature-date') ?>
+                            <div class="skade-label-row"><label class="skade-label" for="sk-signature-date">Påskrivet datum (frivilligt)</label><?= $skadeWhyBtn('sk-signature-date') ?></div><?= $skadeWhyPanel('sk-signature-date') ?>
                             <input id="sk-signature-date" name="s[signature_date]" type="date" maxlength="10" autocomplete="off" value="<?= h($skadeText('signature_date')) ?>">
                             <small class="skade-help">Välj det datum då blanketten skrevs under. Lämna tomt om den inte är påskriven — PDF:ens datumruta förblir då tom. Om en ritad signatur finns sätts dagens datum automatiskt.</small>
                         </div>

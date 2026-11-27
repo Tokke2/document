@@ -41,17 +41,6 @@ $settingsProtocolProfiles = $settingsSub === 'profiler' && in_array('protocol', 
 $notificationEmail = $settings['notification_email'] ?? '';
 $notificationEmail = is_string($notificationEmail) ? $notificationEmail : '';
 
-$svgDir = __DIR__ . '/../svg';
-$svgFiles = [];
-if (is_dir($svgDir) && !is_link($svgDir)) {
-    foreach (glob($svgDir . '/*.svg') ?: [] as $path) {
-        if (is_file($path) && !is_link($path)) {
-            $svgFiles[] = $path;
-        }
-    }
-    sort($svgFiles, SORT_NATURAL | SORT_FLAG_CASE);
-}
-
 $backupDir = __DIR__ . '/../storage/backups';
 $backupFiles = [];
 if (is_dir($backupDir) && !is_link($backupDir)) {
@@ -214,37 +203,15 @@ $csrfAvailable = csrf_token() !== '';
             </section>
 
             <section class="settings-card" aria-labelledby="settings-logo-title">
-                <div class="settings-card-head"><span class="settings-card-icon" aria-hidden="true">◇</span><div><h2 id="settings-logo-title"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Branding and logos' : 'Varumärke och logotyper' ?></h2><p><?= ($portalLanguage ?? 'sv') === 'en' ? 'Upload an SVG logo. The file is sanitized before storage and can then be previewed here.' : 'Ladda upp en SVG-logotyp. Filen saneras före lagring och kan därefter förhandsvisas här.' ?></p></div></div>
+                <div class="settings-card-head"><span class="settings-card-icon" aria-hidden="true">◇</span><div><h2 id="settings-logo-title"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Branding and logos' : 'Varumärke och logotyper' ?></h2><p><?= ($portalLanguage ?? 'sv') === 'en' ? 'The approved logo is locked in the app. Download an editable vector copy for print; editing that copy does not change the app.' : 'Den godkända logotypen är låst i appen. Ladda ner en redigerbar vektorkopia för tryck; ändringar i kopian påverkar inte appen.' ?></p></div></div>
                 <div class="settings-brand-preview">
                     <img src="?view_file=assets/tadega-logo.svg" alt="Dokumentportalen" width="440" height="106" loading="lazy">
                     <div class="settings-brand-preview-copy">
-                        <p class="settings-help"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Portal logo as an editable vector (SVG) for screen and print. Convert the text to outlines before sending to press.' : 'Portalens logotyp som redigerbar vektor (SVG) för skärm och tryck. Konvertera texten till konturer innan du skickar till tryck.' ?></p>
+                        <p class="settings-help"><?= ($portalLanguage ?? 'sv') === 'en' ? 'The print SVG contains editable vector shapes and text. Open in Inkscape or Illustrator. Use Inter ExtraBold or convert text to outlines before printing. The outlined SVG needs no font.' : 'Tryck-SVG:n innehåller redigerbara vektorformer och text. Öppna i Inkscape eller Illustrator. Använd Inter ExtraBold eller konvertera texten till banor före tryck. SVG:n med konturer kräver ingen font.' ?></p>
                         <a class="btn btn-outline" href="?download_file=assets/tadega-logo.svg"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Download logo (SVG)' : 'Ladda ner logotyp (SVG)' ?></a>
                         <a class="btn btn-outline" href="?download_file=assets/tadega-logo-tryck.svg"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Download print logo (editable SVG)' : 'Ladda ner tryck-SVG (redigerbar)' ?></a>
                     </div>
                 </div>
-                <form method="post" action="?tab=settings" enctype="multipart/form-data">
-                    <input type="hidden" name="action" value="upload_logo">
-                    <?= csrf_field() ?>
-                    <label class="settings-label" for="logo-file"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Choose SVG file' : 'Välj SVG-fil' ?> <span class="settings-label-note">(max 512 KB)</span></label>
-                    <input class="settings-input" id="logo-file" type="file" name="logo_file" accept=".svg,image/svg+xml" required aria-describedby="logo-file-help">
-                    <small class="settings-help" id="logo-file-help"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Scripts, external links and active SVG elements are removed. Select the active logo in Administration to display it in the portal header.' : 'Script, externa länkar och aktiva SVG-element tas bort. Välj aktiv logotyp i Adminpanelen för att visa den i portalens sidhuvud.' ?></small>
-                    <div class="settings-form-actions"><button class="btn btn-main" type="submit"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Upload and review' : 'Ladda upp och granska' ?></button></div>
-                </form>
-                <div class="settings-divider"></div>
-                <h3 class="settings-subheading"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Available uploads' : 'Tillgängliga uppladdningar' ?></h3>
-                <?php if ($svgFiles !== []): ?>
-                    <div class="settings-logo-grid">
-                        <?php foreach ($svgFiles as $svgPath): $fileName = basename($svgPath); ?>
-                            <div class="settings-logo">
-                                <img src="?view_file=<?= rawurlencode('svg/' . $fileName) ?>" alt="Förhandsvisning av <?= h($fileName) ?>" loading="lazy">
-                                <span><?= h($fileName) ?></span>
-                            </div>
-                        <?php endforeach; ?>
-                    </div>
-                <?php else: ?>
-                    <div class="settings-empty settings-empty-spaced"><?= ($portalLanguage ?? 'sv') === 'en' ? 'No SVG logos uploaded yet.' : 'Inga uppladdade SVG-logotyper ännu.' ?></div>
-                <?php endif; ?>
             </section>
         </div>
 

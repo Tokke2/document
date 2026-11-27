@@ -57,6 +57,8 @@ $check($testPdfCreated, 'Test PDF fixture could be created for the success view.
 $check(str_contains($adminHtml, 'name="s[signature_date]"'), 'Admin form exposes the signed-date field.');
 $check((bool) preg_match('/<input id="sk-signature-date"[^>]*type="date"/', $adminHtml), 'Signed-date field uses a date input.');
 $check(str_contains($adminHtml, 'Påskrivet datum'), 'Signed-date field is labelled "Påskrivet datum".');
+$check(str_contains($adminHtml, 'Påskrivet datum (frivilligt)'), 'Staff signed date is explicitly labelled optional.');
+$check((bool) preg_match('/<input id="sk-signature-date"[^>]*>/', $adminHtml, $dateInput) && !str_contains($dateInput[0], 'required'), 'Staff signed date is not required.');
 $check(str_contains($adminHtml, 'frivilligt för admin'), 'Damage date is marked optional for admin.');
 $check(str_contains($adminHtml, 'window.print()'), 'Print button triggers the browser print dialog.');
 $check(str_contains($adminHtml, 'id="skade-print-pdf"'), 'Result view offers a Print button.');

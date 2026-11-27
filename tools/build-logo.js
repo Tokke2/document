@@ -85,7 +85,7 @@ const printSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="100mm" height="
   </g>
   <g id="ordmark" font-family="Inter, 'Segoe UI', Arial, sans-serif">
     <text id="namn" x="272" y="150" font-size="64" font-weight="800" fill="#0b2239">Dokumentportalen</text>
-    <text id="foretag" x="274" y="200" font-size="24" font-weight="600" letter-spacing="7" fill="#0f9b8e">TADGA AB</text>
+    <text id="foretag" x="274" y="200" font-size="24" font-weight="800" letter-spacing="7" fill="#0f9b8e">TADGA AB</text>
   </g>
 </svg>
 `;

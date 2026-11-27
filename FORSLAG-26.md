@@ -66,8 +66,24 @@ Listan är helt ny och återanvänder inga förslag från `FORSLAG-25.md`. Efter
 9. **Ångra-fönster:** låt personalen ångra den senaste sparingen inom ett kort fönster innan ärendet låses.
 10. **Kundens frågor i ärendet:** kunden bockar av vanliga frågor (lånarbil, hämtning, vad täcks) och verkstadens svar dokumenteras i samma vy.
 
+### Batch 2 – förenklingar, redovisad 2026-11-25
+
+Förslag på nästa förbättringar, inte beställda eller implementerade i 0.0.26:
+
+1. **Entydiga datumetiketter:** byt generiska ”Datum” till ”Underlagsdatum”, ”Påskrivet datum” respektive ”Levererat datum” överallt så syftet syns direkt.
+2. **Datumknappar för personal:** ”Idag”, ”Igår” och ”Rensa” bredvid valbara datum; kundens automatiska påskriftsdatum påverkas inte.
+3. **Kopiera referens med ett tryck:** knapp för att kopiera ett underlagsnummer eller en kundreferens utan att markera text på mobilen.
+4. **Klistra in Excel-rader med förhandsgranskning:** tolka tab-separerad artikel, antal och pris innan personalen godkänner att rader läggs till.
+5. **Flytta arbetsrader upp/ner:** ordna artikelrader utan att ta bort och skriva in dem igen; detta gäller rader, inte flytt av tabellkolumner.
+6. **Stoppa röstinmatning vid kundbyte:** pausa mikrofonen när kunden byts så nästa uttalande inte hamnar på fel kunds underlag.
+7. **Enhet intill antalsfältet:** visa exempelvis ”2 tim” där man fyller i antalet, inte bara i en separat enhetsväljare.
+8. **Fällbar frivillig information:** samla sällan använda valfria fält under ”Fler uppgifter” utan att göra obligatoriska fält svårare att hitta.
+9. **Tillfällig helskärm för signering:** förstora bara signeringsytan på mobilen och gå tillbaka till samma formulär när kunden är klar.
+10. **Separata val för spara och avisera:** låt personalen välja ”Spara utan mejl” eller ”Spara och avisera” med en tydlig förklaring av skillnaden.
+
 ### Redovisade batchar
 
 | Batch | Visad i | Innehåll |
 |---|---|---|
 | 0 | 2026-11-25 | Huvudlistan, 25 förslag (ovan) |
+| 2 | 2026-11-25 | Tio förenklingar: datumetiketter, datumknappar, kopiera referens, Excel-inklistrning, radordning, röstpaus vid kundbyte, enhet intill antal, frivilliga fält, helskärmssignering, spara utan mejl. |

@@ -1301,46 +1301,9 @@ function portal_sanitize_svg(string $xml): ?string
 
 function portal_handle_svg_upload(): bool
 {
-    $file = $_FILES['logo_file'] ?? null;
-    $tmpName = is_array($file) ? ($file['tmp_name'] ?? null) : null;
-    $size = is_array($file) ? ($file['size'] ?? null) : null;
-    if (!is_array($file) || ($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK || !is_string($tmpName) || !is_uploaded_file($tmpName) || !is_numeric($size)) {
-        return false;
-    }
-    if ((float) $size <= 0 || (float) $size > 524288) {
-        return false;
-    }
-    $originalName = is_string($file['name'] ?? null) ? $file['name'] : '';
-    if (strtolower(pathinfo($originalName, PATHINFO_EXTENSION)) !== 'svg') {
-        return false;
-    }
-    $contents = @file_get_contents($file['tmp_name']);
-    if (!is_string($contents)) {
-        return false;
-    }
-    $safeSvg = portal_sanitize_svg($contents);
-    if ($safeSvg === null) {
-        return false;
-    }
-    $dir = __DIR__ . '/svg';
-    if (is_link($dir) || (!is_dir($dir) && !@mkdir($dir, 0750, true))) {
-        return false;
-    }
-    try {
-        $name = 'logo-' . bin2hex(random_bytes(8)) . '.svg';
-    } catch (Throwable $e) {
-        return false;
-    }
-    $path = $dir . '/' . $name;
-    $oldUmask = umask(0027);
-    $written = @file_put_contents($path, $safeSvg, LOCK_EX);
-    umask($oldUmask);
-    if ($written === false) {
-        return false;
-    }
-    @chmod($path, 0640);
-    TadegaPrivacyLogger::event('file.uploaded');
-    return true;
+    // Compatibility entry point: branding is fixed, including crafted uploads.
+    // Editable print downloads never change the application's approved mark.
+    return false;
 }
 
 function portal_skade_new_action_token(string $purpose, string $recordId = ''): string
@@ -3461,14 +3424,12 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             } else {
                 $companyName = portal_post_text($_POST, 'company_name', 100);
                 $skadeRecipient = portal_post_text($_POST, 'skade_recipient_email', 254);
-                $companyLogo = $_POST['company_logo'] ?? '';
-                if (!is_string($companyLogo) || ($companyLogo !== '' && (!preg_match('/\Alogo-[a-f0-9]{16}\.svg\z/D', $companyLogo) || is_link(__DIR__ . '/svg') || is_link(__DIR__ . '/svg/' . $companyLogo) || !is_file(__DIR__ . '/svg/' . $companyLogo)))) portal_redirect('admin', 'company_settings_invalid');
                 if ($companyName === null || str_contains($companyName, "\n") || $skadeRecipient === null || ($skadeRecipient !== '' && !filter_var($skadeRecipient, FILTER_VALIDATE_EMAIL))) {
                     portal_redirect('admin', 'company_settings_invalid');
                 }
                 $settings = load_settings();
                 $settings['company_name'] = $companyName;
-                $settings['company_logo'] = $companyLogo;
+                unset($settings['company_logo']); // Legacy overrides no longer affect the locked brand.
                 $settings['skade_recipient_email'] = $skadeRecipient;
                 if (!save_data(SETTINGS_FILE, $settings)) {
                     portal_redirect('admin', 'company_settings_error');
@@ -3487,7 +3448,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             TadegaPrivacyLogger::event('settings.updated');
             portal_redirect('settings', 'success');
         } elseif ($action === 'upload_logo') {
-            portal_redirect('settings', portal_handle_svg_upload() ? 'logo_ok' : 'logo_error');
+            http_response_code(403);
+            $portalPostError = 'Logotypen är låst och kan inte ersättas i appen. Tryck-SVG kan laddas ner från Inställningar.';
         } elseif ($action === 'trigger_backup') {
             $backup = create_backup();
             if (!is_string($backup) || !is_file($backup)) {
@@ -3968,8 +3930,6 @@ $portalPwaNames = [
 ];
 $companySettingsForDisplay = load_settings();
 $portalCompanyName = is_string($companySettingsForDisplay['company_name'] ?? null) ? trim($companySettingsForDisplay['company_name']) : '';
-$portalCompanyLogo = $companySettingsForDisplay['company_logo'] ?? '';
-if (!is_string($portalCompanyLogo) || !preg_match('/\Alogo-[a-f0-9]{16}\.svg\z/D', $portalCompanyLogo) || is_link(__DIR__ . '/svg') || is_link(__DIR__ . '/svg/' . $portalCompanyLogo) || !is_file(__DIR__ . '/svg/' . $portalCompanyLogo)) $portalCompanyLogo = '';
 $portalCompanyName = $portalCompanyName !== '' ? $portalCompanyName : 'Dokumentportalen';
 $portalPwaName = $portalIsScopedPwa ? ($portalPwaNames[$portalPwaApp] ?? 'Dokumentportalen') : 'Dokumentportalen';
 $portalManifestHref = $portalIsScopedPwa
@@ -4115,7 +4075,6 @@ $languageLink = static function (string $language): string {
     <div class="app-header-inner">
         <a class="brand" href="?tab=<?= h($activeTab) ?>" aria-label="<?= h($portalIsScopedPwa ? $portalPwaName . ' startsida' : 'Dokumentportalen startsida') ?>">
             <img class="brand-icon" src="<?= h($portalAssetEntry . '?view_file=assets/tadega-icon.svg&v=' . (string) (@filemtime(__DIR__ . '/assets/tadega-icon.svg') ?: '1')) ?>" width="60" height="60" alt="">
-            <?php if (!$portalIsScopedPwa && $portalCompanyLogo !== ''): ?><img class="brand-company-logo" src="?view_file=<?= rawurlencode('svg/' . $portalCompanyLogo) ?>" alt=""><?php endif; ?>
             <span><span class="brand-name"><?= h($portalCompanyName) ?></span><span class="brand-caption"><?= h($portalIsScopedPwa ? $portalPwaName : 'Dokumentportalen') ?></span></span>
         </a>
         <div class="header-actions">
