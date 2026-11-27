@@ -81,9 +81,20 @@ Förslag på nästa förbättringar, inte beställda eller implementerade i 0.0.
 9. **Tillfällig helskärm för signering:** förstora bara signeringsytan på mobilen och gå tillbaka till samma formulär när kunden är klar.
 10. **Separata val för spara och avisera:** låt personalen välja ”Spara utan mejl” eller ”Spara och avisera” med en tydlig förklaring av skillnaden.
 
+### Batch 3 – sortering, fem förslag redovisade 2026-11-25
+
+Punkterna 1, 3 och 4 godkändes av användaren och genomförs i 0.0.29 för fakturahistorik och arkiv. Punkt 2 och 5 är inte beställda.
+
+1. **Sortera på flera saker samtidigt:** exempelvis kund A–Ö och därefter nyaste datum inom kunden.
+2. **Kom ihåg vald sortering per lista:** behåll sorteringsvalet mellan sidbesök.
+3. **Tydlig sorteringsmeny på mobilen:** välj ordning utan att leta efter tabellrubriker.
+4. **Gruppera listan:** fällbara grupper per kund eller månad (arkivet använder mapp/månad eftersom kundkoppling saknas).
+5. **Saknade värden alltid sist:** placera poster utan datum eller referens längst ner oavsett sorteringsriktning.
+
 ### Redovisade batchar
 
 | Batch | Visad i | Innehåll |
 |---|---|---|
 | 0 | 2026-11-25 | Huvudlistan, 25 förslag (ovan) |
 | 2 | 2026-11-25 | Tio förenklingar: datumetiketter, datumknappar, kopiera referens, Excel-inklistrning, radordning, röstpaus vid kundbyte, enhet intill antal, frivilliga fält, helskärmssignering, spara utan mejl. |
+| 3 | 2026-11-25 | Fem sorteringsförslag: flersortering, minne per lista, mobilmeny, fällbara grupper, saknade värden sist. Punkterna 1, 3 och 4 godkända. |

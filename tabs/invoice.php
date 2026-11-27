@@ -1855,9 +1855,9 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
                     <p id="invoice-history-search-count" class="invoice-record-search-count" role="status" aria-live="polite"></p>
                 </div>
                 <div class="invoice-record-table-wrap" role="region" aria-label="<?= ($portalLanguage ?? 'sv') === 'en' ? 'Invoiced records' : 'Fakturerade underlag' ?>" tabindex="0">
-                    <table class="invoice-record-table" id="invoice-history-table">
+                    <table class="invoice-record-table" id="invoice-history-table" data-sortable data-sort-advanced data-group-keys="customer,month" data-default-sort="date" data-sort-lang="<?= h($portalLanguage ?? 'sv') ?>">
                         <caption class="invoice-sr-only">Fakturerade underlag med Fortnox-fakturanummer</caption>
-                        <thead><tr><th scope="col">Underlagsnr</th><th scope="col">Fortnox-nr</th><th scope="col"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Record date' : 'Underlagsdatum' ?></th><th scope="col"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Invoice date' : 'Fakturadatum' ?></th><th scope="col"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Customer and reference' : 'Kund och referens' ?></th><th scope="col"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Saved total' : 'Sparad summa' ?></th><th scope="col"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Internal email notification' : 'Intern e-postavisering' ?></th><th scope="col"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Actions' : 'Åtgärder' ?></th></tr></thead>
+                        <thead><tr><th scope="col" data-sort-key="number" data-sort-type="text" aria-sort="none"><button type="button" class="file-sort-button">Underlagsnr</button></th><th scope="col" data-sort-key="fortnox" data-sort-type="text" aria-sort="none"><button type="button" class="file-sort-button">Fortnox-nr</button></th><th scope="col" data-sort-key="date" data-sort-type="date" aria-sort="none"><button type="button" class="file-sort-button"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Record date' : 'Underlagsdatum' ?></button></th><th scope="col" data-sort-key="invoice-date" data-sort-type="date" aria-sort="none"><button type="button" class="file-sort-button"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Invoice date' : 'Fakturadatum' ?></button></th><th scope="col" data-sort-key="customer" data-sort-type="text" aria-sort="none"><button type="button" class="file-sort-button"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Customer and reference' : 'Kund och referens' ?></button></th><th scope="col" data-sort-key="total" data-sort-type="number" aria-sort="none"><button type="button" class="file-sort-button"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Saved total' : 'Sparad summa' ?></button></th><th scope="col"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Internal email notification' : 'Intern e-postavisering' ?></th><th scope="col"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Actions' : 'Åtgärder' ?></th></tr></thead>
                         <tbody>
                             <?php foreach ($invoiceHistoryRecords as $invoiceRecord): ?>
                                 <?php
@@ -1878,7 +1878,7 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
                                 $invoiceFortnoxDate = is_scalar($invoiceRecord['fortnox_invoice_date'] ?? null) ? (string) $invoiceRecord['fortnox_invoice_date'] : '';
                                 $invoiceRecordSearch = $invoiceRecordSearchText($invoiceRecord);
                                 ?>
-                                <tr data-invoice-record-row data-search="<?= h($invoiceRecordSearch) ?>">
+                                <tr data-invoice-record-row data-search="<?= h($invoiceRecordSearch) ?>" data-customer="<?= h($invoiceRecordCustomer) ?>" data-number="<?= h($invoiceRecord['nummer'] ?? '') ?>" data-fortnox="<?= h($invoiceFortnoxNumber) ?>" data-date="<?= h($invoiceRecord['date'] ?? '') ?>" data-invoice-date="<?= h($invoiceFortnoxDate) ?>" data-total="<?= h((string) ($invoiceRecord['total_sum'] ?? 0)) ?>">
                                     <td data-label="Underlagsnr"><span class="invoice-record-primary"><?= h($invoiceRecord['nummer'] ?? '—') ?></span></td>
                                     <td data-label="Fortnox-nr"><span class="invoice-record-primary"><?= h($invoiceFortnoxNumber) ?></span></td>
                                     <td data-label="Underlagsdatum"><?= h($invoiceRecord['date'] ?? '') ?><?php if (!empty($invoiceRecord['delivery_date'])): ?><span class="invoice-record-muted"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Delivered: ' : 'Levererat: ' ?><?= h($invoiceRecord['delivery_date']) ?></span><?php endif; ?></td>
@@ -2640,6 +2640,9 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
 </section>
 
 <script src="<?= h($portalAssetEntry ?? './index.php') ?>?view_file=assets/invoice_voice.js&amp;v=<?= (string) (@filemtime(__DIR__ . '/../assets/invoice_voice.js') ?: '1') ?>"></script>
+<?php if ($invoiceView === 'invoice_history'): ?>
+<script src="<?= h($portalAssetEntry ?? './index.php') ?>?view_file=assets/table_sort.js&amp;v=<?= (string) (@filemtime(__DIR__ . '/../assets/table_sort.js') ?: '1') ?>"></script>
+<?php endif; ?>
 <script>
 (function () {
     'use strict';
@@ -4574,6 +4577,7 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
             rows.forEach(function (row) {
                 var content = normalize(row.getAttribute('data-search') || '');
                 var visible = query === '' || content.indexOf(query) !== -1;
+                row.setAttribute('data-sort-filtered', visible ? '0' : '1');
                 row.hidden = !visible;
                 if (visible) visibleCount++;
             });
@@ -4582,6 +4586,7 @@ $activeDiagnosticErrors = $isInvoiceAdmin && $invoiceView === 'debug' ? TadegaPr
                     ? visibleCount + ' underlag totalt.'
                     : 'Visar ' + visibleCount + ' av ' + rows.length + ' underlag.';
             }
+            if (window.portalTableSort) window.portalTableSort.refresh(table);
             if (empty) empty.hidden = visibleCount > 0;
         }
         input.addEventListener('input', applyFilter);

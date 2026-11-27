@@ -253,7 +253,7 @@ if ($sub !== 'all') {
         </div>
     </div>
     <?php if ($allFiles): ?>
-        <div class="file-table-wrap"><table class="file-table" data-sortable><thead><tr><th scope="col" data-sort-key="folder" data-sort-type="text" aria-sort="none"><button type="button" class="file-sort-button"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Folder' : 'Mapp' ?></button></th><th scope="col" data-sort-key="name" data-sort-type="text" aria-sort="none"><button type="button" class="file-sort-button"><?= ($portalLanguage ?? 'sv') === 'en' ? 'File' : 'Fil' ?></button></th><th scope="col" data-sort-key="type" data-sort-type="text" aria-sort="none"><button type="button" class="file-sort-button"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Type' : 'Typ' ?></button></th><th scope="col" data-sort-key="date" data-sort-type="date" aria-sort="none"><button type="button" class="file-sort-button"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Date' : 'Datum' ?></button></th><th scope="col" data-sort-key="size" data-sort-type="number" aria-sort="none"><button type="button" class="file-sort-button"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Size' : 'Storlek' ?></button></th><th></th></tr></thead><tbody id="file-rows">
+        <div class="file-table-wrap"><table class="file-table" id="archive-file-table" data-sortable data-sort-advanced data-group-keys="folder,month" data-default-sort="date" data-sort-lang="<?= h($portalLanguage ?? 'sv') ?>"><thead><tr><th scope="col" data-sort-key="folder" data-sort-type="text" aria-sort="none"><button type="button" class="file-sort-button"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Folder' : 'Mapp' ?></button></th><th scope="col" data-sort-key="name" data-sort-type="text" aria-sort="none"><button type="button" class="file-sort-button"><?= ($portalLanguage ?? 'sv') === 'en' ? 'File' : 'Fil' ?></button></th><th scope="col" data-sort-key="type" data-sort-type="text" aria-sort="none"><button type="button" class="file-sort-button"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Type' : 'Typ' ?></button></th><th scope="col" data-sort-key="date" data-sort-type="date" aria-sort="none"><button type="button" class="file-sort-button"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Date' : 'Datum' ?></button></th><th scope="col" data-sort-key="size" data-sort-type="number" aria-sort="none"><button type="button" class="file-sort-button"><?= ($portalLanguage ?? 'sv') === 'en' ? 'Size' : 'Storlek' ?></button></th><th></th></tr></thead><tbody id="file-rows">
         <?php foreach ($allFiles as $file):
             $relativeFile = str_replace(chr(92), '/', is_string($file['rel'] ?? null) ? $file['rel'] : '');
             $parts = explode('/', $relativeFile);
@@ -323,10 +323,12 @@ if ($sub !== 'all') {
                 && (!registrationQuery || registrationSearch.indexOf(registrationQuery) !== -1)
                 && matchesDate
                 && (!categoryQuery || rowCategory === categoryQuery);
+            row.setAttribute('data-sort-filtered', matches ? '0' : '1');
             row.hidden = !matches;
             if (matches) matchedCount++;
         });
 
+        if (window.portalTableSort) window.portalTableSort.refresh(document.getElementById('archive-file-table'));
         if (visibleCount) visibleCount.textContent = String(matchedCount);
         if (results) {
             results.textContent = invalidDateRange

@@ -848,3 +848,23 @@ html { -webkit-text-size-adjust:100%; text-size-adjust:100%; }
     .app-header .brand-icon { width:48px; height:48px; flex-basis:48px; border-radius:12px; }
     .app-header .brand { gap:10px; }
 }
+
+/* Opt-in list sorting/grouping: controls remain outside horizontally scrolling tables. */
+.portal-list-controls { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr)); gap:12px; margin:14px 0; padding:14px; border:1px solid var(--color-border,#ccdadd); border-radius:12px; background:var(--color-surface,#fff); color:var(--color-ink,#18343d); }
+.portal-list-controls > div { min-width:0; }
+.portal-list-controls label { display:block; margin-bottom:6px; font-size:.8rem; font-weight:750; }
+.portal-list-controls select { width:100%; max-width:100%; min-height:46px; padding:8px; border:1px solid var(--color-border,#ccdadd); border-radius:8px; background:var(--color-surface,#fff); color:inherit; font:inherit; font-size:.85rem; }
+.portal-list-sort-status { grid-column:1/-1; margin:0; font-size:.8rem; overflow-wrap:anywhere; }
+[data-sort-advanced] [hidden] { display:none!important; }
+[data-sort-advanced] .portal-list-group > td { background:var(--color-surface,#f1f6f7); grid-column:1/-1; }
+[data-sort-advanced] .portal-list-group > td::before { display:none; }
+.portal-list-group-toggle { display:block; width:100%; min-height:46px; border:0; padding:8px; background:transparent; color:inherit; text-align:left; font:inherit; font-weight:800; cursor:pointer; overflow-wrap:anywhere; }
+.portal-list-group-toggle::before { content:'▾ '; }
+.portal-list-group-toggle[aria-expanded="false"]::before { content:'▸ '; }
+[data-sort-advanced] th[aria-sort="ascending"] .file-sort-button::after { content:'▲'; font-size:.6em; }
+[data-sort-advanced] th[aria-sort="descending"] .file-sort-button::after { content:'▼'; font-size:.6em; }
+@media print {
+    .portal-list-controls { display:none!important; }
+    [data-sort-advanced] tr[data-sort-collapsed]:not([data-sort-filtered="1"]) { display:table-row!important; }
+    .portal-list-group-toggle::before { content:''; }
+}
